@@ -179,22 +179,19 @@ export default function RegisterPage() {
         <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:'1.75rem', animation:'fadeUp .5s .06s both' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#F4F7FA',
-              border: '1px solid rgba(36,59,83,0.10)',
-              borderRadius: '12px',
-              padding: '0.25rem 1.00rem',
-              boxShadow: '0 2px 8px rgba(36,59,83,0.06)',
-            }}>
-              <Image src="/logo.png" alt="Company Logo" width={120} height={40} priority
-                style={{ objectFit:'contain', height:'100%', maxHeight:'100px', maxWidth:'130px', display:'block' }} />
-            </div>
-          </div>
-
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.75rem', animation:'fadeUp .5s .06s both' }}>
+                      <div>
+                        <Image
+                          src="/logo.png"
+                          alt="Company Logo"
+                          width={120}
+                          height={40}
+                          priority
+                          style={{ objectFit: 'contain', height: 'auto', maxHeight: '200px', maxWidth: '130px', display: 'block' }}
+                        />
+                      </div>
+                    </div>
+          
           {/* ── Heading ── */}
           <div style={{ textAlign:'center', marginBottom:'1.75rem', animation:'fadeUp .5s .13s both' }}>
             <h1 style={{ fontSize:'1.65rem', fontWeight:800, color:'#243B53', letterSpacing:'-0.03em', marginBottom:'0.3rem', lineHeight:1.15 }}>

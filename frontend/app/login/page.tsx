@@ -114,24 +114,15 @@ export default function LoginPage() {
         <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:'1.75rem', animation:'fadeUp .5s .06s both' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#F4F7FA',
-              border: '1px solid rgba(36,59,83,0.10)',
-              borderRadius: '12px',
-              padding: '0.25rem 1.00rem',
-              boxShadow: '0 2px 8px rgba(36,59,83,0.06)',
-            }}>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.25rem', animation:'fadeUp .5s .06s both' }}>
+            <div>
               <Image
                 src="/logo.png"
                 alt="Company Logo"
                 width={120}
                 height={40}
                 priority
-                style={{ objectFit: 'contain', height: 'auto', maxHeight: '100px', maxWidth: '130px', display: 'block' }}
+                style={{ objectFit: 'contain', height: 'auto', maxHeight: '200px', maxWidth: '130px', display: 'block' }}
               />
             </div>
           </div>
@@ -286,19 +277,19 @@ export default function LoginPage() {
               ) : 'Sign In  →'}
             </button>
           </form>
-
           {/* ── Divider ── */}
-          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', margin:'1.6rem 0 1.1rem', animation:'fadeUp .5s .32s both' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', margin:'1.5rem 0 1rem', animation:'fadeUp .5s .32s both' }}>
             <div style={{ flex:1, height:'1px', background:'rgba(36,59,83,0.09)' }} />
-            <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#9aa8b6', letterSpacing:'0.07em', textTransform:'uppercase' }}>Secure Login</span>
+            <span style={{ fontSize:'0.7rem', fontWeight:600, color:'#9aa8b6', letterSpacing:'0.07em', textTransform:'uppercase' }}>Secure Data Management</span>
             <div style={{ flex:1, height:'1px', background:'rgba(36,59,83,0.09)' }} />
           </div>
 
           {/* ── Trust badge ── */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.375rem', marginBottom:'1.5rem', animation:'fadeUp .5s .38s both' }}>
             <ShieldCheck />
-            <span style={{ fontSize:'0.775rem', color:'#9aa8b6' }}>Your connection is encrypted and secure</span>
+            <span style={{ fontSize:'0.775rem', color:'#9aa8b6' }}>Your data is encrypted and never shared</span>
           </div>
+
 
           {/* ── Register CTA ── */}
           <div style={{ borderTop:'1px solid rgba(36,59,83,0.08)', paddingTop:'1.375rem', textAlign:'center', animation:'fadeUp .5s .44s both' }}>
