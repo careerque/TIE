@@ -187,11 +187,11 @@ export default function RegisterPage() {
               background: '#F4F7FA',
               border: '1px solid rgba(36,59,83,0.10)',
               borderRadius: '12px',
-              padding: '0.55rem 1.35rem',
+              padding: '0.25rem 1.00rem',
               boxShadow: '0 2px 8px rgba(36,59,83,0.06)',
             }}>
-              <Image src="/Logo.png" alt="Company Logo" width={120} height={40} priority
-                style={{ objectFit:'contain', height:'auto', maxHeight:'42px', maxWidth:'130px', display:'block' }} />
+              <Image src="/logo.png" alt="Company Logo" width={120} height={40} priority
+                style={{ objectFit:'contain', height:'100%', maxHeight:'100px', maxWidth:'130px', display:'block' }} />
             </div>
           </div>
 
