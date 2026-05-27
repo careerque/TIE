@@ -119,7 +119,7 @@ export default function RegisterPage() {
 
   /* ── Success state ── */
   if (success) return (
-    <main style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem', background:'linear-gradient(135deg,#eef2f7 0%,#F4F7FA 55%,#e8edf4 100%)', fontFamily:"'Inter',system-ui,sans-serif" }}>
+    <main style={{ minHeight:'calc(100vh - 150px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'3rem 1.5rem', background:'linear-gradient(135deg,#eef2f7 0%,#F4F7FA 55%,#e8edf4 100%)', fontFamily:"'Inter',system-ui,sans-serif" }}>
       <div style={{ background:'#fff', borderRadius:'20px', boxShadow:'0 8px 40px rgba(36,59,83,0.12)', border:'1px solid rgba(36,59,83,0.08)', width:'100%', maxWidth:'440px', overflow:'hidden', textAlign:'center', animation:'cardIn .52s cubic-bezier(.22,1,.36,1) both' }}>
         <div style={{ height:'4px', background:'linear-gradient(90deg,#243B53 0%,#5BA4A4 55%,#A3B18A 100%)' }} />
         <div style={{ padding:'2.5rem 2.5rem 2.75rem' }}>
@@ -144,11 +144,11 @@ export default function RegisterPage() {
   /* ── Main register form ── */
   return (
     <main style={{
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - 150px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '1.5rem',
+      padding: '3rem 1.5rem',
       background: 'linear-gradient(135deg, #eef2f7 0%, #F4F7FA 55%, #e8edf4 100%)',
       fontFamily: "'Inter', system-ui, sans-serif",
       position: 'relative',
@@ -179,18 +179,30 @@ export default function RegisterPage() {
         <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.75rem', animation:'fadeUp .5s .06s both' }}>
-                      <div>
-                        <Image
-                          src="/logo.png"
-                          alt="Company Logo"
-                          width={120}
-                          height={40}
-                          priority
-                          style={{ objectFit: 'contain', height: 'auto', maxHeight: '200px', maxWidth: '130px', display: 'block' }}
-                        />
-                      </div>
-                    </div>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.5rem', animation:'fadeUp .5s .06s both' }}>
+            <div
+              style={{
+                width: "130px",
+                height: "60px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                src="/logo.png"
+                alt="Company Logo"
+                width={130}
+                height={130}
+                priority
+                style={{
+                  position: "absolute",
+                  top: "-35px",
+                  left: "0",
+                  display: "block",
+                }}
+              />
+            </div>
+          </div>
           
           {/* ── Heading ── */}
           <div style={{ textAlign:'center', marginBottom:'1.75rem', animation:'fadeUp .5s .13s both' }}>

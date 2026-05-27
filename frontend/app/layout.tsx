@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 /* ── Font Setup ── */
 const inter = Inter({
@@ -12,9 +14,8 @@ const inter = Inter({
 
 /* ── Metadata ── */
 export const metadata: Metadata = {
-  title: 'Sign In | Your App Name',
-  description: 'Sign in to your account to continue.',
-  robots: 'noindex, nofollow', // login pages shouldn't be indexed
+  title: 'TIE | Talent Intelligence Engine',
+  description: 'Understand your workforce beyond performance.',
 };
 
 /* ── Root Layout ── */
@@ -25,7 +26,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>{children}</body>
+      <body className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow flex flex-col">{children}</main>
+        <Footer />
+      </body>
     </html>
   );
 }

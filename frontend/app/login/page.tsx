@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useRef, useEffect, CSSProperties } from 'react';
+import { useRouter } from 'next/navigation';
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const EyeOpen = () => (
@@ -35,6 +36,7 @@ const ShieldCheck = () => (
 
 /* ─── Component ─────────────────────────────────────────── */
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -55,7 +57,16 @@ export default function LoginPage() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 1400));
     setLoading(false);
-    alert('Sign-in triggered — connect your auth API here.');
+    
+    // Save authentication state
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userEmail', email.trim());
+    
+    // Dispatch auth-change event so the global Navbar updates instantly
+    window.dispatchEvent(new Event('auth-change'));
+    
+    // Redirect to assessment page or home
+    router.push('/assessment');
   };
 
   /* Shared input style */
@@ -79,11 +90,11 @@ export default function LoginPage() {
 
   return (
     <main style={{
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - 150px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '1.5rem',
+      padding: '3rem 1.5rem',
       background: 'linear-gradient(135deg, #eef2f7 0%, #F4F7FA 55%, #e8edf4 100%)',
       fontFamily: "'Inter', system-ui, sans-serif",
       position: 'relative',
@@ -114,15 +125,27 @@ export default function LoginPage() {
         <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.25rem', animation:'fadeUp .5s .06s both' }}>
-            <div>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.5rem', animation:'fadeUp .5s .06s both' }}>
+            <div
+              style={{
+                width: "130px",
+                height: "60px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
               <Image
                 src="/logo.png"
                 alt="Company Logo"
-                width={120}
-                height={40}
+                width={130}
+                height={130}
                 priority
-                style={{ objectFit: 'contain', height: 'auto', maxHeight: '200px', maxWidth: '130px', display: 'block' }}
+                style={{
+                  position: "absolute",
+                  top: "-35px",
+                  left: "0",
+                  display: "block",
+                }}
               />
             </div>
           </div>
