@@ -1,0 +1,115 @@
+[
+  {
+    "id": 1,
+    "type":"multiple-choice",
+    "question": "When starting a new assignment, what usually helps you perform best?",
+    "options": [
+      "Clear expectations and priorities",
+      "Freedom to explore independently",
+      "Team discussions and brainstorming",
+      "Step-by-step guidance initially"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 2,
+    "type":"multiple-choice",
+    "question": "When workplace changes happen suddenly, what is your natural response?",
+    "options": [
+      "Try understanding the bigger purpose first",
+      "Observe how others adapt before responding",
+      "Start experimenting and adjusting quickly",
+      "Prefer stability before changing routines"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 3,
+    "type":"multiple-choice",
+    "question": "Which work environment usually helps you stay most productive?",
+    "options": [
+      "Structured and organized",
+      "Flexible and dynamic",
+      "Collaborative and interactive",
+      "Calm and predictable"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 4,"type":"multiple-choice",
+    "question": "When facing difficulties at work, what do you usually do first?",
+    "options": [
+      "Solve independently",
+      "Discuss with teammates",
+      "Seek manager guidance",
+      "Pause and analyze carefully"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 5,"type":"multiple-choice",
+    "question": "What motivates you most in a workplace?",
+    "options": [
+      "Growth opportunities",
+      "Recognition and appreciation",
+      "Stability and security",
+      "Meaningful work and impact"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 6,"type":"multiple-choice",
+    "question": "How do you usually approach learning something new?",
+    "options": [
+      "Structured learning and examples",
+      "Trial and experimentation",
+      "Learning through discussion",
+      "Watching others first"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 7,"type":"multiple-choice",
+    "question": "What kind of manager support helps you most?",
+    "options": [
+      "Regular feedback and direction",
+      "Freedom with trust",
+      "Collaborative problem solving",
+      "Clear priorities and expectations"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 8,"type":"multiple-choice",
+    "question": "When multiple deadlines appear together, what happens most often?",
+    "options": [
+      "I organize and prioritize quickly",
+      "I focus on one thing at a time",
+      "I seek alignment before acting",
+      "I feel temporarily overwhelmed initially"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 9,"type":"multiple-choice",
+    "question": "Which statement feels closest to your work style?",
+    "options": [
+      "I prefer clarity before execution",
+      "I enjoy experimenting and adapting",
+      "I work best through collaboration",
+      "I value consistency and stability"
+    ],
+    "correct_answer": ""
+  },
+  {
+    "id": 10,"type":"multiple-choice",
+    "question": "What usually affects your motivation negatively?",
+    "options": [
+      "Lack of clarity",
+      "Feeling unheard",
+      "Repetitive routine work",
+      "Sudden unexpected pressure"
+    ],
+    "correct_answer": ""
+  }
+]

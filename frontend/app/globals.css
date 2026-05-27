@@ -24,6 +24,7 @@
   --shadow-btn:   0 2px 10px rgba(91, 164, 164, 0.28);
 }
 
+
 /* ── Base Reset ── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -282,4 +283,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 y {
   background-color: #F4F7FA;
+}
+.progress{
+  padding-right:20px;
+  padding-left: 20px;
+}
+.ass{
+  padding:6px
+}
+ .qcard-ass{
+  padding:20px;
+}
+.btn-ass{
+  border-radius:10px;
 }
