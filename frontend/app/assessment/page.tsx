@@ -150,7 +150,7 @@ export default function AssessmentPage() {
     }
     setSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1800));
-    router.push("/profile-output");
+    router.push("/reflection");
   };
 
   // Render Loader

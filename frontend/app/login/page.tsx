@@ -66,7 +66,7 @@ export default function LoginPage() {
     window.dispatchEvent(new Event('auth-change'));
     
     // Redirect to assessment page or home
-    router.push('/assessment');
+    router.push('/dashboard');
   };
 
   /* Shared input style */
