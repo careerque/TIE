@@ -20,11 +20,16 @@ export default function DashboardPage() {
       return;
     }
 
-    const email = localStorage.getItem("userEmail") || "";
-    if (email) {
-      const namePart = email.split("@")[0];
-      const formatted = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-      setUserName(formatted);
+    const storedFirstName = localStorage.getItem("userFirstName");
+    if (storedFirstName) {
+      setUserName(storedFirstName);
+    } else {
+      const email = localStorage.getItem("userEmail") || "";
+      if (email) {
+        const namePart = email.split("@")[0];
+        const formatted = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        setUserName(formatted);
+      }
     }
     setLoading(false);
   }, [router]);

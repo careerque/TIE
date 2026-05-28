@@ -95,6 +95,11 @@ export default function RegisterPage() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 1500));
     setLoading(false);
+    
+    // Save registered name to localStorage
+    localStorage.setItem('userFirstName', firstName.trim());
+    localStorage.setItem('userLastName', lastName.trim());
+    
     setSuccess(true);
   };
 
