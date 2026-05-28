@@ -284,7 +284,7 @@ export default function ProfileOutputPage() {
               You Finished Successfully
             </h2>
             <p style={{ fontSize: "0.9rem", color: "#627D98", lineHeight: 1.6, marginBottom: "2.5rem", padding: "0 10px" }}>
-              Your workforce assessment is complete. The Talent Intelligence Engine has compiled your responses and mapped your workplace dynamics profile.
+              TIE has mapped your workplace patterns and generated your workforce insight profile.
             </p>
 
             {/* Action button */}
@@ -302,7 +302,7 @@ export default function ProfileOutputPage() {
                 </>
               ) : (
                 <>
-                  Show My Insights & Analytics
+                  View My Workforce Insights
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
