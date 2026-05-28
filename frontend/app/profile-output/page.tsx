@@ -12,6 +12,8 @@ import {
   RefreshCw,
   ChevronRight,
   BookOpen,
+  Download,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -24,9 +26,28 @@ export default function ProfileOutputPage() {
   const [hoveredRetake, setHoveredRetake] = useState(false);
   const [hoveredReturn, setHoveredReturn] = useState(false);
   const [hoveredCardIdx, setHoveredCardIdx] = useState<number | null>(null);
+  const [pdfHovered, setPdfHovered] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  // Scroll to top on load
+  // Profile Fields States
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [department, setDepartment] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [experience, setExperience] = useState("");
+
+  // Load details from localStorage & scroll to top on load
   useEffect(() => {
+    setFirstName(localStorage.getItem("userFirstName") || "Rahul");
+    setLastName(localStorage.getItem("userLastName") || "Sharma");
+    setEmail(localStorage.getItem("userEmail") || "rahul.sharma@tie.ai");
+    setEmployeeId(localStorage.getItem("userEmployeeId") || "TIE-2026");
+    setDepartment(localStorage.getItem("userDepartment") || "Engineering");
+    setDesignation(localStorage.getItem("userDesignation") || "Software Engineer");
+    setExperience(localStorage.getItem("userExperience") || "3");
+    
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [showInsights]);
 
@@ -36,6 +57,37 @@ export default function ProfileOutputPage() {
       setLoading(false);
       setShowInsights(true);
     }, 1200);
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const jsPDF = (await import("jspdf")).default;
+      const html2canvas = (await import("html2canvas")).default;
+
+      const element = document.getElementById("tie-report-pdf-template");
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution crisp text rendering
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`TIE_Workforce_Insight_Report_${firstName}_${lastName}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const insightsData = {
@@ -332,6 +384,48 @@ export default function ProfileOutputPage() {
               </p>
             </div>
 
+            {/* Employee Details Profile Card on page */}
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid rgba(36, 59, 83, 0.07)",
+                borderRadius: "20px",
+                padding: "1.5rem 2rem",
+                boxShadow: "0 4px 15px rgba(36,59,83,0.02)",
+                marginBottom: "2rem",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "1rem 2rem",
+                boxSizing: "border-box",
+                width: "100%",
+              }}
+            >
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Employee Name</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{firstName} {lastName}</span>
+              </div>
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Employee ID</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{employeeId}</span>
+              </div>
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Department</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{department}</span>
+              </div>
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Designation</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{designation}</span>
+              </div>
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Experience</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{experience} Years</span>
+              </div>
+              <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Email Address</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{email}</span>
+              </div>
+            </div>
+
             {/* Archetype Banner Card */}
             <div style={archetypeCardStyle}>
               {/* Graphic accents */}
@@ -412,12 +506,139 @@ export default function ProfileOutputPage() {
               ))}
             </div>
 
+            {/* Qualitative Snapshot and Friction/Growth Areas */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "1.5rem",
+                marginBottom: "2.5rem",
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+            >
+              {/* Card 1: Behavioral Dynamics Insights */}
+              <div
+                style={{
+                  flex: "1 1 400px",
+                  background: "#ffffff",
+                  border: "1px solid rgba(36, 59, 83, 0.07)",
+                  borderRadius: "24px",
+                  padding: "2.25rem 2.5rem",
+                  boxShadow: "0 4px 20px rgba(36,59,83,0.03)",
+                  boxSizing: "border-box",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1.5rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderBottom: "1px solid #f0f4f8", paddingBottom: "1rem" }}>
+                  <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
+                    Workplace Dynamics Insights
+                  </h3>
+                </div>
+
+                {/* Snapshots */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                  <div>
+                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                      Workforce Style Snapshot
+                    </h4>
+                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                      Collaborative and structured contributor who performs best with clarity, trust, and meaningful team interaction.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                      Growth & Adaptability Style
+                    </h4>
+                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                      Prefers guided adaptation and understands change better when the purpose and expectations are clearly communicated.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                      Collaboration Style
+                    </h4>
+                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                      Strong preference for collaborative environments, active discussions, and supportive teamwork.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Development & Manager Support Plan */}
+              <div
+                style={{
+                  flex: "1 1 400px",
+                  background: "#ffffff",
+                  border: "1px solid rgba(36, 59, 83, 0.07)",
+                  borderRadius: "24px",
+                  padding: "2.25rem 2.5rem",
+                  boxShadow: "0 4px 20px rgba(36,59,83,0.03)",
+                  boxSizing: "border-box",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1.5rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", borderBottom: "1px solid #f0f4f8", paddingBottom: "1rem" }}>
+                  <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
+                    Development & Support Plan
+                  </h3>
+                </div>
+
+                {/* Sections */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                  
+                  {/* Friction Area */}
+                  <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.1)", borderRadius: "14px", padding: "1rem" }}>
+                    <h4 style={{ fontSize: "0.72rem", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                      Potential Workplace Friction Areas
+                    </h4>
+                    <p style={{ fontSize: "0.85rem", color: "#c0392b", lineHeight: 1.4, margin: 0, textAlign: "left" }}>
+                      May experience stress during highly ambiguous transitions or when expectations are unclear.
+                    </p>
+                  </div>
+
+                  {/* Growth Areas */}
+                  <div>
+                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
+                      Suggested Growth Areas
+                    </h4>
+                    <ul style={{ paddingLeft: "1.25rem", margin: 0, fontSize: "0.85rem", color: "#627D98", display: "flex", flexDirection: "column", gap: "0.375rem", textAlign: "left" }}>
+                      <li>Improve independent decision confidence</li>
+                      <li>Increase experimentation comfort</li>
+                      <li>Build execution speed during uncertainty</li>
+                    </ul>
+                  </div>
+
+                  {/* Manager Support */}
+                  <div style={{ borderTop: "1px solid #f0f4f8", paddingTop: "1rem" }}>
+                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
+                      Recommended Manager Support
+                    </h4>
+                    <ul style={{ paddingLeft: "1.25rem", margin: 0, fontSize: "0.85rem", color: "#627D98", display: "flex", flexDirection: "column", gap: "0.375rem", textAlign: "left" }}>
+                      <li>Provide context behind decisions</li>
+                      <li>Offer periodic feedback check-ins</li>
+                      <li>Encourage gradual ownership expansion</li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
             {/* Recommendations Section */}
             <div style={suggestionsContainerStyle}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-                <BookOpen className="h-5 w-5 text-[#5BA4A4]" />
-                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0 }}>
-                  Actionable Growth Suggestions
+                <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
+                  Dimensional Growth Suggestions
                 </h3>
               </div>
 
@@ -426,13 +647,13 @@ export default function ProfileOutputPage() {
                   <div key={dim.title} style={{ paddingBottom: "1.5rem", borderBottom: "1px solid #f0f4f8" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                       <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: dim.color }} />
-                      <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>
+                      <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
                         {dim.title} Suggestions
                       </h4>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", paddingLeft: "0.75rem" }}>
                       {dim.suggestions.map((sug, idx) => (
-                        <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem", color: "#627D98", lineHeight: 1.5 }}>
+                        <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }}>
                           <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "#5BA4A4", marginTop: "1px" }} />
                           <span>{sug}</span>
                         </div>
@@ -444,9 +665,9 @@ export default function ProfileOutputPage() {
             </div>
 
             {/* Footer buttons */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap", marginBottom: "2rem" }}>
               <Link
-                href="/assessment"
+                href="/welcome"
                 onMouseEnter={() => setHoveredRetake(true)}
                 onMouseLeave={() => setHoveredRetake(false)}
                 style={retakeButtonStyle}
@@ -454,6 +675,35 @@ export default function ProfileOutputPage() {
                 <RefreshCw size={14} />
                 Retake Assessment
               </Link>
+
+              {/* Download PDF Button */}
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                onMouseEnter={() => setPdfHovered(true)}
+                onMouseLeave={() => setPdfHovered(false)}
+                style={{
+                  ...retakeButtonStyle,
+                  background: pdfHovered ? "rgba(91,164,164,0.08)" : "rgba(255,255,255,0.8)",
+                  color: "#5BA4A4",
+                  borderColor: "rgba(91,164,164,0.3)",
+                  boxShadow: pdfHovered ? "0 4px 12px rgba(91,164,164,0.06)" : "none",
+                  transform: pdfHovered ? "translateY(-1px)" : "none",
+                }}
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    Download PDF Report
+                  </>
+                )}
+              </button>
+
               <Link
                 href="/"
                 onMouseEnter={() => setHoveredReturn(true)}
@@ -466,6 +716,220 @@ export default function ProfileOutputPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Invisible wrapper for html2canvas PDF rendering */}
+      <div style={{ position: "absolute", width: "0", height: "0", overflow: "hidden", zIndex: -100 }}>
+        <div
+          id="tie-report-pdf-template"
+          style={{
+            width: "794px", // exact A4 pixel width at 96dpi
+            height: "1123px", // exact A4 pixel height at 96dpi
+            padding: "50px",
+            background: "#ffffff",
+            fontFamily: "'Inter', -apple-system, sans-serif",
+            boxSizing: "border-box",
+            color: "#1F2933",
+            position: "relative",
+          }}
+        >
+          {/* PDF Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+            <div
+              style={{
+                width: "110px",
+                height: "50px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <img
+                src="/logo.png"
+                alt="TIE Logo"
+                style={{
+                  position: "absolute",
+                  top: "-30px",
+                  left: "0",
+                  width: "110px",
+                  height: "110px",
+                }}
+              />
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
+                Talent Intelligence Engine
+              </h2>
+              <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
+                Workforce Style Insights Report
+              </p>
+            </div>
+          </div>
+
+          {/* Teal Divider */}
+          <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
+
+          {/* Title Area */}
+          <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 16px", textTransform: "uppercase", textAlign: "left" }}>
+            Employee Workforce Assessment Profile
+          </h1>
+
+          {/* Employee Details flex layout */}
+          <div
+            style={{
+              background: "#F4F7FA",
+              border: "1px solid rgba(36, 59, 83, 0.08)",
+              borderRadius: "14px",
+              padding: "16px 20px",
+              marginBottom: "20px",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px 0px",
+            }}
+          >
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee Name:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{firstName} {lastName}</span>
+            </div>
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee ID:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{employeeId}</span>
+            </div>
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Department:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{department}</span>
+            </div>
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Designation:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{designation}</span>
+            </div>
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Experience:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{experience} Years</span>
+            </div>
+            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Email Address:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{email}</span>
+            </div>
+          </div>
+
+          {/* Archetype Banner */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, #243B53 0%, #1a2d40 100%)",
+              borderRadius: "16px",
+              padding: "20px 24px",
+              color: "#ffffff",
+              marginBottom: "20px",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ textAlign: "left" }}>
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Primary Profile Archetype
+                </span>
+                <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em" }}>
+                  {insightsData.archetype}
+                </h3>
+                <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>
+                  {insightsData.tagline}
+                </p>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 16px", borderRadius: "12px", textAlign: "center" }}>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#5BA4A4", lineHeight: 1 }}>
+                  91%
+                </span>
+                <span style={{ display: "block", fontSize: "7px", color: "#b0bec8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>
+                  Compatibility
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Insights Section */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", boxSizing: "border-box" }}>
+            {/* Workforce Style Snapshot */}
+            <div style={{ borderLeft: "4px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
+              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                Workforce Style Snapshot
+              </h4>
+              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                Collaborative and structured contributor who performs best with clarity, trust, and meaningful team interaction.
+              </p>
+            </div>
+
+            {/* Growth & Adaptability Style */}
+            <div style={{ borderLeft: "4px solid #243B53", paddingLeft: "14px", textAlign: "left" }}>
+              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                Growth & Adaptability Style
+              </h4>
+              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                Prefers guided adaptation and understands change better when the purpose and expectations are clearly communicated.
+              </p>
+            </div>
+
+            {/* Collaboration Style */}
+            <div style={{ borderLeft: "4px solid #A3B18A", paddingLeft: "14px", textAlign: "left" }}>
+              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                Collaboration Style
+              </h4>
+              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                Strong preference for collaborative environments, active discussions, and supportive teamwork.
+              </p>
+            </div>
+          </div>
+
+          {/* Friction & Growth Columns */}
+          <div style={{ display: "flex", gap: "24px", marginBottom: "25px", boxSizing: "border-box" }}>
+            {/* Left Column */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
+              {/* Workplace Friction Areas */}
+              <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.1)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
+                  Potential Workplace Friction Areas
+                </h4>
+                <p style={{ fontSize: "10.5px", color: "#c0392b", lineHeight: 1.4, margin: 0 }}>
+                  May experience stress during highly ambiguous transitions or when expectations are unclear.
+                </p>
+              </div>
+
+              {/* Suggested Growth Areas */}
+              <div style={{ background: "#FDFDFD", border: "1px solid rgba(36, 59, 83, 0.06)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                  Suggested Growth Areas
+                </h4>
+                <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <li>Improve independent decision confidence</li>
+                  <li>Increase experimentation comfort</li>
+                  <li>Build execution speed during uncertainty</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div style={{ flex: 1, boxSizing: "border-box" }}>
+              {/* Recommended Manager Support */}
+              <div style={{ height: "100%", background: "#F4F9F9", border: "1px solid rgba(91, 164, 164, 0.15)", borderRadius: "12px", padding: "12px 16px", boxSizing: "border-box", textAlign: "left" }}>
+                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                  Recommended Manager Support
+                </h4>
+                <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>Provide context behind decisions</li>
+                  <li>Offer periodic feedback check-ins</li>
+                  <li>Encourage gradual ownership expansion</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* PDF Footer */}
+          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
+            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
+            <span>Generated on {new Date().toLocaleDateString()}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+

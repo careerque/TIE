@@ -22,6 +22,8 @@ export default function ProfilePage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState("");
   const [backHovered, setBackHovered] = useState(false);
+  const [ctaHovered, setCtaHovered] = useState(false);
+  const [isIncompleteNotice, setIsIncompleteNotice] = useState(false);
 
   useEffect(() => {
     // Check authentication status
@@ -40,6 +42,14 @@ export default function ProfilePage() {
     setDesignation(localStorage.getItem("userDesignation") || "");
     setExperience(localStorage.getItem("userExperience") || "");
     
+    // Check if redirected due to incomplete profile
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("incomplete") === "true") {
+        setIsIncompleteNotice(true);
+      }
+    }
+
     setLoading(false);
   }, [router]);
 
@@ -310,6 +320,15 @@ export default function ProfilePage() {
     );
   }
 
+  const isProfileComplete = 
+    firstName.trim() !== "" &&
+    lastName.trim() !== "" &&
+    email.trim() !== "" &&
+    employeeId.trim() !== "" &&
+    department.trim() !== "" &&
+    designation.trim() !== "" &&
+    experience.trim() !== "";
+
   return (
     <main style={containerStyle}>
       {/* ── Background decoration ── */}
@@ -354,6 +373,33 @@ export default function ProfilePage() {
 
         {/* 1. Header Area */}
         <div style={headerStyle}>
+          {isIncompleteNotice && !isProfileComplete && (
+            <div
+              style={{
+                background: "rgba(220, 53, 69, 0.08)",
+                border: "1px solid rgba(220, 53, 69, 0.2)",
+                borderRadius: "16px",
+                padding: "1.125rem 1.5rem",
+                color: "#c0392b",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                textAlign: "left",
+                marginBottom: "1rem",
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+            >
+              <Sparkles size={18} style={{ color: "#c0392b", flexShrink: 0 }} />
+              <div>
+                <strong style={{ display: "block", marginBottom: "2px" }}>Complete Your Profile</strong>
+                Please fill out all profile fields below to unlock the Workforce Insight Assessment.
+              </div>
+            </div>
+          )}
+
           <div style={badgeStyle}>
             <User size={11} style={{ marginRight: "2px" }} />
             My Profile
@@ -386,7 +432,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <span style={fieldValueStyle}>
-                    {field.value}
+                    {field.value || <span style={{ color: "#9aa8b6", fontStyle: "italic", fontWeight: 400 }}>Not set</span>}
                   </span>
                 )}
 
@@ -428,22 +474,115 @@ export default function ProfilePage() {
 
         {/* 3. Action Area */}
         <div style={actionBlockStyle}>
-          <Link
-            href="/dashboard"
-            onMouseEnter={() => setBackHovered(true)}
-            onMouseLeave={() => setBackHovered(false)}
-            style={backButtonStyle}
-          >
-            <span>Back to Dashboard</span>
-            <ArrowRight 
-              size={16} 
-              style={{
-                transition: "transform 0.2s",
-                transform: backHovered ? "translateX(3px)" : "translateX(0)",
-                marginLeft: "auto"
-              }}
-            />
-          </Link>
+          {isProfileComplete ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%", boxSizing: "border-box" }}>
+              {/* Unlock success banner */}
+              <div
+                style={{
+                  background: "rgba(163, 177, 138, 0.08)",
+                  border: "1px solid rgba(163, 177, 138, 0.2)",
+                  borderRadius: "16px",
+                  padding: "1rem 1.25rem",
+                  color: "#A3B18A",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  textAlign: "left",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+              >
+                <Check size={18} style={{ color: "#A3B18A", flexShrink: 0 }} />
+                <span>Profile completed! Assessment access has been unlocked.</span>
+              </div>
+
+              <div style={{ display: "flex", gap: "1rem", width: "100%", flexWrap: "wrap", boxSizing: "border-box" }}>
+                <Link
+                  href="/welcome"
+                  onMouseEnter={() => setCtaHovered(true)}
+                  onMouseLeave={() => setCtaHovered(false)}
+                  style={{
+                    ...backButtonStyle,
+                    flex: 1,
+                    minWidth: "200px",
+                    background: ctaHovered ? "#4a9393" : "#5BA4A4",
+                    color: "#ffffff",
+                    border: "none",
+                    transform: ctaHovered ? "translateY(-1.5px)" : "translateY(0)",
+                    boxShadow: ctaHovered ? "0 6px 18px rgba(91, 164, 164, 0.38)" : "0 4px 14px rgba(91, 164, 164, 0.25)",
+                  }}
+                >
+                  <span>Proceed to Assessment</span>
+                  <ArrowRight
+                    size={16}
+                    style={{
+                      transition: "transform 0.2s",
+                      transform: ctaHovered ? "translateX(3px)" : "translateX(0)",
+                      marginLeft: "auto",
+                      color: "#ffffff",
+                    }}
+                  />
+                </Link>
+
+                <Link
+                  href="/dashboard"
+                  onMouseEnter={() => setBackHovered(true)}
+                  onMouseLeave={() => setBackHovered(false)}
+                  style={{
+                    ...backButtonStyle,
+                    flex: 1,
+                    minWidth: "200px",
+                    background: backHovered ? "#F4F7FA" : "#ffffff",
+                    color: "#243B53",
+                    border: "2px solid rgba(36, 59, 83, 0.15)",
+                  }}
+                >
+                  <span>Back to Dashboard</span>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%", boxSizing: "border-box" }}>
+              <div
+                style={{
+                  background: "rgba(36, 59, 83, 0.03)",
+                  borderRadius: "16px",
+                  padding: "0.875rem 1.25rem",
+                  color: "#627D98",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  textAlign: "left",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+              >
+                <X size={14} style={{ color: "#627D98", flexShrink: 0 }} />
+                <span>Fill in all profile details above to unlock the assessment.</span>
+              </div>
+
+              <Link
+                href="/dashboard"
+                onMouseEnter={() => setBackHovered(true)}
+                onMouseLeave={() => setBackHovered(false)}
+                style={backButtonStyle}
+              >
+                <span>Back to Dashboard</span>
+                <ArrowRight
+                  size={16}
+                  style={{
+                    transition: "transform 0.2s",
+                    transform: backHovered ? "translateX(3px)" : "translateX(0)",
+                    marginLeft: "auto",
+                  }}
+                />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </main>

@@ -436,7 +436,7 @@ export default function WelcomePage() {
           >
             {isLoggedIn ? (
               <Link
-                href="/assessment"
+                href="/welcome"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -911,7 +911,7 @@ export default function WelcomePage() {
             {isLoggedIn ? (
               <>
                 <Link
-                  href="/assessment"
+                  href="/welcome"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",

@@ -2,14 +2,45 @@
 
 import { useEffect, useState, CSSProperties } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ClipboardList, Clock, ArrowRight, Sparkles, Check } from "lucide-react";
 
 export default function AssessmentWelcomePage() {
+  const router = useRouter();
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [ctaHovered, setCtaHovered] = useState(false);
 
   useEffect(() => {
+    // Check authentication
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
+    // Check if profile is complete
+    const fName = localStorage.getItem("userFirstName");
+    const lName = localStorage.getItem("userLastName");
+    const email = localStorage.getItem("userEmail");
+    const empId = localStorage.getItem("userEmployeeId");
+    const dept = localStorage.getItem("userDepartment");
+    const desig = localStorage.getItem("userDesignation");
+    const exp = localStorage.getItem("userExperience");
+
+    if (
+      !fName || !fName.trim() ||
+      !lName || !lName.trim() ||
+      !email || !email.trim() ||
+      !empId || !empId.trim() ||
+      !dept || !dept.trim() ||
+      !desig || !desig.trim() ||
+      !exp || !exp.trim()
+    ) {
+      router.push("/profile?incomplete=true");
+      return;
+    }
+
     // Fetch dynamic question count
     const fetchQuestions = async () => {
       try {
@@ -27,7 +58,7 @@ export default function AssessmentWelcomePage() {
       }
     };
     fetchQuestions();
-  }, []);
+  }, [router]);
 
   const totalQuestions = questionCount || 10;
   const estimatedMins = totalQuestions * 1; // 1 min per question

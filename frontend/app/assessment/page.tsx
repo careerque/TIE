@@ -76,6 +76,35 @@ export default function AssessmentPage() {
   const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
+    // Check authentication status
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
+    // Check if profile is complete
+    const fName = localStorage.getItem("userFirstName");
+    const lName = localStorage.getItem("userLastName");
+    const emailAddr = localStorage.getItem("userEmail");
+    const empId = localStorage.getItem("userEmployeeId");
+    const dept = localStorage.getItem("userDepartment");
+    const desig = localStorage.getItem("userDesignation");
+    const exp = localStorage.getItem("userExperience");
+
+    if (
+      !fName || !fName.trim() ||
+      !lName || !lName.trim() ||
+      !emailAddr || !emailAddr.trim() ||
+      !empId || !empId.trim() ||
+      !dept || !dept.trim() ||
+      !desig || !desig.trim() ||
+      !exp || !exp.trim()
+    ) {
+      router.push("/profile?incomplete=true");
+      return;
+    }
+
     const fetchQuestions = async () => {
       try {
         const res = await fetch("/questions.json");
@@ -91,7 +120,7 @@ export default function AssessmentPage() {
       }
     };
     fetchQuestions();
-  }, []);
+  }, [router]);
 
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : undefined;
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;

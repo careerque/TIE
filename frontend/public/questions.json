@@ -111,5 +111,16 @@
       "Sudden unexpected pressure"
     ],
     "correct_answer": ""
+  },
+  {
+    "id": 11,"type":"yes-no",
+    "question": "What usually affects your motivation negatively?",
+    "options": [
+      "Lack of clarity",
+      "Feeling unheard",
+      "Repetitive routine work",
+      "Sudden unexpected pressure"
+    ],
+    "correct_answer": ""
   }
 ]

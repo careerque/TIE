@@ -150,7 +150,7 @@ export default function Navbar() {
 
               {/* Take Assessment Button */}
               <Link
-                href="/assessment"
+                href="/welcome"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
