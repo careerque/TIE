@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useRef, useEffect, CSSProperties } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const EyeOpen = () => (
@@ -67,14 +68,13 @@ const strengthMeta: Record<number, { label: string; color: string }> = {
 
 /* ─── Component ─────────────────────────────────────────── */
 export default function RegisterPage() {
+  const { handleRegister, loading, error, setError } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName,  setLastName]  = useState('');
   const [email,     setEmail]     = useState('');
   const [password,  setPassword]  = useState('');
   const [showPass,  setShowPass]  = useState(false);
   const [focused,   setFocused]   = useState<string | null>(null);
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState('');
   const [success,   setSuccess]   = useState(false);
 
   const firstRef = useRef<HTMLInputElement>(null);
@@ -85,22 +85,18 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     if (!firstName.trim())                                        return setError('Please enter your first name.');
     if (!lastName.trim())                                         return setError('Please enter your last name.');
     if (!email.trim())                                            return setError('Please enter your email address.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))        return setError('Please enter a valid email address.');
     if (!password)                                                return setError('Please create a password.');
     if (score < 2)                                                return setError('Please choose a stronger password.');
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
     
-    // Save registered name to localStorage
-    localStorage.setItem('userFirstName', firstName.trim());
-    localStorage.setItem('userLastName', lastName.trim());
-    
-    setSuccess(true);
+    const ok = await handleRegister(email.trim(), password, firstName.trim(), lastName.trim());
+    if (ok) {
+      setSuccess(true);
+    }
   };
 
   /* Shared input style */

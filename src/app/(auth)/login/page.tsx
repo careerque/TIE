@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useRef, useEffect, CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const EyeOpen = () => (
@@ -36,13 +36,11 @@ const ShieldCheck = () => (
 
 /* ─── Component ─────────────────────────────────────────── */
 export default function LoginPage() {
-  const router = useRouter();
+  const { handleLogin, loading, error, setError } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
   const [focused, setFocused]   = useState<'email' | 'password' | null>(null);
 
   const emailRef = useRef<HTMLInputElement>(null);
@@ -50,23 +48,12 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     if (!email.trim())                                       return setError('Please enter your registered email address.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))  return setError('Please enter a valid email address.');
     if (!password)                                           return setError('Please enter your password.');
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1400));
-    setLoading(false);
     
-    // Save authentication state
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userEmail', email.trim());
-    
-    // Dispatch auth-change event so the global Navbar updates instantly
-    window.dispatchEvent(new Event('auth-change'));
-    
-    // Redirect to assessment page or home
-    router.push('/dashboard');
+    await handleLogin(email.trim(), password);
   };
 
   /* Shared input style */

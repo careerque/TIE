@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, LogOut, FileText } from "lucide-react";
+import { supabasedb } from "@/lib/supabaseClient";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -24,19 +25,49 @@ export default function Navbar() {
 
     // Listen for custom authentication changes
     window.addEventListener("auth-change", checkAuth);
+
+    // Sync Supabase Auth State with LocalStorage
+    const { data: { subscription } } = supabasedb.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userEmail", session.user.email || "");
+        
+        // Fetch profile details if missing in localStorage
+        const fName = localStorage.getItem("userFirstName");
+        const lName = localStorage.getItem("userLastName");
+        if (!fName || !lName) {
+          const { data: profile } = await supabasedb
+            .from("profiles")
+            .select("first_name, last_name, role")
+            .eq("id", session.user.id)
+            .single();
+          if (profile) {
+            localStorage.setItem("userFirstName", profile.first_name || "");
+            localStorage.setItem("userLastName", profile.last_name || "");
+            if (profile.role) {
+              localStorage.setItem("userRole", profile.role);
+            }
+          }
+        }
+      } else if (event === "SIGNED_OUT") {
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("userFirstName");
+        localStorage.removeItem("userLastName");
+        localStorage.removeItem("userRole");
+      }
+      checkAuth();
+      window.dispatchEvent(new Event("auth-change"));
+    });
+
     return () => {
       window.removeEventListener("auth-change", checkAuth);
+      subscription.unsubscribe();
     };
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userEmail");
-    
-    // Dispatch auth change event
-    window.dispatchEvent(new Event("auth-change"));
-    
-    router.push("/");
+    router.push("/logout");
   };
 
   return (
