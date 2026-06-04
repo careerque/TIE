@@ -34,7 +34,7 @@ export default function ProfileOutputPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [department, setDepartment] = useState("");
+  const [interests, setInterests] = useState<string[]>([]);
   const [designation, setDesignation] = useState("");
   const [experience, setExperience] = useState("");
 
@@ -44,7 +44,12 @@ export default function ProfileOutputPage() {
     setLastName(localStorage.getItem("userLastName") || "Sharma");
     setEmail(localStorage.getItem("userEmail") || "rahul.sharma@tie.ai");
     setEmployeeId(localStorage.getItem("userEmployeeId") || "TIE-2026");
-    setDepartment(localStorage.getItem("userDepartment") || "Engineering");
+    try {
+      const storedInterests = localStorage.getItem("userInterests");
+      setInterests(storedInterests ? JSON.parse(storedInterests) : []);
+    } catch (e) {
+      setInterests([]);
+    }
     setDesignation(localStorage.getItem("userDesignation") || "Software Engineer");
     setExperience(localStorage.getItem("userExperience") || "3");
     
@@ -409,8 +414,8 @@ export default function ProfileOutputPage() {
                 <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{employeeId}</span>
               </div>
               <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Department</span>
-                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{department}</span>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Interests</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53", textAlign: "left" }}>{interests.join(", ") || "None"}</span>
               </div>
               <div style={{ flex: "1 1 200px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Designation</span>
@@ -794,8 +799,8 @@ export default function ProfileOutputPage() {
               <span style={{ fontWeight: 700, color: "#243B53" }}>{employeeId}</span>
             </div>
             <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Department:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{department}</span>
+              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Interests:</span>
+              <span style={{ fontWeight: 700, color: "#243B53" }}>{interests.join(", ") || "None"}</span>
             </div>
             <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
               <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Designation:</span>

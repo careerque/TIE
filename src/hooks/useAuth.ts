@@ -4,7 +4,9 @@ import { loginUser } from '../services/auth/LoginService';
 import { logoutUser } from '@/services/auth/LogoutService';
 import { forgotPassword } from '@/services/auth/ForgotPasswordService';
 import { updatePassword } from '@/services/auth/UpdatePasswordService';
+import { updateProfile } from '@/services/auth/ProfileServices';
 import { useRouter } from 'next/navigation';
+import { tr } from 'framer-motion/client';
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
@@ -24,9 +26,6 @@ export const useAuth = () => {
       setLoading(false);
       return false;
     } else {
-      // Save name to localStorage for fallback, will be synced when logged in
-      localStorage.setItem('userFirstName', first_name.trim());
-      localStorage.setItem('userLastName', last_name.trim());
       setSuccessMessage('Account created! Please check your inbox for the verification email.');
       setLoading(false);
       return true;
@@ -45,28 +44,14 @@ export const useAuth = () => {
       setLoading(false);
       return false;
     } else {
-      // Save authentication state
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userEmail', email.trim());
-      
       const profile = result.data?.profile;
-      if (profile) {
-        localStorage.setItem('userFirstName', profile.first_name || '');
-        localStorage.setItem('userLastName', profile.last_name || '');
-        if (profile.role) {
-          localStorage.setItem('userRole', profile.role);
-        }
-      }
 
-      // Dispatch auth-change event so components like Navbar update instantly
-      window.dispatchEvent(new Event('auth-change'));
-
-      // Redirect based on role
       if (profile?.role === 'admin') {
         router.push('/admin-dashboard');
       } else {
         router.push('/dashboard');
       }
+      
       setLoading(false);
       return true;
     }
@@ -77,19 +62,8 @@ export const useAuth = () => {
     setError(null);
     
     await logoutUser();
-
-    // Clear authentication state from localStorage
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userFirstName');
-    localStorage.removeItem('userLastName');
-    localStorage.removeItem('userRole');
-
-    // Dispatch auth-change event
-    window.dispatchEvent(new Event('auth-change'));
-
-    // Redirect to home page
     router.push('/');
+    router.refresh(); 
     setLoading(false);
   };
 
@@ -129,12 +103,35 @@ export const useAuth = () => {
     }
   };
 
+  const handleUpdateProfie=async(emp_id: number, designation: string, experience: number, interests: string[], role: string)=>{
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+    const result=await updateProfile({
+      employee_id: emp_id,
+      designation,
+      experiense_years: experience,
+      interests,
+      role
+    });
+    if (!result.success) {
+      setError(result.error?.message || 'Failed to update profile');
+      setLoading(false);
+      return false;
+    } else {
+      setSuccessMessage('Profile updated successfully!');
+      setLoading(false);
+      return true;
+    }
+  };
+
   return {
     handleRegister,
     handleLogin,
     handleLogout,
     handleForgotPassword,
     handleUpdatePassword,
+    handleUpdateProfie,
     loading,
     error,
     successMessage,

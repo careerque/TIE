@@ -88,16 +88,24 @@ export default function AssessmentPage() {
     const lName = localStorage.getItem("userLastName");
     const emailAddr = localStorage.getItem("userEmail");
     const empId = localStorage.getItem("userEmployeeId");
-    const dept = localStorage.getItem("userDepartment");
+    const storedInterests = localStorage.getItem("userInterests");
     const desig = localStorage.getItem("userDesignation");
     const exp = localStorage.getItem("userExperience");
+
+    let hasInterests = false;
+    try {
+      const parsed = storedInterests ? JSON.parse(storedInterests) : [];
+      hasInterests = Array.isArray(parsed) && parsed.length > 0;
+    } catch (e) {
+      hasInterests = false;
+    }
 
     if (
       !fName || !fName.trim() ||
       !lName || !lName.trim() ||
       !emailAddr || !emailAddr.trim() ||
       !empId || !empId.trim() ||
-      !dept || !dept.trim() ||
+      !hasInterests ||
       !desig || !desig.trim() ||
       !exp || !exp.trim()
     ) {
