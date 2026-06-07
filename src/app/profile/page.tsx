@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, User, Edit3, Check, X } from "lucide-react";
-import { getProfile, updateProfile } from "@/services/auth/ProfileServices";
+import { updateProfile } from "@/services/auth/ProfileServices";
+import { useAuthContext } from "@/context/AuthContext";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { isLoggedIn, profile, loading, refreshProfile } = useAuthContext();
   const [updating, setUpdating] = useState(false);
 
   // Profile Fields States
@@ -30,49 +31,20 @@ export default function ProfilePage() {
   const [isIncompleteNotice, setIsIncompleteNotice] = useState(false);
 
   useEffect(() => {
-    // Check authentication status
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn) {
-      router.push("/login");
-      return;
-    }
+    if (!loading) {
+      if (!isLoggedIn) {
+        router.push("/login");
+        return;
+      }
 
-    const fetchUserProfile = async () => {
-      setLoading(true);
-      // Fetch details from Supabase
-      const res = await getProfile();
-      if (res.success && res.data) {
-        const profileData = res.data;
-        setFirstName(profileData.first_name || "");
-        setLastName(profileData.last_name || "");
-        setEmail(profileData.email || "");
-        setEmployeeId(profileData.employee_id || "");
-        setDesignation(profileData.designation || "");
-        setExperience(profileData.experiense_years ? String(profileData.experiense_years) : "");
-        setInterests(profileData.interests || []);
-
-        // Sync to localStorage for compatibility with other pages
-        localStorage.setItem("userFirstName", profileData.first_name || "");
-        localStorage.setItem("userLastName", profileData.last_name || "");
-        localStorage.setItem("userEmail", profileData.email || "");
-        localStorage.setItem("userEmployeeId", profileData.employee_id || "");
-        localStorage.setItem("userDesignation", profileData.designation || "");
-        localStorage.setItem("userExperience", profileData.experiense_years ? String(profileData.experiense_years) : "");
-        localStorage.setItem("userInterests", JSON.stringify(profileData.interests || []));
-      } else {
-        // Fallback to localStorage if Supabase call fails
-        setFirstName(localStorage.getItem("userFirstName") || "");
-        setLastName(localStorage.getItem("userLastName") || "");
-        setEmail(localStorage.getItem("userEmail") || "");
-        setEmployeeId(localStorage.getItem("userEmployeeId") || "");
-        setDesignation(localStorage.getItem("userDesignation") || "");
-        setExperience(localStorage.getItem("userExperience") || "");
-        try {
-          const storedInterests = localStorage.getItem("userInterests");
-          setInterests(storedInterests ? JSON.parse(storedInterests) : []);
-        } catch (e) {
-          setInterests([]);
-        }
+      if (profile) {
+        setFirstName(profile.first_name || "");
+        setLastName(profile.last_name || "");
+        setEmail(profile.email || "");
+        setEmployeeId(profile.employee_id || "");
+        setDesignation(profile.designation || "");
+        setExperience(profile.experiense_years || "");
+        setInterests(profile.interests || []);
       }
 
       // Check if redirected due to incomplete profile
@@ -82,11 +54,8 @@ export default function ProfilePage() {
           setIsIncompleteNotice(true);
         }
       }
-      setLoading(false);
-    };
-
-    fetchUserProfile();
-  }, [router]);
+    }
+  }, [isLoggedIn, profile, loading, router]);
 
   const startEdit = (field: string, value: any) => {
     setEditingField(field);
@@ -105,16 +74,14 @@ export default function ProfilePage() {
     setInterestInput("");
   };
 
-  const saveField = async (field: string, storageKey: string) => {
+  const saveField = async (field: string) => {
     setUpdating(true);
-    let valueToSave: any = "";
     let dbPayload: any = {};
 
     if (field === "interests") {
-      valueToSave = tempInterests;
       dbPayload = { interests: tempInterests };
     } else {
-      valueToSave = tempValue.trim();
+      const valueToSave = tempValue.trim();
       if (field === "firstName") dbPayload = { first_name: valueToSave };
       else if (field === "lastName") dbPayload = { last_name: valueToSave };
       else if (field === "employeeId") dbPayload = { employee_id: valueToSave };
@@ -124,7 +91,6 @@ export default function ProfilePage() {
       }
     }
 
-    // Call Supabase update
     if (field !== "email") {
       const res = await updateProfile(dbPayload);
       if (!res.success) {
@@ -132,276 +98,27 @@ export default function ProfilePage() {
         setUpdating(false);
         return;
       }
-    }
-
-    // Sync to LocalStorage
-    if (field === "interests") {
-      localStorage.setItem(storageKey, JSON.stringify(valueToSave));
-      setInterests(valueToSave);
-    } else {
-      localStorage.setItem(storageKey, valueToSave);
-      if (field === "firstName") setFirstName(valueToSave);
-      if (field === "lastName") setLastName(valueToSave);
-      if (field === "email") setEmail(valueToSave);
-      if (field === "employeeId") setEmployeeId(valueToSave);
-      if (field === "designation") setDesignation(valueToSave);
-      if (field === "experience") setExperience(valueToSave);
+      // Refresh global context profile
+      await refreshProfile();
     }
 
     setEditingField(null);
     setTempValue("");
     setInterestInput("");
     setUpdating(false);
-
-    // Dispatch auth-change event if name or email changes to sync headers
-    if (field === "firstName" || field === "email" || field === "lastName") {
-      window.dispatchEvent(new Event("auth-change"));
-    }
   };
 
-  // --- Premium Inline Styles ---
-  const containerStyle: CSSProperties = {
-    minHeight: "calc(100vh - 120px)",
-    background: "#F4F7FA",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "3.5rem 1.5rem",
-    fontFamily: "'Inter', -apple-system, sans-serif",
-    position: "relative",
-    overflow: "hidden",
-    boxSizing: "border-box",
-  };
-
-  const dotGridStyle: CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    backgroundImage: "radial-gradient(circle, rgba(36, 59, 83, 0.05) 1px, transparent 1px)",
-    backgroundSize: "22px 22px",
-    pointerEvents: "none",
-    opacity: 0.8,
-  };
-
-  const cardStyle: CSSProperties = {
-    position: "relative",
-    background: "#ffffff",
-    border: "1px solid rgba(36, 59, 83, 0.08)",
-    boxShadow: "0 20px 50px rgba(36, 59, 83, 0.04), 0 4px 12px rgba(36, 59, 83, 0.01)",
-    borderRadius: "28px",
-    maxWidth: "680px",
-    width: "100%",
-    padding: "3.5rem 3rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "2.5rem",
-    boxSizing: "border-box",
-    zIndex: 10,
-  };
-
-  const topBarStyle: CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "6px",
-    background: "linear-gradient(90deg, #5BA4A4 0%, #243B53 100%)",
-  };
-
-  const headerStyle: CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.125rem",
-    textAlign: "left",
-    alignItems: "flex-start",
-  };
-
-  const badgeStyle: CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    background: "rgba(91, 164, 164, 0.08)",
-    color: "#5BA4A4",
-    padding: "5px 12px",
-    borderRadius: "99px",
-    fontSize: "0.6875rem",
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    border: "1px solid rgba(91, 164, 164, 0.15)",
-  };
-
-  const titleStyle: CSSProperties = {
-    fontSize: "1.875rem",
-    fontWeight: 800,
-    color: "#243B53",
-    letterSpacing: "-0.02em",
-    lineHeight: 1.25,
-    margin: 0,
-  };
-
-  const descriptionStyle: CSSProperties = {
-    fontSize: "0.9375rem",
-    color: "#627D98",
-    lineHeight: 1.6,
-    margin: 0,
-  };
-
-  const infoListStyle: CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-  };
-
-  const infoRowStyle = (isLast = false): CSSProperties => ({
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "1.25rem 0.5rem",
-    borderBottom: isLast ? "none" : "1px solid rgba(36, 59, 83, 0.08)",
-    boxSizing: "border-box",
-    minHeight: "72px",
-  });
-
-  const fieldLabelStyle: CSSProperties = {
-    fontSize: "0.8125rem",
-    fontWeight: 700,
-    color: "#8fa3b8",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    width: "150px",
-    flexShrink: 0,
-    textAlign: "left",
-  };
-
-  const fieldValueStyle: CSSProperties = {
-    fontSize: "0.9375rem",
-    fontWeight: 600,
-    color: "#243B53",
-    flex: 1,
-    paddingRight: "1rem",
-    textAlign: "left",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  };
-
-  const inputStyle: CSSProperties = {
-    flex: 1,
-    maxWidth: "320px",
-    padding: "0.5rem 0.875rem",
-    border: "2px solid #5BA4A4",
-    borderRadius: "8px",
-    fontSize: "0.875rem",
-    color: "#1F2933",
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-  };
-
-  const editButtonStyle = (hovered: boolean): CSSProperties => ({
-    background: hovered ? "rgba(91, 164, 164, 0.08)" : "none",
-    border: "none",
-    color: "#5BA4A4",
-    fontWeight: 700,
-    fontSize: "0.8125rem",
-    cursor: "pointer",
-    padding: "6px 12px",
-    borderRadius: "8px",
-    transition: "all 0.2s ease",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "4px",
-  });
-
-  const saveButtonStyle: CSSProperties = {
-    background: "#5BA4A4",
-    border: "none",
-    color: "#ffffff",
-    fontWeight: 700,
-    fontSize: "0.8125rem",
-    cursor: "pointer",
-    padding: "6px 14px",
-    borderRadius: "8px",
-    marginRight: "6px",
-    transition: "background 0.2s",
-  };
-
-  const cancelButtonStyle: CSSProperties = {
-    background: "none",
-    border: "1.5px solid rgba(36, 59, 83, 0.15)",
-    color: "#627D98",
-    fontWeight: 600,
-    fontSize: "0.8125rem",
-    cursor: "pointer",
-    padding: "5px 12px",
-    borderRadius: "8px",
-    transition: "background 0.2s",
-  };
-
-  const actionBlockStyle: CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.25rem",
-    boxSizing: "border-box",
-    borderTop: "1px solid rgba(36, 59, 83, 0.08)",
-    paddingTop: "2rem",
-  };
-
-  const backButtonStyle: CSSProperties = {
-    width: "100%",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    padding: "1.125rem 2rem",
-    color: "#243B53",
-    fontWeight: 700,
-    fontSize: "0.9375rem",
-    borderRadius: "12px",
-    transition: "all 0.25s ease-in-out",
-    cursor: "pointer",
-    textDecoration: "none",
-    border: "2px solid rgba(36, 59, 83, 0.15)",
-    background: backHovered ? "#F4F7FA" : "#ffffff",
-    transform: backHovered ? "translateY(-1.5px)" : "translateY(0)",
-    boxShadow: backHovered ? "0 4px 12px rgba(36, 59, 83, 0.05)" : "none",
-  };
-
-  const tagStyle: CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    background: "rgba(91, 164, 164, 0.08)",
-    color: "#5BA4A4",
-    padding: "4px 10px",
-    borderRadius: "6px",
-    fontSize: "0.8125rem",
-    fontWeight: 600,
-    border: "1px solid rgba(91, 164, 164, 0.15)",
-  };
-
-  const removeTagButtonStyle: CSSProperties = {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 0,
-    marginLeft: "2px",
-    display: "inline-flex",
-    alignItems: "center",
-    color: "#5BA4A4",
-    outline: "none",
-  };
   // State to track hover for edit buttons per field row
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   const profileFields = [
-    { id: "firstName", label: "First Name", value: firstName, key: "userFirstName" },
-    { id: "lastName", label: "Last Name", value: lastName, key: "userLastName" },
-    { id: "email", label: "Email Address", value: email, key: "userEmail", readOnly: true },
-    { id: "employeeId", label: "Employee ID", value: employeeId, key: "userEmployeeId" },
-    { id: "designation", label: "Designation", value: designation, key: "userDesignation" },
-    { id: "experience", label: "Experience (Years)", value: experience, key: "userExperience" },
-    { id: "interests", label: "My Interests", value: interests, key: "userInterests", isTags: true }
+    { id: "firstName", label: "First Name", value: firstName },
+    { id: "lastName", label: "Last Name", value: lastName },
+    { id: "email", label: "Email Address", value: email, readOnly: true },
+    { id: "employeeId", label: "Employee ID", value: employeeId },
+    { id: "designation", label: "Designation", value: designation },
+    { id: "experience", label: "Experience (Years)", value: experience },
+    { id: "interests", label: "My Interests", value: interests, isTags: true }
   ];
 
   const addTempInterest = () => {
@@ -425,16 +142,20 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={containerStyle}>
-        <div style={dotGridStyle} aria-hidden />
-        <div style={{ ...cardStyle, alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
-          <div style={topBarStyle} />
+      <div className="tie-container">
+        <div className="tie-dot-grid" aria-hidden />
+        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
+          <div className="tie-card-top-bar" />
           <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#627D98" }}>
             Loading Profile...
           </span>
         </div>
       </div>
     );
+  }
+
+  if (!isLoggedIn) {
+    return null; // Redirecting in useEffect
   }
 
   const isProfileComplete = 
@@ -447,68 +168,23 @@ export default function ProfilePage() {
     interests.length > 0;
 
   return (
-    <main style={containerStyle}>
+    <main className="tie-container">
       {/* ── Background decoration ── */}
-      <div style={dotGridStyle} aria-hidden />
+      <div className="tie-dot-grid" aria-hidden />
       
       {/* Ambient gradient blobs */}
-      <div 
-        aria-hidden 
-        style={{
-          position: "absolute",
-          width: "450px",
-          height: "450px",
-          borderRadius: "50%",
-          pointerEvents: "none",
-          top: "-160px",
-          right: "-160px",
-          background: "radial-gradient(circle, rgba(91,164,164,0.15) 0%, transparent 70%)",
-          filter: "blur(40px)",
-          opacity: 0.6
-        }}
-      />
-      <div 
-        aria-hidden 
-        style={{
-          position: "absolute",
-          width: "400px",
-          height: "400px",
-          borderRadius: "50%",
-          pointerEvents: "none",
-          bottom: "-120px",
-          left: "-120px",
-          background: "radial-gradient(circle, rgba(36,59,83,0.1) 0%, transparent 70%)",
-          filter: "blur(45px)",
-          opacity: 0.5
-        }}
-      />
+      <div className="tie-glow-blob-1" aria-hidden />
+      <div className="tie-glow-blob-2" aria-hidden />
 
       {/* ── Main Centered Card ── */}
-      <div style={cardStyle}>
+      <div className="tie-card">
         {/* Top border accent line */}
-        <div style={topBarStyle} />
+        <div className="tie-card-top-bar" />
 
         {/* 1. Header Area */}
-        <div style={headerStyle}>
+        <div className="tie-header">
           {isIncompleteNotice && !isProfileComplete && (
-            <div
-              style={{
-                background: "rgba(220, 53, 69, 0.08)",
-                border: "1px solid rgba(220, 53, 69, 0.2)",
-                borderRadius: "16px",
-                padding: "1.125rem 1.5rem",
-                color: "#c0392b",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                textAlign: "left",
-                marginBottom: "1rem",
-                width: "100%",
-                boxSizing: "border-box",
-              }}
-            >
+            <div className="profile-notice-banner">
               <Sparkles size={18} style={{ color: "#c0392b", flexShrink: 0 }} />
               <div>
                 <strong style={{ display: "block", marginBottom: "2px" }}>Complete Your Profile</strong>
@@ -517,39 +193,39 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div style={badgeStyle}>
+          <div className="tie-badge">
             <User size={11} style={{ marginRight: "2px" }} />
             My Profile
           </div>
-          <h1 style={titleStyle}>
+          <h1 className="tie-title">
             Profile Details
           </h1>
-          <p style={descriptionStyle}>
+          <p className="tie-desc">
             Manage and edit your registration credentials and professional workspace information below.
           </p>
         </div>
 
         {/* 2. Interactive Details List */}
-        <div style={infoListStyle}>
+        <div className="profile-info-list">
           {profileFields.map((field, idx) => {
             const isLast = idx === profileFields.length - 1;
             const isEditing = editingField === field.id;
 
             return (
-              <div key={field.id} style={infoRowStyle(isLast)}>
-                <span style={fieldLabelStyle}>{field.label}</span>
+              <div key={field.id} className={`profile-info-row ${isLast ? "is-last" : ""}`}>
+                <span className="profile-field-label">{field.label}</span>
                 
                 {isEditing ? (
                   field.isTags ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, maxWidth: "320px", alignItems: "flex-start" }}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                         {tempInterests.map((tag) => (
-                          <span key={tag} style={tagStyle}>
+                          <span key={tag} className="profile-tag">
                             {tag}
                             <button
                               type="button"
                               onClick={() => removeTempInterest(tag)}
-                              style={removeTagButtonStyle}
+                              className="profile-tag-remove-btn"
                             >
                               <X size={12} />
                             </button>
@@ -563,7 +239,7 @@ export default function ProfilePage() {
                           value={interestInput}
                           onChange={(e) => setInterestInput(e.target.value)}
                           onKeyDown={handleInterestKeyDown}
-                          style={inputStyle}
+                          className="profile-input-edit"
                         />
                         <button
                           type="button"
@@ -588,17 +264,17 @@ export default function ProfilePage() {
                       type="text"
                       value={tempValue}
                       onChange={(e) => setTempValue(e.target.value)}
-                      style={inputStyle}
+                      className="profile-input-edit"
                       autoFocus
                     />
                   )
                 ) : (
-                  <span style={fieldValueStyle}>
+                  <span className="profile-field-value">
                     {field.isTags ? (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                         {Array.isArray(field.value) && field.value.length > 0 ? (
                           field.value.map((tag) => (
-                            <span key={tag} style={tagStyle}>
+                            <span key={tag} className="profile-tag">
                               {tag}
                             </span>
                           ))
@@ -617,10 +293,10 @@ export default function ProfilePage() {
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <button
                         type="button"
-                        onClick={() => saveField(field.id, field.key)}
+                        onClick={() => saveField(field.id)}
                         disabled={updating}
+                        className="profile-btn-save"
                         style={{
-                          ...saveButtonStyle,
                           opacity: updating ? 0.7 : 1,
                           cursor: updating ? "not-allowed" : "pointer"
                         }}
@@ -631,7 +307,7 @@ export default function ProfilePage() {
                         type="button"
                         onClick={cancelEdit}
                         disabled={updating}
-                        style={cancelButtonStyle}
+                        className="profile-btn-cancel"
                       >
                         Cancel
                       </button>
@@ -642,7 +318,10 @@ export default function ProfilePage() {
                       onMouseEnter={() => setHoveredRow(field.id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       onClick={() => startEdit(field.id, field.value)}
-                      style={editButtonStyle(hoveredRow === field.id)}
+                      className="profile-btn-edit"
+                      style={{
+                        background: hoveredRow === field.id ? "rgba(91, 164, 164, 0.08)" : "none"
+                      }}
                     >
                       <Edit3 size={12} />
                       <span>Edit</span>
@@ -655,27 +334,11 @@ export default function ProfilePage() {
         </div>
 
         {/* 3. Action Area */}
-        <div style={actionBlockStyle}>
+        <div className="profile-action-block">
           {isProfileComplete ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%", boxSizing: "border-box" }}>
               {/* Unlock success banner */}
-              <div
-                style={{
-                  background: "rgba(163, 177, 138, 0.08)",
-                  border: "1px solid rgba(163, 177, 138, 0.2)",
-                  borderRadius: "16px",
-                  padding: "1rem 1.25rem",
-                  color: "#A3B18A",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  textAlign: "left",
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-              >
+              <div className="profile-success-banner">
                 <Check size={18} style={{ color: "#A3B18A", flexShrink: 0 }} />
                 <span>Profile completed! Assessment access has been unlocked.</span>
               </div>
@@ -685,26 +348,17 @@ export default function ProfilePage() {
                   href="/welcome"
                   onMouseEnter={() => setCtaHovered(true)}
                   onMouseLeave={() => setCtaHovered(false)}
+                  className="tie-btn-primary"
                   style={{
-                    ...backButtonStyle,
                     flex: 1,
                     minWidth: "200px",
-                    background: ctaHovered ? "#4a9393" : "#5BA4A4",
-                    color: "#ffffff",
-                    border: "none",
-                    transform: ctaHovered ? "translateY(-1.5px)" : "translateY(0)",
-                    boxShadow: ctaHovered ? "0 6px 18px rgba(91, 164, 164, 0.38)" : "0 4px 14px rgba(91, 164, 164, 0.25)",
                   }}
                 >
                   <span>Proceed to Assessment</span>
                   <ArrowRight
                     size={16}
-                    style={{
-                      transition: "transform 0.2s",
-                      transform: ctaHovered ? "translateX(3px)" : "translateX(0)",
-                      marginLeft: "auto",
-                      color: "#ffffff",
-                    }}
+                    className="dashboard-btn-icon-right"
+                    style={{ color: "#ffffff" }}
                   />
                 </Link>
 
@@ -712,13 +366,10 @@ export default function ProfilePage() {
                   href="/dashboard"
                   onMouseEnter={() => setBackHovered(true)}
                   onMouseLeave={() => setBackHovered(false)}
+                  className="tie-btn-secondary"
                   style={{
-                    ...backButtonStyle,
                     flex: 1,
                     minWidth: "200px",
-                    background: backHovered ? "#F4F7FA" : "#ffffff",
-                    color: "#243B53",
-                    border: "2px solid rgba(36, 59, 83, 0.15)",
                   }}
                 >
                   <span>Back to Dashboard</span>
@@ -727,22 +378,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%", boxSizing: "border-box" }}>
-              <div
-                style={{
-                  background: "rgba(36, 59, 83, 0.03)",
-                  borderRadius: "16px",
-                  padding: "0.875rem 1.25rem",
-                  color: "#627D98",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  textAlign: "left",
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-              >
+              <div className="profile-unlock-tip">
                 <X size={14} style={{ color: "#627D98", flexShrink: 0 }} />
                 <span>Fill in all profile details above to unlock the assessment.</span>
               </div>
@@ -751,16 +387,12 @@ export default function ProfilePage() {
                 href="/dashboard"
                 onMouseEnter={() => setBackHovered(true)}
                 onMouseLeave={() => setBackHovered(false)}
-                style={backButtonStyle}
+                className="tie-btn-secondary"
               >
                 <span>Back to Dashboard</span>
                 <ArrowRight
                   size={16}
-                  style={{
-                    transition: "transform 0.2s",
-                    transform: backHovered ? "translateX(3px)" : "translateX(0)",
-                    marginLeft: "auto",
-                  }}
+                  className="dashboard-btn-icon-right"
                 />
               </Link>
             </div>

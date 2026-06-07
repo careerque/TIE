@@ -11,6 +11,8 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
+import { useAuthContext } from "@/context/AuthContext";
+
 
 /* ─── Animated counter hook ─────────────────────────────── */
 function useCounter(target: number, duration = 1800, start = false) {
@@ -27,6 +29,7 @@ function useCounter(target: number, duration = 1800, start = false) {
     };
     requestAnimationFrame(step);
   }, [start, target, duration]);
+
   return value;
 }
 
@@ -59,7 +62,7 @@ function FeatureCard({ icon, title, description, tag, delay, accent }: FeatureCa
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      className={`animate-fade-up ${delay}`}
+      className={`home-feature-card ${delay}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -69,16 +72,10 @@ function FeatureCard({ icon, title, description, tag, delay, accent }: FeatureCa
         border: hovered
           ? `1.5px solid ${accent}40`
           : "1.5px solid rgba(36,59,83,0.09)",
-        borderRadius: "18px",
-        padding: "2rem 1.75rem",
         boxShadow: hovered
           ? `0 20px 60px rgba(36,59,83,0.10), 0 4px 16px ${accent}18`
           : "0 2px 12px rgba(36,59,83,0.06)",
         transform: hovered ? "translateY(-4px)" : "translateY(0)",
-        transition: "all 0.3s cubic-bezier(0.22,1,0.36,1)",
-        cursor: "default",
-        position: "relative",
-        overflow: "hidden",
       }}
     >
       {/* card top glow */}
@@ -98,17 +95,10 @@ function FeatureCard({ icon, title, description, tag, delay, accent }: FeatureCa
 
       {/* icon */}
       <div
+        className="home-feature-card-icon"
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "48px",
-          height: "48px",
-          borderRadius: "12px",
           background: `${accent}14`,
-          marginBottom: "1.25rem",
           color: accent,
-          transition: "transform 0.3s",
           transform: hovered ? "scale(1.08)" : "scale(1)",
         }}
       >
@@ -117,47 +107,17 @@ function FeatureCard({ icon, title, description, tag, delay, accent }: FeatureCa
 
       {/* tag */}
       <div
+        className="home-feature-card-tag"
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "4px",
-          fontSize: "0.68rem",
-          fontWeight: 700,
-          letterSpacing: "0.09em",
-          textTransform: "uppercase",
           color: accent,
           background: `${accent}12`,
-          borderRadius: "99px",
-          padding: "3px 10px",
-          marginBottom: "0.75rem",
         }}
       >
         {tag}
       </div>
 
-      <h3
-        style={{
-          fontSize: "1.05rem",
-          fontWeight: 700,
-          color: "#243B53",
-          marginBottom: "0.5rem",
-          letterSpacing: "-0.02em",
-          lineHeight: 1.3,
-        }}
-      >
-        {title}
-      </h3>
-
-      <p
-        style={{
-          fontSize: "0.875rem",
-          color: "#627D98",
-          lineHeight: 1.65,
-          fontWeight: 400,
-        }}
-      >
-        {description}
-      </p>
+      <h3 className="home-feature-card-title">{title}</h3>
+      <p className="home-feature-card-desc">{description}</p>
     </div>
   );
 }
@@ -215,15 +175,10 @@ function StatPill({
 export default function WelcomePage() {
   const [statsVisible, setStatsVisible] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isLoggedIn } = useAuthContext();
+
 
   useEffect(() => {
-    const checkAuth = () => {
-      setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true");
-    };
-    checkAuth();
-    window.addEventListener("auth-change", checkAuth);
-
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setStatsVisible(true); },
       { threshold: 0.3 }
@@ -231,9 +186,20 @@ export default function WelcomePage() {
     if (statsRef.current) observer.observe(statsRef.current);
     return () => {
       observer.disconnect();
-      window.removeEventListener("auth-change", checkAuth);
     };
   }, []);
+
+  //Code to upload new questions.
+  /*
+  useEffect(() => {
+    // Run this once locally to populate your tables
+    import("@/lib/seedQuestions").then(({ seedDatabaseQuestions }) => {
+      console.log("Hello gj");
+      seedDatabaseQuestions();
+    });
+  }, []);
+
+  ?*/
 
   const features = [
     {
@@ -266,26 +232,9 @@ export default function WelcomePage() {
   ];
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        fontFamily: "'Inter', system-ui, sans-serif",
-        color: "#1F2933",
-        overflowX: "hidden",
-        background: "#F4F7FA",
-      }}
-    >
+    <main className="home-container">
       {/* ── HERO SECTION ─────────────────────────────────── */}
-      <section
-        className="bg-mesh"
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <section className="home-hero bg-mesh">
         {/* dot grid */}
         <div className="dot-grid" aria-hidden />
 
@@ -324,347 +273,81 @@ export default function WelcomePage() {
           }}
         />
 
-        {/* Global Navbar handles site navigation */}
-
         {/* ── HERO CONTENT ── */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            padding: "3rem 1.5rem 4rem",
-            maxWidth: "860px",
-            margin: "0 auto",
-            width: "100%",
-            position: "relative",
-            zIndex: 10,
-          }}
-        >
+        <div className="home-hero-content">
           {/* eyebrow badge */}
-          <div
-            className="animate-fade-up"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              background: "rgba(255,255,255,0.80)",
-              backdropFilter: "blur(8px)",
-              border: "1px solid rgba(36,59,83,0.10)",
-              borderRadius: "99px",
-              padding: "6px 16px 6px 10px",
-              marginBottom: "2rem",
-              boxShadow: "0 2px 12px rgba(36,59,83,0.06)",
-            }}
-          >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: "#A3B18A",
-                flexShrink: 0,
-                boxShadow: "0 0 0 3px rgba(163,177,138,0.25)",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                color: "#243B53",
-                letterSpacing: "0.02em",
-              }}
-            >
+          <div className="home-eyebrow animate-fade-up">
+            <span className="home-eyebrow-dot" />
+            <span className="home-eyebrow-text">
               Talent Intelligence Engine — Now in Early Access
             </span>
           </div>
 
           {/* main heading */}
-          <h1
-            className="animate-fade-up delay-100"
-            style={{
-              fontSize: "clamp(2.4rem, 6vw, 4rem)",
-              fontWeight: 800,
-              color: "#243B53",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.1,
-              marginBottom: "1.5rem",
-              maxWidth: "760px",
-            }}
-          >
+          <h1 className="home-h1 animate-fade-up delay-100">
             Understand Your Workforce{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, #5BA4A4 0%, #243B53 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
+            <span className="home-h1-gradient">
               Beyond Performance
             </span>
           </h1>
 
           {/* subheading */}
-          <p
-            className="animate-fade-up delay-200"
-            style={{
-              fontSize: "clamp(1rem, 2.5vw, 1.175rem)",
-              color: "#627D98",
-              lineHeight: 1.7,
-              maxWidth: "580px",
-              marginBottom: "2.75rem",
-              fontWeight: 400,
-            }}
-          >
+          <p className="home-subheading animate-fade-up delay-200">
             TIE surfaces how your people collaborate, adapt, and grow — giving
             leaders the depth to build teams that thrive, not just perform.
           </p>
 
           {/* CTA buttons */}
-          <div
-            className="animate-fade-up delay-300"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              flexWrap: "wrap",
-              justifyContent: "center",
-            }}
-          >
+          <div className="home-cta-group animate-fade-up delay-300">
             {isLoggedIn ? (
-              <Link
-                href="/welcome"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "0.875rem 2rem",
-                  background: "#5BA4A4",
-                  color: "#ffffff",
-                  borderRadius: "12px",
-                  fontSize: "0.9375rem",
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  boxShadow: "0 4px 20px rgba(91,164,164,0.38)",
-                  transition: "all 0.2s cubic-bezier(0.22,1,0.36,1)",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#4a9393";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 8px 28px rgba(91,164,164,0.46)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#5BA4A4";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(91,164,164,0.38)";
-                }}
-              >
+              <Link href="/welcome" className="home-btn-primary">
                 Take Assessment
                 <ArrowRight size={16} />
               </Link>
             ) : (
-              <Link
-                href="/register"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "0.875rem 2rem",
-                  background: "#5BA4A4",
-                  color: "#ffffff",
-                  borderRadius: "12px",
-                  fontSize: "0.9375rem",
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  boxShadow: "0 4px 20px rgba(91,164,164,0.38)",
-                  transition: "all 0.2s cubic-bezier(0.22,1,0.36,1)",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#4a9393";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 8px 28px rgba(91,164,164,0.46)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#5BA4A4";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(91,164,164,0.38)";
-                }}
-              >
+              <Link href="/register" className="home-btn-primary">
                 Get Started
                 <ArrowRight size={16} />
               </Link>
             )}
 
-            <button
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "0.875rem 1.75rem",
-                background: "rgba(255,255,255,0.70)",
-                backdropFilter: "blur(8px)",
-                color: "#243B53",
-                border: "1.5px solid rgba(36,59,83,0.15)",
-                borderRadius: "12px",
-                fontSize: "0.9375rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                transition: "all 0.2s",
-                paddingBlock : "1 rem"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#ffffff";
-                e.currentTarget.style.borderColor = "rgba(36,59,83,0.25)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = "0 4px 16px rgba(36,59,83,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.70)";
-                e.currentTarget.style.borderColor = "rgba(36,59,83,0.15)";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
+            <button className="home-btn-secondary">
               Learn More
               <ChevronDown size={15} />
             </button>
           </div>
-
-         {/*
-          <div
-            ref={statsRef}
-            className="animate-fade-up delay-400"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "2.5rem",
-              marginTop: "3.5rem",
-              padding: "1.5rem 2.5rem",
-              background: "rgba(255,255,255,0.65)",
-              backdropFilter: "blur(12px)",
-              borderRadius: "16px",
-              border: "1px solid rgba(36,59,83,0.08)",
-              boxShadow: "0 4px 24px rgba(36,59,83,0.06)",
-              flexWrap: "wrap",
-              rowGap: "1.25rem",
-            }}
-          >
-            <StatPill label="Teams Analysed" value={2400} suffix="+" start={statsVisible} />
-            <div style={{ width: "1px", height: "36px", background: "rgba(36,59,83,0.09)" }} />
-            <StatPill label="Insights Generated" value={98} suffix="k+" start={statsVisible} />
-            <div style={{ width: "1px", height: "36px", background: "rgba(36,59,83,0.09)" }} />
-            <StatPill label="Accuracy Rate" value={94} suffix="%" start={statsVisible} />
-          </div>*/}
         </div>
 
         {/* scroll hint */}
-        <div
-          aria-hidden
-          className="animate-fade-in delay-500"
-          style={{
-            position: "absolute",
-            top: "44rem",
-            bottom: "2rem",
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "4px",
-            opacity: 0.45,
-            zIndex: 10,
-          }}
-        >
+        <div className="home-scroll-hint animate-fade-in delay-500">
           <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#627D98", letterSpacing: "0.08em", textTransform: "uppercase" }}>Scroll</span>
           <div style={{ width: "1px", height: "28px", background: "linear-gradient(to bottom, #627D98, transparent)" }} />
         </div>
       </section>
 
       {/* ── FEATURE CARDS SECTION ────────────────────────── */}
-      <section
-        style={{
-          background: "#ffffff",
-          padding: "5rem 1.5rem 6rem",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <section className="home-features-section">
         {/* subtle top border gradient */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            background: "linear-gradient(90deg, transparent, rgba(91,164,164,0.35), rgba(163,177,138,0.35), transparent)",
-          }}
-        />
+        <div className="home-features-section-border" aria-hidden />
 
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           {/* section label */}
-          <div
-            className="animate-fade-up delay-100"
-            style={{ textAlign: "center", marginBottom: "1rem" }}
-          >
-            <span
-              style={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "#5BA4A4",
-              }}
-            >
+          <div className="home-section-header animate-fade-up delay-100">
+            <span className="home-section-tag">
               Core Intelligence
             </span>
           </div>
 
-          <h2
-            className="animate-fade-up delay-200"
-            style={{
-              textAlign: "center",
-              fontSize: "clamp(1.6rem, 4vw, 2.4rem)",
-              fontWeight: 800,
-              color: "#243B53",
-              letterSpacing: "-0.03em",
-              lineHeight: 1.2,
-              marginBottom: "0.875rem",
-            }}
-          >
+          <h2 className="home-section-title animate-fade-up delay-200">
             Built for depth, not dashboards
           </h2>
-          <p
-            className="animate-fade-up delay-200"
-            style={{
-              textAlign: "center",
-              fontSize: "1rem",
-              color: "#627D98",
-              maxWidth: "480px",
-              margin: "0 auto 3.5rem",
-              lineHeight: 1.65,
-            }}
-          >
+          <p className="home-section-desc animate-fade-up delay-200">
             Three lenses that give you a complete, human picture of how your
             workforce actually works.
           </p>
 
           {/* cards grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "1.5rem",
-            }}
-          >
+          <div className="home-features-grid">
             {features.map((f) => (
               <FeatureCard key={f.title} {...f} />
             ))}
@@ -673,14 +356,7 @@ export default function WelcomePage() {
       </section>
 
       {/* ── HOW IT WORKS — TIMELINE STRIP ────────────────── */}
-      <section
-        className="bg-mesh"
-        style={{
-          padding: "5rem 1.5rem",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <section className="home-timeline-section bg-mesh">
         <Particle
           style={{
             width: "400px",
@@ -719,13 +395,7 @@ export default function WelcomePage() {
             </h2>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "1.25rem",
-            }}
-          >
+          <div className="home-timeline-grid">
             {[
               { step: "01", title: "Connect", body: "Integrate existing tools — calendar, comms, project boards. No new workflows, no surveillance.", color: "#5BA4A4" },
               { step: "02", title: "Analyse", body: "TIE's AI models surface patterns in collaboration, energy, and contribution — ethically.", color: "#243B53" },
@@ -734,16 +404,7 @@ export default function WelcomePage() {
             ].map((item, i) => (
               <div
                 key={item.step}
-                className={`animate-fade-up delay-${(i + 1) * 100}`}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "14px",
-                  padding: "1.75rem 1.5rem",
-                  border: "1px solid rgba(36,59,83,0.08)",
-                  boxShadow: "0 2px 12px rgba(36,59,83,0.05)",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
+                className={`home-timeline-card animate-fade-up delay-${(i + 1) * 100}`}
               >
                 <div
                   aria-hidden
@@ -796,39 +457,10 @@ export default function WelcomePage() {
       </section>
 
       {/* ── CTA BANNER ───────────────────────────────────── */}
-      <section
-        style={{
-          background: "#ffffff",
-          padding: "5rem 1.5rem",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            background: "linear-gradient(90deg, transparent, rgba(36,59,83,0.12), transparent)",
-          }}
-        />
+      <section className="home-cta-section">
+        <div className="home-cta-section-border" aria-hidden />
 
-        <div
-          style={{
-            maxWidth: "720px",
-            margin: "0 auto",
-            textAlign: "center",
-            background: "linear-gradient(145deg, #243B53 0%, #1a2d40 100%)",
-            borderRadius: "24px",
-            padding: "3.5rem 2.5rem",
-            boxShadow: "0 20px 60px rgba(36,59,83,0.20), 0 4px 16px rgba(36,59,83,0.12)",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
+        <div className="home-cta-banner">
           {/* inner glow */}
           <div
             aria-hidden
@@ -910,32 +542,7 @@ export default function WelcomePage() {
           >
             {isLoggedIn ? (
               <>
-                <Link
-                  href="/welcome"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "0.875rem 2rem",
-                    background: "#5BA4A4",
-                    color: "#ffffff",
-                    borderRadius: "12px",
-                    fontSize: "0.9375rem",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                    boxShadow: "0 4px 20px rgba(91,164,164,0.40)",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#4a9393";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#5BA4A4";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
+                <Link href="/welcome" className="home-btn-primary">
                   Take Assessment
                   <ArrowRight size={16} />
                 </Link>
@@ -957,46 +564,13 @@ export default function WelcomePage() {
                     fontFamily: "inherit",
                     backdropFilter: "blur(4px)",
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.13)";
-                    e.currentTarget.style.color = "#ffffff";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                    e.currentTarget.style.color = "rgba(255,255,255,0.80)";
-                  }}
                 >
                   View Insights
                 </Link>
               </>
             ) : (
               <>
-                <Link
-                  href="/register"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "0.875rem 2rem",
-                    background: "#5BA4A4",
-                    color: "#ffffff",
-                    borderRadius: "12px",
-                    fontSize: "0.9375rem",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                    boxShadow: "0 4px 20px rgba(91,164,164,0.40)",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#4a9393";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#5BA4A4";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
+                <Link href="/register" className="home-btn-primary">
                   Get Started Free
                   <ArrowRight size={16} />
                 </Link>
@@ -1018,14 +592,6 @@ export default function WelcomePage() {
                     fontFamily: "inherit",
                     backdropFilter: "blur(4px)",
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.13)";
-                    e.currentTarget.style.color = "#ffffff";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                    e.currentTarget.style.color = "rgba(255,255,255,0.80)";
-                  }}
                 >
                   Sign In
                 </Link>
@@ -1034,8 +600,6 @@ export default function WelcomePage() {
           </div>
         </div>
       </section>
-
-      {/* Global Footer handles brand info */}
 
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }

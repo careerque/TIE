@@ -1,4 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "../styles/shared/shared.css";
+@import "../styles/home/home.css";
+@import "../styles/dashboard/dashboard.css";
+@import "../styles/welcome/welcome.css";
+@import "../styles/profile/profile.css";
+@import "../styles/assessment/assessment.css";
+@import "../styles/reflection/reflection.css";
+@import "../styles/profile-output/profile-output.css";
+@import "../styles/logout/logout.css";
 
 @tailwind base;
 @tailwind components;

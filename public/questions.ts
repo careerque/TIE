@@ -1,4 +1,4 @@
-[
+const questions=[
   {
     "id": 1,
     "type": "multiple-choice",
@@ -264,3 +264,5 @@
     ]
   }
 ]
+
+export default questions;

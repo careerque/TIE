@@ -1,0 +1,115 @@
+/* ─── Reflection Page Specific Styles ─── */
+
+.reflection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-sizing: border-box;
+}
+
+.reflection-rating-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.reflection-rating-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(36, 59, 83, 0.1);
+  background: #ffffff;
+  color: #243B53;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.reflection-rating-circle:hover {
+  border-color: #5BA4A4;
+  background: rgba(91, 164, 164, 0.06);
+}
+
+.reflection-rating-circle.is-selected {
+  border-color: #5BA4A4;
+  background: #5BA4A4;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(91, 164, 164, 0.3);
+}
+
+.reflection-rating-caption {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: #8fa3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0 0.25rem;
+}
+
+.reflection-tags-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reflection-tag-card {
+  border: 1.5px solid rgba(36, 59, 83, 0.08);
+  background: #ffffff;
+  padding: 0.875rem 1.125rem;
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  text-align: left;
+  outline: none;
+}
+
+.reflection-tag-card:hover {
+  border-color: rgba(91, 164, 164, 0.4);
+  background: #F8FBFF;
+}
+
+.reflection-tag-card.is-selected {
+  border-color: #5BA4A4;
+  background: rgba(91, 164, 164, 0.04);
+}
+
+.reflection-check-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #5BA4A4;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reflection-textarea {
+  width: 100%;
+  padding: 0.875rem 1.125rem;
+  border: 2px solid rgba(36, 59, 83, 0.1);
+  border-radius: 14px;
+  background: #F4F7FA;
+  color: #1F2933;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  resize: none;
+}
+
+.reflection-textarea:focus {
+  border-color: #5BA4A4;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(91, 164, 164, 0.15);
+}

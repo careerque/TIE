@@ -1,0 +1,223 @@
+/* ─── Assessment Questionnaire Styles ─── */
+
+.assessment-progress-container {
+  width: 100%;
+  max-width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(36, 59, 83, 0.06);
+  padding: 0.8rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  box-shadow: 0 4px 15px rgba(36, 59, 83, 0.02);
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+  border-radius: 14px;
+}
+
+.assessment-question-text {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #243B53;
+  line-height: 1.35;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+/* Options buttons */
+.assessment-option-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1.125rem;
+  border: 2px solid rgba(36, 59, 83, 0.06);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #243B53;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-family: inherit;
+  margin-bottom: 0.5rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.assessment-option-btn:hover {
+  border-color: rgba(91, 164, 164, 0.4);
+  background: #F8FBFF;
+  transform: translateX(4px);
+}
+
+.assessment-option-btn.is-selected {
+  border-color: #5BA4A4;
+  background: rgba(91, 164, 164, 0.04);
+  box-shadow: 0 2px 8px rgba(91, 164, 164, 0.04);
+}
+
+.assessment-option-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(36, 59, 83, 0.12);
+  background: #ffffff;
+  color: #8fa3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+  transition: all 0.18s;
+}
+
+.assessment-option-btn:hover .assessment-option-circle {
+  border-color: #5BA4A4;
+  color: #5BA4A4;
+}
+
+.assessment-option-btn.is-selected .assessment-option-circle {
+  border-color: #5BA4A4;
+  background: #5BA4A4;
+  color: #ffffff;
+}
+
+/* Yes / No buttons */
+.assessment-yesno-btn {
+  flex: 1;
+  padding: 0.875rem;
+  border: 2px solid rgba(36, 59, 83, 0.06);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #243B53;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.assessment-yesno-btn:hover {
+  border-color: rgba(91, 164, 164, 0.4);
+  background: #F8FBFF;
+  transform: scale(1.025);
+}
+
+.assessment-yesno-btn.is-selected {
+  border-color: #5BA4A4;
+  background: #5BA4A4;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(91, 164, 164, 0.15);
+}
+
+/* Rating buttons */
+.assessment-rating-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(36, 59, 83, 0.1);
+  background: #ffffff;
+  color: #243B53;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  outline: none;
+}
+
+.assessment-rating-circle:hover {
+  border-color: #5BA4A4;
+  background: #F8FBFF;
+  transform: scale(1.08);
+}
+
+.assessment-rating-circle.is-selected {
+  border-color: #5BA4A4;
+  background: #5BA4A4;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(91, 164, 164, 0.15);
+}
+
+/* Form inputs */
+.assessment-input {
+  width: 100%;
+  padding: 0.75rem 1.125rem;
+  border: 2px solid rgba(36, 59, 83, 0.1);
+  border-radius: 12px;
+  background: #F4F7FA;
+  color: #1F2933;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.18s;
+  box-sizing: border-box;
+  resize: none;
+}
+
+.assessment-input:focus {
+  border-color: #5BA4A4;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(91, 164, 164, 0.1);
+}
+
+/* Navigation buttons */
+.assessment-nav-prev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.75rem 1.25rem;
+  border: 1.5px solid rgba(36, 59, 83, 0.15);
+  border-radius: 10px;
+  background: rgba(36, 59, 83, 0.06);
+  color: #243B53;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.assessment-nav-prev:hover:not(:disabled) {
+  background: rgba(36, 59, 83, 0.12);
+  transform: scale(1.025);
+}
+
+.assessment-nav-prev:disabled {
+  background: #EAEFF4;
+  color: #b0bec8;
+  cursor: not-allowed;
+}
+
+.assessment-nav-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: #5BA4A4;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(91, 164, 164, 0.2);
+  transition: all 0.18s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.assessment-nav-next:hover {
+  background: #4a9393;
+  transform: scale(1.025);
+}

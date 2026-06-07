@@ -1,18 +1,18 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { registerUser } from '@/services/auth/RegisterService';
-import { loginUser } from '../services/auth/LoginService';
-import { logoutUser } from '@/services/auth/LogoutService';
+import { loginUser } from '@/services/auth/LoginService';
 import { forgotPassword } from '@/services/auth/ForgotPasswordService';
 import { updatePassword } from '@/services/auth/UpdatePasswordService';
 import { updateProfile } from '@/services/auth/ProfileServices';
-import { useRouter } from 'next/navigation';
-import { tr } from 'framer-motion/client';
+import { useAuthContext } from '@/context/AuthContext';
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
+  const { refreshProfile, logout } = useAuthContext();
 
   const handleRegister = async (email: string, psw: string, first_name: string, last_name: string) => {
     setLoading(true);
@@ -61,7 +61,7 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     
-    await logoutUser();
+    await logout();
     router.push('/');
     router.refresh(); 
     setLoading(false);
@@ -103,11 +103,11 @@ export const useAuth = () => {
     }
   };
 
-  const handleUpdateProfie=async(emp_id: number, designation: string, experience: number, interests: string[], role: string)=>{
+  const handleUpdateProfie = async (emp_id: string | number, designation: string, experience: number, interests: string[], role: string) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
-    const result=await updateProfile({
+    const result = await updateProfile({
       employee_id: emp_id,
       designation,
       experiense_years: experience,
@@ -119,6 +119,7 @@ export const useAuth = () => {
       setLoading(false);
       return false;
     } else {
+      await refreshProfile();
       setSuccessMessage('Profile updated successfully!');
       setLoading(false);
       return true;

@@ -1,0 +1,89 @@
+/* ─── Assessment Welcome Specific Styles ─── */
+
+.welcome-stats-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #F4F7FA;
+  border: 1px solid rgba(36, 59, 83, 0.05);
+  border-radius: 18px;
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.welcome-stats-col-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  border-right: 1px solid rgba(36, 59, 83, 0.1);
+}
+
+.welcome-stats-col-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.welcome-stats-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #8fa3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.welcome-stats-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #243B53;
+}
+
+.welcome-outcomes-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  box-sizing: border-box;
+}
+
+.welcome-outcomes-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #243B53;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-align: left;
+}
+
+.welcome-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+}
+
+.welcome-list-item {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: #1F2933;
+  line-height: 1.55;
+}
+
+.welcome-check-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(163, 177, 138, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #A3B18A;
+  flex-shrink: 0;
+  margin-top: 2px;
+}

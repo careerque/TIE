@@ -1,0 +1,132 @@
+/* ─── Logout Page Specific Styles ─── */
+
+.logout-container {
+  min-height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  background: linear-gradient(135deg, #eef2f7 0%, #F4F7FA 55%, #e8edf4 100%);
+  font-family: 'Inter', system-ui, sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(36, 59, 83, 0.12), 0 2px 8px rgba(36, 59, 83, 0.06);
+  border: 1px solid rgba(36, 59, 83, 0.08);
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+  animation: cardIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.logout-card-top-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #243B53 0%, #5BA4A4 55%, #A3B18A 100%);
+}
+
+.logout-body {
+  padding: 2.5rem 2.5rem 2.75rem;
+  text-align: center;
+}
+
+.logout-logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.5s 0.06s both;
+}
+
+.logout-logo-crop {
+  width: 130px;
+  height: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-logo-img {
+  position: absolute;
+  top: -35px;
+  left: 0;
+  display: block;
+}
+
+.logout-animation-area {
+  animation: fadeIn 0.4s both;
+  padding: 1rem 0;
+}
+
+.logout-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3.5px solid rgba(91, 164, 164, 0.15);
+  border-top-color: #243B53;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+.logout-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #243B53;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.025em;
+}
+
+.logout-desc {
+  font-size: 0.875rem;
+  color: #627D98;
+  line-height: 1.5;
+}
+
+.logout-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 1rem;
+  animation: fadeUp 0.5s 0.32s both;
+}
+
+.logout-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(36, 59, 83, 0.09);
+}
+
+.logout-divider-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9aa8b6;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.logout-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  animation: fadeUp 0.5s 0.38s both;
+}
+
+.logout-footer-text {
+  font-size: 0.775rem;
+  color: #9aa8b6;
+}
+
+/* Animations */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

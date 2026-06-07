@@ -2,99 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, LogOut, FileText } from "lucide-react";
-import { supabasedb } from "@/lib/supabaseClient";
+import { Sparkles, LogOut } from "lucide-react";
+import { useAuthContext } from "@/context/AuthContext";
 
 export default function Navbar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { isLoggedIn, profile, logout } = useAuthContext();
   const router = useRouter();
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const logged = localStorage.getItem("isLoggedIn") === "true";
-      const email = localStorage.getItem("userEmail");
-      setIsLoggedIn(logged);
-      setUserEmail(email);
-    };
-
-    // Run on mount
-    checkAuth();
-
-    // Listen for custom authentication changes
-    window.addEventListener("auth-change", checkAuth);
-
-    // Sync Supabase Auth State with LocalStorage
-    const { data: { subscription } } = supabasedb.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userEmail", session.user.email || "");
-        
-        // Fetch profile details if missing in localStorage
-        const fName = localStorage.getItem("userFirstName");
-        const lName = localStorage.getItem("userLastName");
-        if (!fName || !lName) {
-          const { data: profile } = await supabasedb
-            .from("profiles")
-            .select("first_name, last_name, role")
-            .eq("id", session.user.id)
-            .single();
-          if (profile) {
-            localStorage.setItem("userFirstName", profile.first_name || "");
-            localStorage.setItem("userLastName", profile.last_name || "");
-            if (profile.role) {
-              localStorage.setItem("userRole", profile.role);
-            }
-          }
-        }
-      } else if (event === "SIGNED_OUT") {
-        localStorage.removeItem("isLoggedIn");
-        localStorage.removeItem("userEmail");
-        localStorage.removeItem("userFirstName");
-        localStorage.removeItem("userLastName");
-        localStorage.removeItem("userRole");
-      }
-      checkAuth();
-      window.dispatchEvent(new Event("auth-change"));
-    });
-
-    return () => {
-      window.removeEventListener("auth-change", checkAuth);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     router.push("/logout");
   };
 
   return (
-    <nav
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        width: "100%",
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(36, 59, 83, 0.08)",
-        boxShadow: "0 4px 30px rgba(0, 0, 0, 0.03)",
-        transition: "all 0.3s ease",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.25rem 4rem",
-          width: "100%",
-          boxSizing: "border-box",
-        }}
-      >
+    <nav className="tie-navbar">
+      <div className="tie-navbar-container">
         {/* Logo container to crop the whitespace in logo.png without clipping sides */}
         <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
           <div
@@ -122,39 +45,11 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation items */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
+        <div className="tie-navbar-links-group">
           {/* Main navigation links */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginRight: "0.5rem" }}>
+          <div className="tie-navbar-links">
             {["Product", "Why TIE", "Pricing"].map((item) => (
-              <button
-                key={item}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  color: "#627D98",
-                  padding: "0.5rem 0.875rem",
-                  borderRadius: "8px",
-                  transition: "color 0.15s, background 0.15s",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#243B53";
-                  e.currentTarget.style.background = "rgba(36,59,83,0.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#627D98";
-                  e.currentTarget.style.background = "none";
-                }}
-              >
+              <button key={item} className="tie-navbar-btn-link">
                 {item}
               </button>
             ))}
@@ -162,128 +57,30 @@ export default function Navbar() {
 
           {/* Conditional items based on auth */}
           {isLoggedIn ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div className="tie-navbar-auth-group">
               {/* User Email Indicator */}
-              <span
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "#627D98",
-                  fontWeight: 500,
-                  background: "rgba(36,59,83,0.05)",
-                  padding: "0.375rem 0.75rem",
-                  borderRadius: "20px",
-                  display: "none", // Hide on mobile if space is tight, can show selectively
-                }}
-                className="hidden sm:inline-block"
-              >
-                {userEmail}
+              <span className="tie-navbar-email hidden sm:inline-block">
+                {profile?.email}
               </span>
 
               {/* Take Assessment Button */}
-              <Link
-                href="/welcome"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "0.5rem 1.25rem",
-                  background: "#5BA4A4",
-                  color: "#ffffff",
-                  borderRadius: "8px",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  boxShadow: "0 3px 12px rgba(91,164,164,0.3)",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#4a9393";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 5px 15px rgba(91,164,164,0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#5BA4A4";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 3px 12px rgba(91,164,164,0.3)";
-                }}
-              >
+              <Link href="/welcome" className="tie-navbar-btn-cta">
                 <Sparkles size={14} />
                 Take Assessment
               </Link>
 
               {/* Sign Out Button */}
-              <button
-                onClick={handleLogout}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "none",
-                  border: "1px solid rgba(36,59,83,0.15)",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  color: "#627D98",
-                  padding: "0.5rem 1rem",
-                  borderRadius: "8px",
-                  transition: "all 0.15s ease",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#243B53";
-                  e.currentTarget.style.background = "rgba(36,59,83,0.03)";
-                  e.currentTarget.style.borderColor = "rgba(36,59,83,0.25)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#627D98";
-                  e.currentTarget.style.background = "none";
-                  e.currentTarget.style.borderColor = "rgba(36,59,83,0.15)";
-                }}
-              >
+              <button onClick={handleLogout} className="tie-navbar-btn-signout">
                 <LogOut size={14} />
                 Sign Out
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Link
-                href="/login"
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  background: "none",
-                  color: "#627D98",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  borderRadius: "8px",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#243B53";
-                  e.currentTarget.style.background = "rgba(36,59,83,0.04)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#627D98";
-                  e.currentTarget.style.background = "none";
-                }}
-              >
+            <div className="tie-navbar-links-group">
+              <Link href="/login" className="tie-navbar-btn-signin">
                 Sign In
               </Link>
-              <Link
-                href="/register"
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  background: "#243B53",
-                  color: "#ffffff",
-                  borderRadius: "8px",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  transition: "background 0.18s ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#1a2d40")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#243B53")}
-              >
+              <Link href="/register" className="tie-navbar-btn-register">
                 Get Started
               </Link>
             </div>

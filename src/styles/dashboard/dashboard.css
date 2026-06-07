@@ -1,0 +1,21 @@
+/* ─── Dashboard Specific Styles ─── */
+
+.dashboard-action-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-sizing: border-box;
+}
+
+.dashboard-btn-icon-right {
+  transition: transform 0.2s;
+  margin-left: auto;
+}
+
+.tie-btn-primary:hover .dashboard-btn-icon-right {
+  transform: translateX(3px);
+}
+
+.tie-btn-secondary:hover .dashboard-btn-icon-right {
+  transform: translateX(3px);
+}
