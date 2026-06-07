@@ -83,36 +83,6 @@ export default function AssessmentPage() {
       return;
     }
 
-    // Check if profile is complete
-    const fName = localStorage.getItem("userFirstName");
-    const lName = localStorage.getItem("userLastName");
-    const emailAddr = localStorage.getItem("userEmail");
-    const empId = localStorage.getItem("userEmployeeId");
-    const storedInterests = localStorage.getItem("userInterests");
-    const desig = localStorage.getItem("userDesignation");
-    const exp = localStorage.getItem("userExperience");
-
-    let hasInterests = false;
-    try {
-      const parsed = storedInterests ? JSON.parse(storedInterests) : [];
-      hasInterests = Array.isArray(parsed) && parsed.length > 0;
-    } catch (e) {
-      hasInterests = false;
-    }
-
-    if (
-      !fName || !fName.trim() ||
-      !lName || !lName.trim() ||
-      !emailAddr || !emailAddr.trim() ||
-      !empId || !empId.trim() ||
-      !hasInterests ||
-      !desig || !desig.trim() ||
-      !exp || !exp.trim()
-    ) {
-      router.push("/profile?incomplete=true");
-      return;
-    }
-
     const fetchQuestions = async () => {
       try {
         const res = await fetch("/questions.json");

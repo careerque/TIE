@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [backHovered, setBackHovered] = useState(false);
   const [ctaHovered, setCtaHovered] = useState(false);
   const [isIncompleteNotice, setIsIncompleteNotice] = useState(false);
+  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
 
   useEffect(() => {
     // Check authentication status
@@ -74,6 +75,9 @@ export default function ProfilePage() {
           setInterests([]);
         }
       }
+
+      // Check if assessment completed
+      setAssessmentCompleted(localStorage.getItem("assessmentCompleted") === "true");
 
       // Check if redirected due to incomplete profile
       if (typeof window !== "undefined") {
@@ -512,7 +516,9 @@ export default function ProfilePage() {
               <Sparkles size={18} style={{ color: "#c0392b", flexShrink: 0 }} />
               <div>
                 <strong style={{ display: "block", marginBottom: "2px" }}>Complete Your Profile</strong>
-                Please fill out all profile fields below to unlock the Workforce Insight Assessment.
+                {assessmentCompleted
+                  ? "Please fill out all profile fields below to unlock your Workforce Insight Report."
+                  : "Please fill out all profile fields below to unlock the Workforce Insight Assessment."}
               </div>
             </div>
           )}
@@ -677,12 +683,16 @@ export default function ProfilePage() {
                 }}
               >
                 <Check size={18} style={{ color: "#A3B18A", flexShrink: 0 }} />
-                <span>Profile completed! Assessment access has been unlocked.</span>
+                <span>
+                  {assessmentCompleted
+                    ? "Profile completed! Your Workforce Insight Report has been unlocked."
+                    : "Profile completed! Assessment access has been unlocked."}
+                </span>
               </div>
 
               <div style={{ display: "flex", gap: "1rem", width: "100%", flexWrap: "wrap", boxSizing: "border-box" }}>
                 <Link
-                  href="/welcome"
+                  href={assessmentCompleted ? "/profile-output" : "/welcome"}
                   onMouseEnter={() => setCtaHovered(true)}
                   onMouseLeave={() => setCtaHovered(false)}
                   style={{
@@ -696,7 +706,7 @@ export default function ProfilePage() {
                     boxShadow: ctaHovered ? "0 6px 18px rgba(91, 164, 164, 0.38)" : "0 4px 14px rgba(91, 164, 164, 0.25)",
                   }}
                 >
-                  <span>Proceed to Assessment</span>
+                  <span>{assessmentCompleted ? "Proceed to View Report" : "Proceed to Assessment"}</span>
                   <ArrowRight
                     size={16}
                     style={{
@@ -744,7 +754,11 @@ export default function ProfilePage() {
                 }}
               >
                 <X size={14} style={{ color: "#627D98", flexShrink: 0 }} />
-                <span>Fill in all profile details above to unlock the assessment.</span>
+                <span>
+                  {assessmentCompleted
+                    ? "Fill in all profile details above to unlock your insights report."
+                    : "Fill in all profile details above to unlock the assessment."}
+                </span>
               </div>
 
               <Link

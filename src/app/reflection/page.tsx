@@ -33,6 +33,8 @@ export default function ReflectionPage() {
     // Simulate compilation of insights
     await new Promise((resolve) => setTimeout(resolve, 1800));
     
+    localStorage.setItem("assessmentCompleted", "true");
+    
     router.push("/profile-output");
   };
 

@@ -19,36 +19,6 @@ export default function AssessmentWelcomePage() {
       return;
     }
 
-    // Check if profile is complete
-    const fName = localStorage.getItem("userFirstName");
-    const lName = localStorage.getItem("userLastName");
-    const email = localStorage.getItem("userEmail");
-    const empId = localStorage.getItem("userEmployeeId");
-    const storedInterests = localStorage.getItem("userInterests");
-    const desig = localStorage.getItem("userDesignation");
-    const exp = localStorage.getItem("userExperience");
-
-    let hasInterests = false;
-    try {
-      const parsed = storedInterests ? JSON.parse(storedInterests) : [];
-      hasInterests = Array.isArray(parsed) && parsed.length > 0;
-    } catch (e) {
-      hasInterests = false;
-    }
-
-    if (
-      !fName || !fName.trim() ||
-      !lName || !lName.trim() ||
-      !email || !email.trim() ||
-      !empId || !empId.trim() ||
-      !hasInterests ||
-      !desig || !desig.trim() ||
-      !exp || !exp.trim()
-    ) {
-      router.push("/profile?incomplete=true");
-      return;
-    }
-
     // Fetch dynamic question count
     const fetchQuestions = async () => {
       try {
