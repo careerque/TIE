@@ -16,12 +16,19 @@ import {
   Download,
 } from "lucide-react";
 import Link from "next/link";
+<<<<<<< HEAD
 import { useAuthContext } from "@/context/AuthContext";
 
 export default function ProfileOutputPage() {
   const router = useRouter();
   const { isLoggedIn, profile, loading: authLoading } = useAuthContext();
 
+=======
+import { useRouter } from "next/navigation";
+
+export default function ProfileOutputPage() {
+  const router = useRouter();
+>>>>>>> bc3703cbc3a6a2fd0bff262fbffad521283fdaa9
   const [showInsights, setShowInsights] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +47,7 @@ export default function ProfileOutputPage() {
   const [experience, setExperience] = useState("");
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!authLoading) {
       if (!isLoggedIn) {
         router.push("/login");
@@ -59,8 +67,66 @@ export default function ProfileOutputPage() {
   }, [profile, isLoggedIn, authLoading, router]);
 
   useEffect(() => {
+=======
+    // Check authentication status
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
+    // Check if assessment has been completed
+    const assessmentDone = localStorage.getItem("assessmentCompleted") === "true";
+    if (!assessmentDone) {
+      router.push("/welcome");
+      return;
+    }
+
+    // Check if profile is complete
+    const fName = localStorage.getItem("userFirstName");
+    const lName = localStorage.getItem("userLastName");
+    const emailAddr = localStorage.getItem("userEmail");
+    const empId = localStorage.getItem("userEmployeeId");
+    const storedInterests = localStorage.getItem("userInterests");
+    const desig = localStorage.getItem("userDesignation");
+    const exp = localStorage.getItem("userExperience");
+
+    let hasInterests = false;
+    try {
+      const parsed = storedInterests ? JSON.parse(storedInterests) : [];
+      hasInterests = Array.isArray(parsed) && parsed.length > 0;
+    } catch (e) {
+      hasInterests = false;
+    }
+
+    if (
+      !fName || !fName.trim() ||
+      !lName || !lName.trim() ||
+      !emailAddr || !emailAddr.trim() ||
+      !empId || !empId.trim() ||
+      !hasInterests ||
+      !desig || !desig.trim() ||
+      !exp || !exp.trim()
+    ) {
+      router.push("/profile?incomplete=true");
+      return;
+    }
+
+    setFirstName(fName);
+    setLastName(lName);
+    setEmail(emailAddr);
+    setEmployeeId(empId);
+    try {
+      setInterests(JSON.parse(storedInterests || "[]"));
+    } catch (e) {
+      setInterests([]);
+    }
+    setDesignation(desig);
+    setExperience(exp);
+    
+>>>>>>> bc3703cbc3a6a2fd0bff262fbffad521283fdaa9
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [showInsights]);
+  }, [showInsights, router]);
 
   const handleRevealInsights = () => {
     setLoading(true);
@@ -297,7 +363,11 @@ export default function ProfileOutputPage() {
                 <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#5BA4A4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", textAlign: "left" }}>
                   Primary Profile Archetype
                 </p>
+<<<<<<< HEAD
                 <h2 className="tie-title" style={{ fontSize: "1.875rem", color: "#ffffff", marginBottom: "0.25rem" }}>
+=======
+                <h2 style={{ fontSize: "1.875rem", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: "0.25rem", color: "#ffffff" }}>
+>>>>>>> bc3703cbc3a6a2fd0bff262fbffad521283fdaa9
                   {insightsData.archetype}
                 </h2>
                 <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
@@ -641,7 +711,7 @@ export default function ProfileOutputPage() {
                 <span style={{ fontSize: "9px", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   Primary Profile Archetype
                 </span>
-                <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em" }}>
+                <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em", color: "#ffffff" }}>
                   {insightsData.archetype}
                 </h3>
                 <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>

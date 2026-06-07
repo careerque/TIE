@@ -37,11 +37,33 @@ export default function AssessmentPage() {
   const [hoveredNext, setHoveredNext] = useState(false);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!authLoading) {
       // Check authentication status
       if (!isLoggedIn || !user) {
         router.push("/login");
         return;
+=======
+    // Check authentication status
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
+    const fetchQuestions = async () => {
+      try {
+        const res = await fetch("/questions.json");
+        if (!res.ok) throw new Error("Failed to fetch questions");
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error("Invalid JSON structure");
+        setQuestions(data);
+      } catch (err) {
+        console.error(err);
+        setError("Unable to load assessment questions.");
+      } finally {
+        setLoading(false);
+>>>>>>> bc3703cbc3a6a2fd0bff262fbffad521283fdaa9
       }
 
       // Check if profile is complete
