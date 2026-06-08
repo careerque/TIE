@@ -339,14 +339,110 @@
   background: #1a2d40;
 }
 
+.tie-navbar-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #243B53;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+  align-items: center;
+  justify-content: center;
+}
+
+.tie-navbar-mobile-toggle:hover {
+  background: rgba(36, 59, 83, 0.05);
+}
+
+.tie-navbar-desktop-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.tie-navbar-mobile-drawer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(36, 59, 83, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.5rem;
+  box-sizing: border-box;
+  gap: 1rem;
+  z-index: 100;
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tie-navbar-mobile-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tie-navbar-mobile-btn-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #627D98;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  text-align: left;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.tie-navbar-mobile-btn-link:hover {
+  color: #243B53;
+  background: rgba(36, 59, 83, 0.04);
+}
+
+.tie-navbar-mobile-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tie-navbar-mobile-email {
+  font-size: 0.8125rem;
+  color: #627D98;
+  font-weight: 500;
+  background: rgba(36, 59, 83, 0.05);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
 /* ─── Responsive Media Queries ─── */
 
 @media (max-width: 768px) {
   .tie-navbar-container {
     padding: 0.25rem 1rem;
   }
-  .tie-navbar-links {
+  .tie-navbar-desktop-group {
     display: none !important;
+  }
+  .tie-navbar-mobile-toggle {
+    display: flex !important;
   }
   .tie-card {
     padding: 2.5rem 2rem;
@@ -366,16 +462,5 @@
   .tie-card-top-bar {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
-  }
-  .navbar-btn-text {
-    display: none !important;
-  }
-  .tie-navbar-btn-cta, .tie-navbar-btn-signout {
-    padding: 0.5rem !important;
-    justify-content: center;
-    gap: 0 !important;
-  }
-  .tie-navbar-auth-group {
-    gap: 0.5rem !important;
   }
 }

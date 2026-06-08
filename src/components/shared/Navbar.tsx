@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, LogOut } from "lucide-react";
+import { Sparkles, LogOut, Menu, X } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 
 export default function Navbar() {
   const { isLoggedIn, profile, logout } = useAuthContext();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -44,8 +46,8 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Navigation items */}
-        <div className="tie-navbar-links-group">
+        {/* Desktop Navigation Group */}
+        <div className="tie-navbar-desktop-group">
           {/* Main navigation links */}
           <div className="tie-navbar-links">
             {["Product", "Why TIE", "Pricing"].map((item) => (
@@ -86,7 +88,81 @@ export default function Navbar() {
             </div>
           )}
         </div>
+
+        {/* Mobile Menu Toggle Button */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="tie-navbar-mobile-toggle"
+          aria-label="Toggle navigation menu"
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
+
+      {/* Mobile Drawer Dropdown Overlay */}
+      {isMenuOpen && (
+        <div className="tie-navbar-mobile-drawer">
+          {/* Menu links */}
+          <div className="tie-navbar-mobile-links">
+            {["Product", "Why TIE", "Pricing"].map((item) => (
+              <button
+                key={item}
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-mobile-btn-link"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ height: "1px", background: "rgba(36, 59, 83, 0.08)", margin: "0.25rem 0" }} />
+
+          {/* Auth options */}
+          {isLoggedIn ? (
+            <div className="tie-navbar-mobile-auth">
+              <span className="tie-navbar-mobile-email">
+                {profile?.email}
+              </span>
+              <Link
+                href="/welcome"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-btn-cta"
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                <Sparkles size={14} />
+                Take Assessment
+              </Link>
+              <button
+                onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                className="tie-navbar-btn-signout"
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="tie-navbar-mobile-auth">
+              <Link
+                href="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-btn-signin"
+                style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-btn-register"
+                style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }
