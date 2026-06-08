@@ -367,7 +367,9 @@
   top: 100%;
   left: 0;
   width: 100%;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(36, 59, 83, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
   display: flex;
@@ -434,9 +436,9 @@
 
 /* ─── Responsive Media Queries ─── */
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
   .tie-navbar-container {
-    padding: 0.25rem 1rem;
+    padding: 0.25rem 1.5rem !important;
   }
   .tie-navbar-desktop-group {
     display: none !important;
@@ -444,6 +446,9 @@
   .tie-navbar-mobile-toggle {
     display: flex !important;
   }
+}
+
+@media (max-width: 768px) {
   .tie-card {
     padding: 2.5rem 2rem;
     gap: 2rem;
