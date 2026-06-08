@@ -44,30 +44,6 @@ export default function AssessmentPage() {
         return;
       }
 
-      // Check if profile is complete
-      const fName = profile?.first_name;
-      const lName = profile?.last_name;
-      const emailAddr = profile?.email;
-      const empId = profile?.employee_id;
-      const storedInterests = profile?.interests;
-      const desig = profile?.designation;
-      const exp = profile?.experiense_years;
-
-      const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
-
-      if (
-        !fName || !fName.trim() ||
-        !lName || !lName.trim() ||
-        !emailAddr || !emailAddr.trim() ||
-        !empId || !empId.trim() ||
-        !hasInterests ||
-        !desig || !desig.trim() ||
-        !exp || !exp.trim()
-      ) {
-        router.push("/profile?incomplete=true");
-        return;
-      }
-
       const initializeAssessment = async () => {
         try {
           // Fetch structural questions and user progress in parallel

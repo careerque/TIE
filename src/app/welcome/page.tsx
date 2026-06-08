@@ -21,30 +21,6 @@ export default function AssessmentWelcomePage() {
         return;
       }
 
-      // Check if profile is complete
-      const fName = profile?.first_name;
-      const lName = profile?.last_name;
-      const email = profile?.email;
-      const empId = profile?.employee_id;
-      const desig = profile?.designation;
-      const exp = profile?.experiense_years;
-      const interests = profile?.interests;
-
-      const hasInterests = Array.isArray(interests) && interests.length > 0;
-
-      if (
-        !fName || !fName.trim() ||
-        !lName || !lName.trim() ||
-        !email || !email.trim() ||
-        !empId || !empId.trim() ||
-        !hasInterests ||
-        !desig || !desig.trim() ||
-        !exp || !exp.trim()
-      ) {
-        router.push("/profile?incomplete=true");
-        return;
-      }
-
       // Fetch dynamic question count
       const fetchQuestions = async () => {
         try {

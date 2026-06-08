@@ -46,13 +46,39 @@ export default function ProfileOutputPage() {
       }
       
       if (profile) {
-        setFirstName(profile.first_name || "");
-        setLastName(profile.last_name || "");
-        setEmail(profile.email || "");
-        setEmployeeId(profile.employee_id || "");
-        setInterests(profile.interests || []);
-        setDesignation(profile.designation || "");
-        setExperience(profile.experiense_years || "");
+        const fName = profile.first_name;
+        const lName = profile.last_name;
+        const emailAddr = profile.email;
+        const empId = profile.employee_id;
+        const storedInterests = profile.interests;
+        const desig = profile.designation;
+        const exp = profile.experiense_years;
+
+        const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
+
+        if (
+          !fName || !fName.trim() ||
+          !lName || !lName.trim() ||
+          !emailAddr || !emailAddr.trim() ||
+          !empId || !empId.trim() ||
+          !hasInterests ||
+          !desig || !desig.trim() ||
+          (exp === undefined || exp === null || String(exp).trim() === "")
+        ) {
+          router.push("/profile?incomplete=true");
+          return;
+        }
+
+        setFirstName(fName || "");
+        setLastName(lName || "");
+        setEmail(emailAddr || "");
+        setEmployeeId(empId || "");
+        setInterests(storedInterests || []);
+        setDesignation(desig || "");
+        setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+      } else {
+        // If profile doesn't exist, redirect to complete it
+        router.push("/profile?incomplete=true");
       }
     }
   }, [profile, isLoggedIn, authLoading, router]);
