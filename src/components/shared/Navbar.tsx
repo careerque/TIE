@@ -19,7 +19,7 @@ export default function Navbar() {
 
   return (
     <nav className="tie-navbar">
-      <div className="tie-navbar-container">
+      <div className="tie-navbar-container" style={{ position: "relative" }}>
         {/* Logo container to crop the whitespace in logo.png without clipping sides */}
         <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
           <div
@@ -91,78 +91,84 @@ export default function Navbar() {
 
         {/* Mobile Menu Toggle Button */}
         <button
+          type="button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="tie-navbar-mobile-toggle"
           aria-label="Toggle navigation menu"
+          style={{ position: "relative", zIndex: 60 }}
         >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Drawer Dropdown Overlay */}
-      {isMenuOpen && (
-        <div className="tie-navbar-mobile-drawer">
-          {/* Menu links */}
-          <div className="tie-navbar-mobile-links">
-            {["Product", "Why TIE", "Pricing"].map((item) => (
-              <button
-                key={item}
-                onClick={() => setIsMenuOpen(false)}
-                className="tie-navbar-mobile-btn-link"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ height: "1px", background: "rgba(36, 59, 83, 0.08)", margin: "0.25rem 0" }} />
-
-          {/* Auth options */}
-          {isLoggedIn ? (
-            <div className="tie-navbar-mobile-auth">
-              <span className="tie-navbar-mobile-email">
-                {profile?.email}
-              </span>
-              <Link
-                href="/welcome"
-                onClick={() => setIsMenuOpen(false)}
-                className="tie-navbar-btn-cta"
-                style={{ width: "100%", justifyContent: "center" }}
-              >
-                <Sparkles size={14} />
-                Take Assessment
-              </Link>
-              <button
-                onClick={() => { setIsMenuOpen(false); handleLogout(); }}
-                className="tie-navbar-btn-signout"
-                style={{ width: "100%", justifyContent: "center" }}
-              >
-                <LogOut size={14} />
-                Sign Out
-              </button>
-            </div>
+          {isMenuOpen ? (
+            <X size={24} style={{ pointerEvents: "none" }} />
           ) : (
-            <div className="tie-navbar-mobile-auth">
-              <Link
-                href="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="tie-navbar-btn-signin"
-                style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setIsMenuOpen(false)}
-                className="tie-navbar-btn-register"
-                style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
-              >
-                Get Started
-              </Link>
-            </div>
+            <Menu size={24} style={{ pointerEvents: "none" }} />
           )}
-        </div>
-      )}
+        </button>
+
+        {/* Mobile Drawer Dropdown Overlay */}
+        {isMenuOpen && (
+          <div className="tie-navbar-mobile-drawer">
+            {/* Menu links */}
+            <div className="tie-navbar-mobile-links">
+              {["Product", "Why TIE", "Pricing"].map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-mobile-btn-link"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ height: "1px", background: "rgba(36, 59, 83, 0.08)", margin: "0.25rem 0" }} />
+
+            {/* Auth options */}
+            {isLoggedIn ? (
+              <div className="tie-navbar-mobile-auth">
+                <span className="tie-navbar-mobile-email">
+                  {profile?.email}
+                </span>
+                <Link
+                  href="/welcome"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-btn-cta"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <Sparkles size={14} />
+                  Take Assessment
+                </Link>
+                <button
+                  onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                  className="tie-navbar-btn-signout"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="tie-navbar-mobile-auth">
+                <Link
+                  href="/login"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-btn-signin"
+                  style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-btn-register"
+                  style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </nav>
   );
 }
