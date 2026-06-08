@@ -14,35 +14,11 @@ export default function AssessmentWelcomePage() {
   const [ctaHovered, setCtaHovered] = useState(false);
 
   useEffect(() => {
-<<<<<<< HEAD
     if (!loading) {
       // Check authentication
       if (!isLoggedIn) {
         router.push("/login");
         return;
-=======
-    // Check authentication
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn) {
-      router.push("/login");
-      return;
-    }
-
-    // Fetch dynamic question count
-    const fetchQuestions = async () => {
-      try {
-        const res = await fetch("/questions.json");
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setQuestionCount(data.length);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load questions count:", err);
-      } finally {
-        setLoading(false);
->>>>>>> bc3703cbc3a6a2fd0bff262fbffad521283fdaa9
       }
 
       // Check if profile is complete
