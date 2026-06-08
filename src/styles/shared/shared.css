@@ -338,3 +338,44 @@
 .tie-navbar-btn-register:hover {
   background: #1a2d40;
 }
+
+/* ─── Responsive Media Queries ─── */
+
+@media (max-width: 768px) {
+  .tie-navbar-container {
+    padding: 0.25rem 1rem;
+  }
+  .tie-navbar-links {
+    display: none !important;
+  }
+  .tie-card {
+    padding: 2.5rem 2rem;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .tie-container {
+    padding: 2rem 1rem;
+  }
+  .tie-card {
+    padding: 1.75rem 1.25rem;
+    gap: 1.5rem;
+    border-radius: 20px;
+  }
+  .tie-card-top-bar {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+  }
+  .navbar-btn-text {
+    display: none !important;
+  }
+  .tie-navbar-btn-cta, .tie-navbar-btn-signout {
+    padding: 0.5rem !important;
+    justify-content: center;
+    gap: 0 !important;
+  }
+  .tie-navbar-auth-group {
+    gap: 0.5rem !important;
+  }
+}

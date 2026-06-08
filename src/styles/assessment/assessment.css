@@ -217,6 +217,41 @@
   box-sizing: border-box;
 }
 
+/* ─── Responsive Media Queries ─── */
+
+.assessment-page-container {
+  align-items: stretch !important;
+  padding: 2rem 4rem !important;
+}
+
+@media (max-width: 768px) {
+  .assessment-page-container {
+    padding: 1.5rem 1.25rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .assessment-progress-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .assessment-option-btn {
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.8125rem !important;
+  }
+  .assessment-option-circle {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.65rem !important;
+    margin-right: 0.5rem !important;
+  }
+  .assessment-nav-prev, .assessment-nav-next {
+    padding: 0.625rem 1rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
 .assessment-nav-next:hover {
   background: #4a9393;
   transform: scale(1.025);

@@ -113,3 +113,13 @@
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(91, 164, 164, 0.15);
 }
+
+/* ─── Responsive Media Queries ─── */
+
+@media (max-width: 480px) {
+  .reflection-rating-circle {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 0.875rem !important;
+  }
+}

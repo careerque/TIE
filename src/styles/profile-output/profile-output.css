@@ -267,3 +267,48 @@
   background: #1a2d40;
   transform: translateY(-1px);
 }
+
+/* ─── Responsive Media Queries ─── */
+
+.profile-output-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2.5rem 2rem !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .profile-output-container {
+    padding: 1.5rem 1rem !important;
+  }
+  .profile-output-details-card {
+    padding: 1.25rem 1.25rem !important;
+    gap: 1.25rem !important;
+  }
+  .profile-output-split-card {
+    padding: 1.5rem 1.25rem !important;
+    gap: 1.25rem !important;
+  }
+  .profile-output-suggestions-container {
+    padding: 1.5rem 1.25rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-output-archetype-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 1.75rem 1.25rem !important;
+    gap: 1.5rem !important;
+  }
+  .profile-output-archetype-badge {
+    align-self: center !important;
+    width: 100% !important;
+  }
+  .profile-output-dimension-card {
+    padding: 1.25rem !important;
+  }
+}

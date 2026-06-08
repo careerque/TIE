@@ -130,3 +130,9 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 480px) {
+  .logout-body {
+    padding: 2rem 1.25rem 2.25rem !important;
+  }
+}

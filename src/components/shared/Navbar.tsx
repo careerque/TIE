@@ -66,13 +66,13 @@ export default function Navbar() {
               {/* Take Assessment Button */}
               <Link href="/welcome" className="tie-navbar-btn-cta">
                 <Sparkles size={14} />
-                Take Assessment
+                <span className="navbar-btn-text">Take Assessment</span>
               </Link>
 
               {/* Sign Out Button */}
               <button onClick={handleLogout} className="tie-navbar-btn-signout">
                 <LogOut size={14} />
-                Sign Out
+                <span className="navbar-btn-text">Sign Out</span>
               </button>
             </div>
           ) : (

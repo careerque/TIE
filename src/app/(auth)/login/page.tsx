@@ -109,7 +109,7 @@ export default function LoginPage() {
         {/* top accent bar */}
         <div style={{ height: '4px', background: 'linear-gradient(90deg, #243B53 0%, #5BA4A4 55%, #A3B18A 100%)' }} />
 
-        <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
+        <div className="auth-card-inner" style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.5rem', animation:'fadeUp .5s .06s both' }}>
@@ -328,6 +328,11 @@ export default function LoginPage() {
         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes spin   { to   { transform:rotate(360deg); } }
         input::placeholder { color: #b0bec8; }
+        @media (max-width: 480px) {
+          .auth-card-inner {
+            padding: 1.75rem 1.25rem 1.75rem !important;
+          }
+        }
       `}</style>
     </main>
   );

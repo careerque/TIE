@@ -322,3 +322,23 @@
   position: relative;
   overflow: hidden;
 }
+
+/* ─── Responsive Media Queries ─── */
+
+@media (max-width: 768px) {
+  .home-scroll-hint {
+    display: none !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .home-stats-pill-container {
+    padding: 1rem 1.25rem !important;
+    gap: 1.5rem !important;
+    margin-top: 2rem !important;
+  }
+  .home-cta-banner {
+    padding: 2.25rem 1.25rem !important;
+    border-radius: 20px !important;
+  }
+}

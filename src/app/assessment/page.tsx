@@ -230,7 +230,7 @@ export default function AssessmentPage() {
   }
 
   return (
-    <div className="tie-container" style={{ flexDirection: "column", alignItems: "stretch", padding: "2rem 4rem" }}>
+    <div className="tie-container assessment-page-container">
       {/* Background decoration blobs */}
       <div aria-hidden style={{ position: "absolute", top: "-130px", right: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,164,164,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div aria-hidden style={{ position: "absolute", bottom: "-130px", left: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(163,177,138,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />

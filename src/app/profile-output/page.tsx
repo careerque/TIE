@@ -40,11 +40,19 @@ export default function ProfileOutputPage() {
 
   useEffect(() => {
     if (!authLoading) {
+      // Check authentication status
       if (!isLoggedIn) {
         router.push("/login");
         return;
       }
-      
+
+      // Check if assessment has been completed
+      const assessmentDone = localStorage.getItem("assessmentCompleted") === "true";
+      if (!assessmentDone) {
+        router.push("/welcome");
+        return;
+      }
+
       if (profile) {
         const fName = profile.first_name;
         const lName = profile.last_name;
@@ -85,7 +93,7 @@ export default function ProfileOutputPage() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [showInsights, router]);
+  }, [showInsights]);
 
   const handleRevealInsights = () => {
     setLoading(true);
@@ -195,7 +203,7 @@ export default function ProfileOutputPage() {
   }
 
   return (
-    <div className="tie-container" style={{ justifyContent: showInsights ? "flex-start" : "center" }}>
+    <div className="tie-container profile-output-container" style={{ justifyContent: showInsights ? "flex-start" : "center" }}>
       {/* Background blobs */}
       <div aria-hidden style={{ position: "absolute", top: "-130px", right: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,164,164,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div aria-hidden style={{ position: "absolute", bottom: "-130px", left: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(163,177,138,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />

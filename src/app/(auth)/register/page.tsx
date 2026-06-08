@@ -123,7 +123,7 @@ export default function RegisterPage() {
     <main style={{ minHeight:'calc(100vh - 150px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'3rem 1.5rem', background:'linear-gradient(135deg,#eef2f7 0%,#F4F7FA 55%,#e8edf4 100%)', fontFamily:"'Inter',system-ui,sans-serif" }}>
       <div style={{ background:'#fff', borderRadius:'20px', boxShadow:'0 8px 40px rgba(36,59,83,0.12)', border:'1px solid rgba(36,59,83,0.08)', width:'100%', maxWidth:'440px', overflow:'hidden', textAlign:'center', animation:'cardIn .52s cubic-bezier(.22,1,.36,1) both' }}>
         <div style={{ height:'4px', background:'linear-gradient(90deg,#243B53 0%,#5BA4A4 55%,#A3B18A 100%)' }} />
-        <div style={{ padding:'2.5rem 2.5rem 2.75rem' }}>
+        <div className="auth-card-inner" style={{ padding:'2.5rem 2.5rem 2.75rem' }}>
           <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'rgba(163,177,138,0.14)', border:'2px solid #A3B18A', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.25rem' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A3B18A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20,6 9,17 4,12"/>
@@ -177,7 +177,7 @@ export default function RegisterPage() {
         {/* top accent bar */}
         <div style={{ height: '4px', background: 'linear-gradient(90deg, #243B53 0%, #5BA4A4 55%, #A3B18A 100%)' }} />
 
-        <div style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
+        <div className="auth-card-inner" style={{ padding: '2.25rem 2.5rem 2.5rem' }}>
 
           {/* ── Logo ── */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:'0.5rem', animation:'fadeUp .5s .06s both' }}>
@@ -235,7 +235,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} noValidate style={{ display:'flex', flexDirection:'column', gap:'1.1rem', animation:'fadeUp .5s .20s both' }}>
 
             {/* First Name + Last Name — side by side */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
+            <div className="auth-grid-split" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
 
               {/* First Name */}
               <div>
@@ -434,6 +434,15 @@ export default function RegisterPage() {
         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes spin   { to   { transform:rotate(360deg); } }
         input::placeholder { color: #b0bec8; }
+        @media (max-width: 480px) {
+          .auth-card-inner {
+            padding: 1.75rem 1.25rem 1.75rem !important;
+          }
+          .auth-grid-split {
+            grid-template-columns: 1fr !important;
+            gap: 1.1rem !important;
+          }
+        }
       `}</style>
     </main>
   );
