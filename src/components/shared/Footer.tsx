@@ -1,55 +1,81 @@
 "use client";
 
 import Link from "next/link";
+import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer
-      style={{
-        background: "#F4F7FA",
-        borderTop: "1px solid rgba(36, 59, 83, 0.08)",
-        padding: "1.5rem 4rem",
-        width: "100%",
-        marginTop: "auto",
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "1rem",
-          width: "100%",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#243B53", letterSpacing: "-0.01em" }}>TIE</span>
-          <span style={{ fontSize: "0.8125rem", color: "#8fa3b8" }}>· Talent Intelligence Engine</span>
+    <footer className="tie-footer">
+      <div className="tie-footer-grid">
+        
+        {/* Column 1: Brand details */}
+        <div className="tie-footer-col">
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+            <span style={{ fontSize: "1.05rem", fontWeight: 800, color: "#ffffff", letterSpacing: "0.02em" }}>TIE</span>
+            <span style={{ fontSize: "0.75rem", color: "#5BA4A4", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>• Insights</span>
+          </div>
+          <p style={{ fontSize: "0.8125rem", lineHeight: 1.6, color: "#9aa8b6", margin: 0, textAlign: "left" }}>
+            Empowering organizations to understand team dynamics, collaboration patterns, and potential. Built to understand, not surveil.
+          </p>
         </div>
-        <p style={{ fontSize: "0.78rem", color: "#9aadbe", fontWeight: 400, margin: 0 }}>
-          © {new Date().getFullYear()} TIE. Built to understand, not surveil.
-        </p>
-        <div style={{ display: "flex", gap: "1.25rem" }}>
-          {["Privacy", "Terms", "Contact"].map((item) => (
+
+        {/* Column 2: Contact Meta */}
+        <div className="tie-footer-col">
+          <h4 className="tie-footer-title">Contact Support</h4>
+          
+          <div className="tie-footer-contact-item">
+            <MapPin size={15} style={{ color: "#5BA4A4", marginTop: "2px", flexShrink: 0 }} />
+            <span style={{ textAlign: "left" }}>42 Innovation Way, Tech Park, Suite 100</span>
+          </div>
+
+          <div className="tie-footer-contact-item">
+            <Mail size={15} style={{ color: "#5BA4A4", flexShrink: 0 }} />
+            <a href="mailto:support@tie-engine.com">
+              support@tie-engine.com
+            </a>
+          </div>
+
+          <div className="tie-footer-contact-item">
+            <Phone size={15} style={{ color: "#5BA4A4", flexShrink: 0 }} />
+            <a href="tel:+15550192834">
+              +1 (555) 019-2834
+            </a>
+          </div>
+
+          <div className="tie-footer-contact-item">
+            <MessageCircle size={15} style={{ color: "#5BA4A4", flexShrink: 0 }} />
+            <a href="https://wa.me/15550192835" target="_blank" rel="noopener noreferrer">
+              +1 (555) 019-2835 (WhatsApp)
+            </a>
+          </div>
+        </div>
+
+        {/* Column 3: Navigation Links */}
+        <div className="tie-footer-col">
+          <h4 className="tie-footer-title">Resources</h4>
+          {["Privacy Policy", "Terms of Service", "Safety & Security", "System Status"].map((item) => (
             <Link
               key={item}
               href="#"
-              style={{
-                fontSize: "0.78rem",
-                color: "#8fa3b8",
-                textDecoration: "none",
-                fontWeight: 500,
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#243B53")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#8fa3b8")}
+              className="tie-footer-link"
             >
               {item}
             </Link>
           ))}
         </div>
+      </div>
+
+      {/* Decorative separator */}
+      <div className="tie-footer-divider" />
+
+      {/* Bottom Bar */}
+      <div className="tie-footer-bottom">
+        <p style={{ margin: 0 }}>
+          © {new Date().getFullYear()} TIE. All rights reserved.
+        </p>
+        <p style={{ margin: 0, fontStyle: "italic" }}>
+          Built to understand, not surveil.
+        </p>
       </div>
     </footer>
   );

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   BookOpen,
   Download,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
@@ -260,7 +261,7 @@ export default function ProfileOutputPage() {
             >
               {loading ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Analyzing Assessment...
                 </>
               ) : (
@@ -285,7 +286,7 @@ export default function ProfileOutputPage() {
                 <Sparkles className="h-3.5 w-3.5" style={{ color: "#5BA4A4", marginRight: "2px" }} />
                 <span>Assessment Output</span>
               </div>
-              <h1 className="tie-title" style={{ fontSize: "2.25rem", marginBottom: "0.5rem", textAlign: "center" }}>
+              <h1 className="profile-output-title">
                 Your Talent Dynamics Insights
               </h1>
               <p className="tie-desc" style={{ textAlign: "center" }}>
@@ -330,7 +331,7 @@ export default function ProfileOutputPage() {
                 <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#5BA4A4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", textAlign: "left" }}>
                   Primary Profile Archetype
                 </p>
-                <h2 className="tie-title" style={{ fontSize: "1.875rem", color: "#ffffff", marginBottom: "0.25rem" }}>
+                <h2 className="profile-output-archetype-title">
                   {insightsData.archetype}
                 </h2>
                 <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
@@ -523,7 +524,7 @@ export default function ProfileOutputPage() {
             </div>
 
             {/* Footer buttons */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap", marginBottom: "2rem" }}>
+            <div className="profile-output-footer-actions">
               <Link
                 href="/welcome"
                 className="profile-output-btn-retake"
@@ -542,7 +543,7 @@ export default function ProfileOutputPage() {
               >
                 {isGeneratingPdf ? (
                   <>
-                    <RefreshCw size={14} className="animate-spin" />
+                    <Loader2 size={14} className="animate-spin" />
                     Generating PDF...
                   </>
                 ) : (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, Brain, RotateCw, Check } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function ReflectionPage() {
   const router = useRouter();
@@ -42,38 +43,58 @@ export default function ReflectionPage() {
       <div className="tie-container">
         <div className="tie-dot-grid" aria-hidden />
         <div 
-          className="tie-card"
+          className="tie-card animate-fade-up"
           style={{
             alignItems: "center",
             textAlign: "center",
-            padding: "4.5rem 3rem"
+            padding: "4rem 2.5rem",
+            maxWidth: "480px"
           }}
         >
           <div className="tie-card-top-bar" />
           
-          <div 
-            style={{
-              width: "72px",
-              height: "72px",
-              background: "rgba(91, 164, 164, 0.1)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "1.5rem",
-              color: "#5BA4A4"
-            }}
+          <motion.div
+            animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+            style={{ display: "flex", justifyContent: "center", marginBottom: "2rem" }}
           >
-            <RotateCw size={32} className="animate-spin" />
-          </div>
+            <div 
+              style={{
+                width: "80px",
+                height: "80px",
+                background: "rgba(91, 164, 164, 0.1)",
+                borderRadius: "24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#5BA4A4"
+              }}
+            >
+              <Brain size={36} />
+            </div>
+          </motion.div>
           
-          <h2 className="tie-title" style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>
+          <h2 className="tie-title" style={{ fontSize: "1.5rem", marginBottom: "1rem", fontWeight: 800 }}>
             Processing Your Reflection
           </h2>
           
-          <p className="tie-desc" style={{ fontSize: "0.875rem", maxWidth: "340px" }}>
+          <p className="tie-desc" style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.6, marginBottom: "2.5rem", maxWidth: "360px" }}>
             We are integrating your experience insights with your assessment results to finalize your workforce intelligence profile.
           </p>
+
+          <div style={{ height: "6px", width: "100%", background: "#F4F7FA", borderRadius: "99px", overflow: "hidden", position: "relative" }}>
+            <motion.div
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 1.6, ease: "easeInOut" }}
+              style={{ height: "100%", background: "#5BA4A4", borderRadius: "99px" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.75rem", width: "100%", fontSize: "9px", fontWeight: 700, color: "#b0bec8", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <span>Calibrating</span>
+            <span>Finalizing Insights</span>
+          </div>
         </div>
       </div>
     );

@@ -10,6 +10,8 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  Cloud,
+  Loader2,
 } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import {
@@ -248,9 +250,19 @@ export default function AssessmentPage() {
       {/* Sleek Progress Container */}
       <div className="assessment-progress-container">
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#8fa3b8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {savingId === currentQuestion.question_id ? "● Saving changes..." : "✓ All changes saved to cloud"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.65rem", fontWeight: 700, color: "#8fa3b8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {savingId === currentQuestion.question_id ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: "#5BA4A4" }} />
+                <span>Saving changes...</span>
+              </>
+            ) : (
+              <>
+                <Cloud className="h-3.5 w-3.5" style={{ color: "#A3B18A" }} />
+                <span>All changes saved to cloud</span>
+              </>
+            )}
+          </div>
           <span style={{ fontSize: "1rem", fontWeight: 800, color: "#243B53", marginTop: "0.125rem" }}>
             Question {currentIndex + 1} <span style={{ color: "#8fa3b8", fontSize: "0.75rem", fontWeight: 500 }}>/ {totalQuestions}</span>
           </span>
@@ -272,7 +284,7 @@ export default function AssessmentPage() {
           {/* Card Top Glow Accent */}
           <div style={{ height: "4px", width: "100%", background: "linear-gradient(90deg, #5BA4A4 0%, #A3B18A 55%, #5BA4A4 100%)" }} />
 
-          <div style={{ padding: "1.5rem 2rem" }}>
+          <div className="assessment-card-body">
             {/* Question Type Badge */}
             <div className="tie-badge" style={{ marginBottom: "0.75rem" }}>
               <Sparkles className="h-3 w-3" style={{ color: "#5BA4A4", marginRight: "2px" }} />
