@@ -34,8 +34,15 @@ app.add_middleware(
 
 # Initialize Database Connection Client Server-Side
 supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+
+service_role = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+if service_role:
+    print("STATUS: Supabase Service Role Key is LOADED. RLS will be bypassed successfully.")
+else:
+    print("STATUS: WARNING - Supabase Service Role Key is MISSING. Falling back to Anon Key. RLS will block queries!")
+
 supabase_key = (
-    os.getenv("SUPABASE_SERVICE_ROLE_KEY") or 
+    service_role or 
     os.getenv("SUPABASE_ANON_KEY") or 
     os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 )
@@ -178,7 +185,7 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
 
         # Corrected method instantiation typo: changed models to client SDK syntax config
         response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-1.5-flash',
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,

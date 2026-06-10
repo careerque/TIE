@@ -298,7 +298,10 @@ export default function ProfileOutputPage() {
           setApiLoading(true);
           setError(null);
           
-          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          let apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          if (apiBaseUrl.endsWith("/")) {
+            apiBaseUrl = apiBaseUrl.slice(0, -1);
+          }
           const response = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
             method: "POST",
             headers: {
