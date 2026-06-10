@@ -3,6 +3,10 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["framer-motion", "motion-dom", "motion-utils"],
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
+  },
   turbopack: {
     resolveAlias: {
       "motion-utils": "motion-utils/dist/es/index.mjs",

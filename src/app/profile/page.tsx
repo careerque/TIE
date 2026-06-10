@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, User, Edit3, Check, X } from "lucide-react";
 import { updateProfile } from "@/services/auth/ProfileServices";
 import { useAuthContext } from "@/context/AuthContext";
+import { fetchUserSavedProgress } from "@/services/assessmentService";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isLoggedIn, profile, loading, refreshProfile } = useAuthContext();
+  const { isLoggedIn, profile, user, loading, refreshProfile } = useAuthContext();
   const [updating, setUpdating] = useState(false);
 
   // Profile Fields States
@@ -48,8 +49,14 @@ export default function ProfilePage() {
         setInterests(profile.interests || []);
       }
 
-      // Check if assessment completed
-      setAssessmentCompleted(localStorage.getItem("assessmentCompleted") === "true");
+      // Check if assessment completed by querying the DB count of saved answers
+      if (user?.id) {
+        fetchUserSavedProgress(user.id).then((res) => {
+          if (res.success && res.data) {
+            setAssessmentCompleted(res.data.length === 24);
+          }
+        });
+      }
 
       // Check if redirected due to incomplete profile
       if (typeof window !== "undefined") {

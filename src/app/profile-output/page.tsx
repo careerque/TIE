@@ -15,17 +15,226 @@ import {
   BookOpen,
   Download,
   Loader2,
+  AlertCircle,
+  Shield,
+  HelpCircle,
+  Brain,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
 
+interface ScoringMetrics {
+  raw_scores: Record<string, number>;
+  primary_pattern: string;
+  secondary_pattern: string;
+  combination_profile: string;
+  primary_strength_pct: number;
+  secondary_strength_pct: number;
+  flags: string[];
+}
+
+interface ManagerSignals {
+  s1_adaptability_dominant: string;
+  s2_execution_dominant: string;
+  s3_support_dominant: string;
+  s4_engagement_dominant: string;
+}
+
+interface AnalysisResult {
+  success: boolean;
+  scoring_metrics: ScoringMetrics;
+  manager_signals: ManagerSignals;
+  report_markdown: string;
+}
+
+const TAGLINES: Record<string, string> = {
+  "Structured Collaborator": "Process-Oriented & Team-Centric Professional",
+  "Steady Executor": "Methodical, Reliable & Result-Driven Builder",
+  "Independent Problem Solver": "Autonomous, Analytical & Adaptive Explorer",
+  "Adaptive Team Contributor": "Collaborative, Flexible & Initiative-Driven Contributor",
+  "Supportive Team Stabilizer": "Empathetic, Stable & Trust-Building Anchor",
+  "Practical Adapter": "Pragmatic, Flexible & Experiential Learner",
+  "Flexible Adapter": "Highly Versatile & Context-Aware Contributor"
+};
+
+const SUMMARIES: Record<string, string> = {
+  "Structured Collaborator": "You thrive in structured team environments with clear processes. You balance organization with active cooperation to drive projects forward.",
+  "Steady Executor": "You deliver consistent, high-quality results by sticking to proven processes and maintaining a stable pace. You are a reliable anchor for execution.",
+  "Independent Problem Solver": "You excel at solving complex challenges autonomously. You value independence and learn best by experimenting and digging deep into problems.",
+  "Adaptive Team Contributor": "You easily adjust to new team dynamics and shifting requirements. You bring energy to collaborative spaces and learn quickly by doing.",
+  "Supportive Team Stabilizer": "You focus on team harmony, steady pacing, and creating psychological safety. You support others and build trust in relationships.",
+  "Practical Adapter": "You tackle changing circumstances with pragmatism. You learn through hands-on experience and keep team objectives grounded.",
+  "Flexible Adapter": "You bring a balanced mix of adaptability and execution, adjusting your style to fit the specific needs of your team and current tasks."
+};
+
+function getFrictionArea(primaryPattern: string): string {
+  switch (primaryPattern) {
+    case "SCP":
+      return "May experience friction when guidelines are undefined, processes are missing, or goals shift rapidly without documentation.";
+    case "FIE":
+      return "May feel restricted by micromanagement, highly structured protocols, or limited autonomy in problem solving.";
+    case "CCD":
+      return "May feel isolated or disengaged in solo tasks without team interaction or during conflicts with no clear consensus.";
+    case "SPO":
+      return "May experience stress when faced with sudden shifts in workflow, rapid context switching, or intense pacing.";
+    default:
+      return "May experience friction when balancing personal pace with rapid team changes or navigating communication gaps.";
+  }
+}
+
+function getGrowthAreas(primaryPattern: string, secondaryPattern: string): string[] {
+  const list: string[] = [];
+  if (primaryPattern === "SCP" || secondaryPattern === "SCP") {
+    list.push("Practice decision-making under uncertainty without waiting for complete info");
+    list.push("Build tolerance for flexible, un-documented experiments");
+  }
+  if (primaryPattern === "FIE" || secondaryPattern === "FIE") {
+    list.push("Proactively share knowledge and updates before team check-ins");
+    list.push("Align independent tasks with overall group architecture");
+  }
+  if (primaryPattern === "CCD" || secondaryPattern === "CCD") {
+    list.push("Strengthen independent decision confidence and solo execution");
+    list.push("Establish personal focus blocks to avoid meeting fatigue");
+  }
+  if (primaryPattern === "SPO" || secondaryPattern === "SPO") {
+    list.push("Build comfort with iterative releases and rapid prototyping");
+    list.push("Take active leadership roles during team transitions");
+  }
+  
+  if (list.length < 3) {
+    list.push("Improve cross-functional communication clarity");
+  }
+  if (list.length < 3) {
+    list.push("Engage in peer-reviews to align problem-solving styles");
+  }
+  return list.slice(0, 3);
+}
+
+function getManagerSupport(signals: any): string[] {
+  if (!signals) return ["Provide context behind decisions", "Offer periodic feedback check-ins", "Encourage gradual ownership expansion"];
+  const list: string[] = [];
+
+  if (signals.s1_adaptability_dominant === "SCP") {
+    list.push("Provide context behind decisions and clear transition maps.");
+  } else if (signals.s1_adaptability_dominant === "FIE") {
+    list.push("Provide clear goal alignment but allow space to discover execution routes.");
+  } else if (signals.s1_adaptability_dominant === "CCD") {
+    list.push("Ensure regular communicative check-ins to support transitions.");
+  } else if (signals.s1_adaptability_dominant === "SPO") {
+    list.push("Offer predictability and gradual transition pacing.");
+  }
+
+  if (signals.s2_execution_dominant === "SCP") {
+    list.push("Specify exact scope, deliverables, and quality standards.");
+  } else if (signals.s2_execution_dominant === "FIE") {
+    list.push("Grant execution details autonomy while maintaining high-level alignment.");
+  } else if (signals.s2_execution_dominant === "CCD") {
+    list.push("Encourage collaborative pairing or cross-functional reviews.");
+  } else if (signals.s2_execution_dominant === "SPO") {
+    list.push("Provide stable workloads and respect focus timelines.");
+  }
+
+  if (list.length < 3) {
+    list.push("Offer periodic feedback check-ins to align expectations.");
+  }
+  return list.slice(0, 3);
+}
+
+interface ParsedSection {
+  title: string;
+  content: string;
+}
+
+function parseMarkdown(md: string): ParsedSection[] {
+  if (!md) return [];
+  const sections: ParsedSection[] = [];
+  const parts = md.split(/(?=^#\s+\d+\.\s+)/m);
+  
+  parts.forEach((part) => {
+    const lines = part.trim().split("\n");
+    if (lines.length > 0) {
+      let title = lines[0].replace(/^#\s+\d+\.\s+/, "").trim();
+      if (lines[0].startsWith("#")) {
+        title = lines[0].replace(/^#+\s+/, "").trim();
+      }
+      const content = lines.slice(1).join("\n").trim();
+      if (title || content) {
+        sections.push({ title, content });
+      }
+    }
+  });
+
+  return sections;
+}
+
+function formatInlineMarkdown(text: string): string {
+  let formatted = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  formatted = formatted.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  formatted = formatted.replace(/`(.*?)`/g, "<code style='background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.85em;'>$1</code>");
+  return formatted;
+}
+
+function MarkdownRenderer({ content }: { content: string }) {
+  if (!content) return null;
+
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let listItems: string[] = [];
+
+  const flushList = (key: string) => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`list-${key}`} style={{ paddingLeft: "1.25rem", margin: "0.5rem 0", listStyleType: "disc", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+          {listItems.map((item, idx) => (
+            <li key={idx} style={{ fontSize: "0.85rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      listItems.push(trimmed.substring(2));
+    } else {
+      flushList(String(index));
+      if (trimmed) {
+        if (trimmed.startsWith("###")) {
+          elements.push(
+            <h4 key={index} style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", marginTop: "1rem", marginBottom: "0.5rem", textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed.replace(/^###\s+/, "")) }} />
+          );
+        } else if (trimmed.startsWith("##")) {
+          elements.push(
+            <h3 key={index} style={{ fontSize: "1rem", fontWeight: 800, color: "#243B53", marginTop: "1.25rem", marginBottom: "0.75rem", textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed.replace(/^##\s+/, "")) }} />
+          );
+        } else {
+          elements.push(
+            <p key={index} style={{ marginBottom: "0.75rem", fontSize: "0.85rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
+          );
+        }
+      }
+    }
+  });
+
+  flushList("final");
+
+  return <div>{elements}</div>;
+}
+
 export default function ProfileOutputPage() {
   const router = useRouter();
-  const { isLoggedIn, profile, loading: authLoading } = useAuthContext();
+  const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
   const [showInsights, setShowInsights] = useState(false);
-  const [loading, setLoading] = useState(false);
+  
+  // API loading states
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiData, setApiData] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Hover states
+  // Button reveal hover/loading states
+  const [revealLoading, setRevealLoading] = useState(false);
   const [hoveredButton, setHoveredButton] = useState(false);
   const [pdfHovered, setPdfHovered] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -42,15 +251,8 @@ export default function ProfileOutputPage() {
   useEffect(() => {
     if (!authLoading) {
       // Check authentication status
-      if (!isLoggedIn) {
+      if (!isLoggedIn || !user) {
         router.push("/login");
-        return;
-      }
-
-      // Check if assessment has been completed
-      const assessmentDone = localStorage.getItem("assessmentCompleted") === "true";
-      if (!assessmentDone) {
-        router.push("/welcome");
         return;
       }
 
@@ -86,20 +288,52 @@ export default function ProfileOutputPage() {
         setDesignation(desig || "");
         setExperience(exp !== null && exp !== undefined ? String(exp) : "");
       } else {
-        // If profile doesn't exist, redirect to complete it
         router.push("/profile?incomplete=true");
+        return;
       }
+
+      // Fetch dynamic analysis result from the python REST API
+      const fetchAIAnalysis = async () => {
+        try {
+          setApiLoading(true);
+          setError(null);
+          
+          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const response = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: user.id }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.detail || "Failed to process assessment metrics.");
+          }
+
+          setApiData(result);
+        } catch (err: any) {
+          console.error("Analysis Fetch Error:", err);
+          setError(err.message || "An unexpected error occurred while compiling your report.");
+        } finally {
+          setApiLoading(false);
+        }
+      };
+
+      fetchAIAnalysis();
     }
-  }, [profile, isLoggedIn, authLoading, router]);
+  }, [profile, isLoggedIn, user, authLoading, router]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [showInsights]);
 
   const handleRevealInsights = () => {
-    setLoading(true);
+    setRevealLoading(true);
     setTimeout(() => {
-      setLoading(false);
+      setRevealLoading(false);
       setShowInsights(true);
     }, 1200);
   };
@@ -134,66 +368,46 @@ export default function ProfileOutputPage() {
     }
   };
 
-  const insightsData = {
-    archetype: "Strategic Catalyzer",
-    tagline: "High Adaptability & Collaborative Leadership Profile",
-    summary:
-      "You thrive in dynamic, collaborative environments where priorities evolve. You lead with empathy and clarity, using structured experimentation to guide teams through change.",
-    dimensions: [
-      {
-        title: "Collaboration Insights",
-        score: 88,
-        icon: <Users className="h-5 w-5" style={{ color: "#5BA4A4" }} />,
-        color: "#5BA4A4",
-        details: "Synergistic Collaborator",
-        description:
-          "You naturally establish clear communication channels and seek consensus before execution. You build deep trust within cross-functional teams, acting as a bridge between structured planners and independent developers.",
-        suggestions: [
-          "Establish structured check-ins rather than ad-hoc updates to respect quiet focus time.",
-          "Lead collaborative design sprints to align developers and stakeholders early on.",
-          "Mentor junior members on sharing knowledge proactively across team boundaries.",
-        ],
-      },
-      {
-        title: "Adaptability Profile",
-        score: 92,
-        icon: <Zap className="h-5 w-5" style={{ color: "#243B53" }} />,
-        color: "#243B53",
-        details: "Agile Navigator",
-        description:
-          "You have a very high capacity to absorb sudden organizational shifts and navigate ambiguous requirements. Instead of feeling overwhelmed, you break down complex issues and form rapid action plans.",
-        suggestions: [
-          "Volunteer to lead initiative pilots or experimental sprints.",
-          "Document change-management blueprints to help team members who prefer stability.",
-          "Maintain personal priority lists to avoid context-switching fatigue.",
-        ],
-      },
-      {
-        title: "Growth Readiness",
-        score: 85,
-        icon: <TrendingUp className="h-5 w-5" style={{ color: "#A3B18A" }} />,
-        color: "#A3B18A",
-        details: "Initiative-Driven Learner",
-        description:
-          "You are highly motivated by opportunities to learn and solve complex problems. You learn best by doing, using structured examples and trial-and-error to master new systems rapidly.",
-        suggestions: [
-          "Align your development goals with emerging technical stacks in your organization.",
-          "Engage in peer-reviews to absorb different problem-solving paradigms.",
-          "Ask for stretch assignments in architecture planning or systems engineering.",
-        ],
-      },
-    ],
-  };
-
-  if (authLoading) {
+  if (authLoading || apiLoading) {
     return (
       <div className="tie-container">
         <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
+        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "300px", textAlign: "center" }}>
           <div className="tie-card-top-bar" />
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#627D98" }}>
-            Loading Profile Output...
+          <Loader2 className="h-10 w-10 animate-spin" style={{ color: "#5BA4A4", marginBottom: "1.5rem" }} />
+          <span style={{ fontSize: "1rem", fontWeight: 700, color: "#243B53" }}>
+            Analyzing your work style traits...
           </span>
+          <p style={{ fontSize: "0.85rem", color: "#627D98", marginTop: "0.5rem" }}>
+            Our Talent Intelligence Engine is compiling your report.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="tie-container">
+        <div className="tie-dot-grid" aria-hidden />
+        <div className="tie-card" style={{ alignItems: "center", textAlign: "center", maxWidth: "480px" }}>
+          <div className="tie-card-top-bar" style={{ background: "#c0392b" }} />
+          <div style={{ background: "rgba(220,53,69,0.06)", padding: "16px", borderRadius: "20px", marginBottom: "1.5rem" }}>
+            <AlertCircle className="h-10 w-10" style={{ color: "#c0392b" }} />
+          </div>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#243B53", marginBottom: "1rem" }}>
+            Analysis Failed
+          </h2>
+          <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.6, marginBottom: "2rem" }}>
+            {error}
+          </p>
+          <button
+            onClick={() => router.push("/welcome")}
+            className="tie-btn-primary"
+            style={{ background: "#5BA4A4", border: "none" }}
+          >
+            Return to Assessment
+          </button>
         </div>
       </div>
     );
@@ -202,6 +416,54 @@ export default function ProfileOutputPage() {
   if (!isLoggedIn) {
     return null; // Redirecting in useEffect
   }
+
+  // Dynamic mapped profiles based on API result
+  const combinationProfile = apiData?.scoring_metrics?.combination_profile || "Flexible Adapter";
+  const tagline = TAGLINES[combinationProfile] || "Balanced & Context-Aware Work Style";
+  const summary = SUMMARIES[combinationProfile] || "You adapt your style dynamically to align with changing requirements and team environments.";
+
+  const rawScores = apiData?.scoring_metrics?.raw_scores || { SCP: 0, FIE: 0, CCD: 0, SPO: 0 };
+  const getPercentage = (score: number) => Math.round((score / 24) * 100);
+
+  const dimensions = [
+    {
+      title: "Structured Clarity (SCP)",
+      score: getPercentage(rawScores.SCP),
+      icon: <BookOpen className="h-5 w-5" style={{ color: "#243B53" }} />,
+      color: "#243B53",
+      details: "Process & Guidelines",
+      description: "Measures your value for structured workflows, documentation, clear expectations, and process integrity.",
+    },
+    {
+      title: "Focused Independence (FIE)",
+      score: getPercentage(rawScores.FIE),
+      icon: <Zap className="h-5 w-5" style={{ color: "#A3B18A" }} />,
+      color: "#A3B18A",
+      details: "Autonomy & Execution",
+      description: "Measures your drive for self-directed problem solving, hands-on experimentation, and execution freedom.",
+    },
+    {
+      title: "Cooperative Collaboration (CCD)",
+      score: getPercentage(rawScores.CCD),
+      icon: <Users className="h-5 w-5" style={{ color: "#5BA4A4" }} />,
+      color: "#5BA4A4",
+      details: "Team Alignment",
+      description: "Measures your preference for collective brainstorming, consensus building, and cross-functional team synergy.",
+    },
+    {
+      title: "Stable Pace Orientation (SPO)",
+      score: getPercentage(rawScores.SPO),
+      icon: <TrendingUp className="h-5 w-5" style={{ color: "#E07A5F" }} />,
+      color: "#E07A5F",
+      details: "Predictable Pacing",
+      description: "Measures your comfort with consistent workflows, sustainable project pacing, and supportive dynamics.",
+    }
+  ];
+
+  const parsedSections = parseMarkdown(apiData?.report_markdown || "");
+  const currentFrictionArea = getFrictionArea(apiData?.scoring_metrics?.primary_pattern || "");
+  const currentGrowthAreas = getGrowthAreas(apiData?.scoring_metrics?.primary_pattern || "", apiData?.scoring_metrics?.secondary_pattern || "");
+  const currentManagerSupport = getManagerSupport(apiData?.manager_signals);
 
   return (
     <div className="tie-container profile-output-container" style={{ justifyContent: showInsights ? "flex-start" : "center" }}>
@@ -254,12 +516,12 @@ export default function ProfileOutputPage() {
             {/* Action button */}
             <button
               onClick={handleRevealInsights}
-              disabled={loading}
+              disabled={revealLoading}
               onMouseEnter={() => setHoveredButton(true)}
               onMouseLeave={() => setHoveredButton(false)}
               className="tie-btn-primary"
             >
-              {loading ? (
+              {revealLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Analyzing Assessment...
@@ -332,29 +594,29 @@ export default function ProfileOutputPage() {
                   Primary Profile Archetype
                 </p>
                 <h2 className="profile-output-archetype-title">
-                  {insightsData.archetype}
+                  {combinationProfile}
                 </h2>
                 <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
-                  {insightsData.tagline}
+                  {tagline}
                 </p>
                 <p style={{ fontSize: "0.875rem", color: "#b0bec8", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                  {insightsData.summary}
+                  {summary}
                 </p>
               </div>
 
               <div className="profile-output-archetype-badge">
                 <span className="profile-output-archetype-badge-val">
-                  91%
+                  {apiData?.scoring_metrics?.primary_strength_pct}%
                 </span>
                 <span className="profile-output-archetype-badge-label">
-                  Overall Compatibility
+                  Primary Strength
                 </span>
               </div>
             </div>
 
             {/* Dimensions Grid */}
             <div className="profile-output-dimensions-grid">
-              {insightsData.dimensions.map((dim) => (
+              {dimensions.map((dim) => (
                 <div
                   key={dim.title}
                   className="profile-output-dimension-card"
@@ -411,14 +673,15 @@ export default function ProfileOutputPage() {
                   </h3>
                 </div>
 
-                {/* Snapshots */}
+                {/* Snapshots from API data or Gemini parsed content */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   <div>
                     <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
                       Workforce Style Snapshot
                     </h4>
                     <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      Collaborative and structured contributor who performs best with clarity, trust, and meaningful team interaction.
+                      {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
+                       "A " + combinationProfile.toLowerCase() + " worker style with primary reliance on structured execution and supportive team dynamics."}
                     </p>
                   </div>
 
@@ -427,7 +690,8 @@ export default function ProfileOutputPage() {
                       Growth & Adaptability Style
                     </h4>
                     <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      Prefers guided adaptation and understands change better when the purpose and expectations are clearly communicated.
+                      {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
+                       "Prefers guided execution and responds well when transition parameters are documented."}
                     </p>
                   </div>
 
@@ -436,7 +700,8 @@ export default function ProfileOutputPage() {
                       Collaboration Style
                     </h4>
                     <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      Strong preference for collaborative environments, active discussions, and supportive teamwork.
+                      {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
+                       "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
                     </p>
                   </div>
                 </div>
@@ -460,7 +725,7 @@ export default function ProfileOutputPage() {
                       Potential Workplace Friction Areas
                     </h4>
                     <p style={{ fontSize: "0.85rem", color: "#c0392b", lineHeight: 1.4, margin: 0, textAlign: "left" }}>
-                      May experience stress during highly ambiguous transitions or when expectations are unclear.
+                      {currentFrictionArea}
                     </p>
                   </div>
 
@@ -470,9 +735,9 @@ export default function ProfileOutputPage() {
                       Suggested Growth Areas
                     </h4>
                     <ul className="profile-output-bullet-list">
-                      <li>Improve independent decision confidence</li>
-                      <li>Increase experimentation comfort</li>
-                      <li>Build execution speed during uncertainty</li>
+                      {currentGrowthAreas.map((area, idx) => (
+                        <li key={idx}>{area}</li>
+                      ))}
                     </ul>
                   </div>
 
@@ -482,9 +747,9 @@ export default function ProfileOutputPage() {
                       Recommended Manager Support
                     </h4>
                     <ul className="profile-output-bullet-list">
-                      <li>Provide context behind decisions</li>
-                      <li>Offer periodic feedback check-ins</li>
-                      <li>Encourage gradual ownership expansion</li>
+                      {currentManagerSupport.map((support, idx) => (
+                        <li key={idx}>{support}</li>
+                      ))}
                     </ul>
                   </div>
 
@@ -492,34 +757,43 @@ export default function ProfileOutputPage() {
               </div>
             </div>
 
-            {/* Recommendations Section */}
+            {/* AI Narrative Analysis Section (Gemini output divided into beautiful cards) */}
             <div className="profile-output-suggestions-container">
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-                <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+                <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
                 <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                  Dimensional Growth Suggestions
+                  Detailed Workforce Personality Report
                 </h3>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-                {insightsData.dimensions.map((dim) => (
-                  <div key={dim.title} className="profile-output-sug-item">
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                      <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: dim.color }} />
-                      <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
-                        {dim.title} Suggestions
-                      </h4>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", paddingLeft: "0.75rem" }}>
-                      {dim.suggestions.map((sug, idx) => (
-                        <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "0.8rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }}>
-                          <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "#5BA4A4", marginTop: "1px" }} />
-                          <span>{sug}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+                {parsedSections.map((section, idx) => {
+                  let sectionIcon = <Sparkles className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                  if (section.title.toLowerCase().includes("snapshot")) sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                  else if (section.title.toLowerCase().includes("best work")) sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                  else if (section.title.toLowerCase().includes("change")) sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                  else if (section.title.toLowerCase().includes("responsibility")) sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
+                  else if (section.title.toLowerCase().includes("others")) sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                  else if (section.title.toLowerCase().includes("frustrate")) sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
+                  else if (section.title.toLowerCase().includes("growth")) sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                  else if (section.title.toLowerCase().includes("reflection")) sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
+
+                  return (
+                    <div key={idx} className="profile-output-sug-item" style={{ borderBottom: idx === parsedSections.length - 1 ? "none" : "1px solid #f0f4f8", paddingBottom: "1.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                        <div style={{ background: "rgba(91,164,164,0.06)", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {sectionIcon}
                         </div>
-                      ))}
+                        <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
+                          {section.title}
+                        </h4>
+                      </div>
+                      <div style={{ paddingLeft: "0.5rem" }}>
+                        <MarkdownRenderer content={section.content} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -571,7 +845,8 @@ export default function ProfileOutputPage() {
           id="tie-report-pdf-template"
           style={{
             width: "794px", // exact A4 pixel width at 96dpi
-            height: "1123px", // exact A4 pixel height at 96dpi
+            height: "auto", // auto height to allow content fit
+            minHeight: "1123px",
             padding: "50px",
             background: "#ffffff",
             fontFamily: "'Inter', -apple-system, sans-serif",
@@ -676,24 +951,24 @@ export default function ProfileOutputPage() {
                   Primary Profile Archetype
                 </span>
                 <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em", color: "#ffffff" }}>
-                  {insightsData.archetype}
+                  {combinationProfile}
                 </h3>
                 <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>
-                  {insightsData.tagline}
+                  {tagline}
                 </p>
               </div>
               <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 16px", borderRadius: "12px", textAlign: "center" }}>
                 <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#5BA4A4", lineHeight: 1 }}>
-                  91%
+                  {apiData?.scoring_metrics?.primary_strength_pct}%
                 </span>
                 <span style={{ display: "block", fontSize: "7px", color: "#b0bec8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>
-                  Compatibility
+                  Strength
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Insights Section */}
+          {/* Dynamic Insights Section */}
           <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", boxSizing: "border-box" }}>
             {/* Workforce Style Snapshot */}
             <div style={{ borderLeft: "4px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
@@ -701,7 +976,8 @@ export default function ProfileOutputPage() {
                 Workforce Style Snapshot
               </h4>
               <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                Collaborative and structured contributor who performs best with clarity, trust, and meaningful team interaction.
+                {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
+                 "A " + combinationProfile.toLowerCase() + " worker style with reliance on structured execution and supportive team dynamics."}
               </p>
             </div>
 
@@ -711,7 +987,8 @@ export default function ProfileOutputPage() {
                 Growth & Adaptability Style
               </h4>
               <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                Prefers guided adaptation and understands change better when the purpose and expectations are clearly communicated.
+                {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
+                 "Prefers guided execution and responds well when transition parameters are documented."}
               </p>
             </div>
 
@@ -721,7 +998,8 @@ export default function ProfileOutputPage() {
                 Collaboration Style
               </h4>
               <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                Strong preference for collaborative environments, active discussions, and supportive teamwork.
+                {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
+                 "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
               </p>
             </div>
           </div>
@@ -736,7 +1014,7 @@ export default function ProfileOutputPage() {
                   Potential Workplace Friction Areas
                 </h4>
                 <p style={{ fontSize: "10.5px", color: "#c0392b", lineHeight: 1.4, margin: 0 }}>
-                  May experience stress during highly ambiguous transitions or when expectations are unclear.
+                  {currentFrictionArea}
                 </p>
               </div>
 
@@ -746,9 +1024,9 @@ export default function ProfileOutputPage() {
                   Suggested Growth Areas
                 </h4>
                 <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <li>Improve independent decision confidence</li>
-                  <li>Increase experimentation comfort</li>
-                  <li>Build execution speed during uncertainty</li>
+                  {currentGrowthAreas.map((area, idx) => (
+                    <li key={idx}>{area}</li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -761,9 +1039,9 @@ export default function ProfileOutputPage() {
                   Recommended Manager Support
                 </h4>
                 <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li>Provide context behind decisions</li>
-                  <li>Offer periodic feedback check-ins</li>
-                  <li>Encourage gradual ownership expansion</li>
+                  {currentManagerSupport.map((support, idx) => (
+                    <li key={idx}>{support}</li>
+                  ))}
                 </ul>
               </div>
             </div>

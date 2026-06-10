@@ -60,3 +60,17 @@ next-env.d.ts
 
 node_modules
 .next
+
+# Python virtual environment
+.venv/
+venv/
+env/
+python-env/
+
+# Python cache files
+**/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
