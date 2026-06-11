@@ -9,8 +9,9 @@ from google.genai import types
 from dotenv import load_dotenv
 from supabase import create_client, Client # 🆕 Import Supabase Client
 
-# Load environment variables from .env.local
-load_dotenv(".env.local")
+# Load environment variables from .env.local in the project root
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env.local")
+load_dotenv(env_path)
 
 app = FastAPI(
     title="TIE Assessment Engine",
@@ -185,7 +186,7 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
 
         # Corrected method instantiation typo: changed models to client SDK syntax config
         response = ai_client.models.generate_content(
-            model='gemini-1.5-flash',
+            model="gemini-2.5-flash-lite",
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
