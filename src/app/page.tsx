@@ -311,10 +311,10 @@ export default function WelcomePage() {
               </Link>
             )}
 
-            <button className="home-btn-secondary">
+            <Link href="/#why-tie" className="home-btn-secondary">
               Learn More
               <ChevronDown size={15} />
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -325,32 +325,74 @@ export default function WelcomePage() {
         </div>
       </section>
 
-      {/* ── FEATURE CARDS SECTION ────────────────────────── */}
-      <section className="home-features-section">
-        {/* subtle top border gradient */}
+      {/* ── WHY TIE SECTION ─────────────────────────────── */}
+      <section id="why-tie" className="home-info-section bg-mesh" style={{ scrollMarginTop: "70px" }}>
         <div className="home-features-section-border" aria-hidden />
-
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          {/* section label */}
-          <div className="home-section-header animate-fade-up delay-100">
-            <span className="home-section-tag">
-              Core Intelligence
-            </span>
-          </div>
-
-          <h2 className="home-section-title animate-fade-up delay-200">
-            Built for depth, not dashboards
+        <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "center", padding: "5rem 1.5rem" }}>
+          <span className="home-section-tag">Why TIE</span>
+          <h2 className="home-section-title" style={{ marginTop: "0.5rem" }}>
+            Understand Workforce Preferences
           </h2>
-          <p className="home-section-desc animate-fade-up delay-200">
-            Three lenses that give you a complete, human picture of how your
-            workforce actually works.
+          <p className="home-section-desc" style={{ maxWidth: "720px", fontSize: "1.1rem", lineHeight: 1.7, color: "#243B53", fontWeight: 500, margin: "1.5rem auto 0" }}>
+            TIE (Talent Intelligence Engine) helps organizations better understand how employees prefer to work, learn, collaborate and adapt. It is designed to provide workforce insights that help managers and leaders support employees more effectively.
           </p>
+        </div>
+      </section>
 
-          {/* cards grid */}
+      {/* ── PRODUCT SECTION ──────────────────────────────── */}
+      <section id="product" className="home-features-section" style={{ background: "#ffffff", scrollMarginTop: "70px" }}>
+        <div className="home-features-section-border" aria-hidden />
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div className="home-section-header">
+            <span className="home-section-tag">Product Lenses</span>
+          </div>
+          <h2 className="home-section-title">Integrated Insights for Every Layer</h2>
+          <p className="home-section-desc">
+            Explore TIE's specialized features tailored for employees, team managers, and organizational leaders.
+          </p>
+          
           <div className="home-features-grid">
-            {features.map((f) => (
-              <FeatureCard key={f.title} {...f} />
-            ))}
+            {/* Card 1: Employee Assessment */}
+            <div className="home-feature-card">
+              <div className="home-feature-card-icon" style={{ background: "rgba(91,164,164,0.12)", color: "#5BA4A4" }}>
+                <Users size={22} />
+              </div>
+              <span className="home-feature-card-tag" style={{ color: "#5BA4A4", background: "rgba(91,164,164,0.1)" }}>Assessment</span>
+              <h3 className="home-feature-card-title">Employee Assessment</h3>
+              <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                <li>24-question assessment</li>
+                <li>Workforce pattern identification</li>
+                <li>Personalized employee report</li>
+              </ul>
+            </div>
+
+            {/* Card 2: Manager Insights */}
+            <div className="home-feature-card">
+              <div className="home-feature-card-icon" style={{ background: "rgba(36,59,83,0.12)", color: "#243B53" }}>
+                <Zap size={22} />
+              </div>
+              <span className="home-feature-card-tag" style={{ color: "#243B53", background: "rgba(36,59,83,0.1)" }}>Managers</span>
+              <h3 className="home-feature-card-title">Manager Insights</h3>
+              <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                <li>Team-level workforce patterns</li>
+                <li>Suggested manager actions</li>
+                <li>Team support recommendations</li>
+              </ul>
+            </div>
+
+            {/* Card 3: Leadership Insights */}
+            <div className="home-feature-card">
+              <div className="home-feature-card-icon" style={{ background: "rgba(163,177,138,0.12)", color: "#A3B18A" }}>
+                <TrendingUp size={22} />
+              </div>
+              <span className="home-feature-card-tag" style={{ color: "#A3B18A", background: "rgba(163,177,138,0.1)" }}>Leadership</span>
+              <h3 className="home-feature-card-title">Leadership Insights</h3>
+              <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                <li>Organization-wide workforce trends</li>
+                <li>Workforce strengths</li>
+                <li>Opportunity areas</li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -452,6 +494,19 @@ export default function WelcomePage() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING SECTION ──────────────────────────────── */}
+      <section id="pricing" className="home-features-section" style={{ background: "#ffffff", borderTop: "1px solid rgba(36,59,83,0.06)", scrollMarginTop: "70px" }}>
+        <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center", padding: "4rem 1.5rem" }}>
+          <span className="home-section-tag">Pricing</span>
+          <h2 className="home-section-title" style={{ marginTop: "0.5rem" }}>Coming Soon</h2>
+          <div className="home-pricing-card" style={{ background: "rgba(91,164,164,0.05)", border: "1px dashed #5BA4A4", borderRadius: "18px", padding: "2rem 1.5rem", marginTop: "1.5rem" }}>
+            <p style={{ margin: 0, fontSize: "1rem", color: "#243B53", fontWeight: 600 }}>
+              We will finalize pricing after the MVP and pilot.
+            </p>
           </div>
         </div>
       </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,11 @@ export default function Navbar() {
   const handleLogout = async () => {
     await logout();
     router.push("/logout");
+  };
+
+  const toggleMenu = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    setIsMenuOpen((prev) => !prev);
   };
 
   return (
@@ -50,11 +55,15 @@ export default function Navbar() {
         <div className="tie-navbar-desktop-group">
           {/* Main navigation links */}
           <div className="tie-navbar-links">
-            {["Product", "Why TIE", "Pricing"].map((item) => (
-              <button key={item} className="tie-navbar-btn-link">
-                {item}
-              </button>
-            ))}
+            <Link href="/#why-tie" className="tie-navbar-btn-link">
+              Why TIE
+            </Link>
+            <Link href="/#product" className="tie-navbar-btn-link">
+              Product
+            </Link>
+            <Link href="/#pricing" className="tie-navbar-btn-link">
+              Pricing
+            </Link>
           </div>
 
           {/* Conditional items based on auth */}
@@ -92,10 +101,11 @@ export default function Navbar() {
         {/* Mobile Menu Toggle Button */}
         <button
           type="button"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          onClick={toggleMenu}
+          onTouchEnd={toggleMenu}
           className="tie-navbar-mobile-toggle"
           aria-label="Toggle navigation menu"
-          style={{ position: "relative", zIndex: 60 }}
+          style={{ position: "relative", zIndex: 110 }}
         >
           {isMenuOpen ? (
             <X size={24} style={{ pointerEvents: "none" }} />
@@ -109,15 +119,27 @@ export default function Navbar() {
           <div className="tie-navbar-mobile-drawer">
             {/* Menu links */}
             <div className="tie-navbar-mobile-links">
-              {["Product", "Why TIE", "Pricing"].map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="tie-navbar-mobile-btn-link"
-                >
-                  {item}
-                </button>
-              ))}
+              <Link
+                href="/#why-tie"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-mobile-btn-link"
+              >
+                Why TIE
+              </Link>
+              <Link
+                href="/#product"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-mobile-btn-link"
+              >
+                Product
+              </Link>
+              <Link
+                href="/#pricing"
+                onClick={() => setIsMenuOpen(false)}
+                className="tie-navbar-mobile-btn-link"
+              >
+                Pricing
+              </Link>
             </div>
 
             <div style={{ height: "1px", background: "rgba(36, 59, 83, 0.08)", margin: "0.25rem 0" }} />

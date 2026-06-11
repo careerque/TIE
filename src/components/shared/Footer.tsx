@@ -50,7 +50,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Column 3: Navigation Links */}
+        {/* Column 3: Navigation Links (Commented out) */}
+        {/*
         <div className="tie-footer-col">
           <h4 className="tie-footer-title">Resources</h4>
           {["Privacy Policy", "Terms of Service", "Safety & Security", "System Status"].map((item) => (
@@ -63,6 +64,7 @@ export default function Footer() {
             </Link>
           ))}
         </div>
+        */}
       </div>
 
       {/* Decorative separator */}

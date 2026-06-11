@@ -244,6 +244,7 @@
   border-radius: 8px;
   transition: color 0.15s, background 0.15s;
   font-family: inherit;
+  text-decoration: none;
 }
 
 .tie-navbar-btn-link:hover {
@@ -415,6 +416,7 @@
   text-align: left;
   transition: all 0.15s;
   width: 100%;
+  text-decoration: none;
 }
 
 .tie-navbar-mobile-btn-link:hover {
