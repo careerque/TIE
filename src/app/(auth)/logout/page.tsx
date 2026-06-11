@@ -37,18 +37,19 @@ export default function LogoutPage() {
         <div className="logout-card-top-bar" />
 
         <div className="logout-body">
-          {/* ── Logo ── */}
           <div className="logout-logo-container">
-            <div className="logout-logo-crop">
-              <Image
-                src="/logo.png"
-                alt="Company Logo"
-                width={130}
-                height={130}
-                priority
-                className="logout-logo-img"
-              />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Company Logo"
+              width={152}
+              height={65}
+              priority
+              style={{
+                display: "block",
+                height: "65px",
+                width: "auto",
+              }}
+            />
           </div>
 
           <div className="logout-animation-area">

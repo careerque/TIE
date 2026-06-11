@@ -122,28 +122,18 @@ export default function EmailConfirmationPage() {
 
           {/* ── Logo ── */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:'1.5rem', animation:'fadeUp .5s .06s both' }}>
-            <div
+            <Image
+              src="/logo.png"
+              alt="Company Logo"
+              width={152}
+              height={65}
+              priority
               style={{
-                width: "130px",
-                height: "60px",
-                position: "relative",
-                overflow: "hidden",
+                display: "block",
+                height: "65px",
+                width: "auto",
               }}
-            >
-              <Image
-                src="/logo.png"
-                alt="Company Logo"
-                width={130}
-                height={130}
-                priority
-                style={{
-                  position: "absolute",
-                  top: "-35px",
-                  left: "0",
-                  display: "block",
-                }}
-              />
-            </div>
+            />
           </div>
 
           {status === 'loading' && (

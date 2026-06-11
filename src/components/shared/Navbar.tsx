@@ -27,28 +27,18 @@ export default function Navbar() {
       <div className="tie-navbar-container" style={{ position: "relative" }}>
         {/* Logo container to crop the whitespace in logo.png without clipping sides */}
         <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-          <div
+          <Image
+            src="/Logo.png"
+            alt="TIE Logo"
+            width={112}
+            height={48}
+            priority
             style={{
-              width: "110px",
-              height: "50px",
-              position: "relative",
-              overflow: "hidden",
+              display: "block",
+              height: "48px",
+              width: "auto",
             }}
-          >
-            <Image
-              src="/logo.png"
-              alt="TIE Logo"
-              width={110}
-              height={110}
-              priority
-              style={{
-                position: "absolute",
-                top: "-30px",
-                left: "0",
-                display: "block",
-              }}
-            />
-          </div>
+          />
         </Link>
 
         {/* Desktop Navigation Group */}

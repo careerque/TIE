@@ -860,26 +860,15 @@ export default function ProfileOutputPage() {
         >
           {/* PDF Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-            <div
+            <img
+              src="/logo.png"
+              alt="TIE Logo"
               style={{
-                width: "110px",
-                height: "50px",
-                position: "relative",
-                overflow: "hidden",
+                height: "52px",
+                width: "auto",
+                display: "block",
               }}
-            >
-              <img
-                src="/logo.png"
-                alt="TIE Logo"
-                style={{
-                  position: "absolute",
-                  top: "-30px",
-                  left: "0",
-                  width: "110px",
-                  height: "110px",
-                }}
-              />
-            </div>
+            />
             <div style={{ textAlign: "right" }}>
               <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
                 Talent Intelligence Engine

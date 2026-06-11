@@ -214,7 +214,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.25rem 4rem;
+  padding: 0.5rem 4rem;
   width: 100%;
   box-sizing: border-box;
   position: relative;
@@ -445,7 +445,7 @@
 
 @media (max-width: 992px) {
   .tie-navbar-container {
-    padding: 0.25rem 1.5rem !important;
+    padding: 0.5rem 1.5rem !important;
   }
   .tie-navbar-desktop-group {
     display: none !important;
