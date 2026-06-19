@@ -20,17 +20,28 @@ import {
   autoSaveSingleResponse,
   CleanQuestion
 } from "@/services/assessmentService";
+import { supabasedb } from "@/lib/supabaseClient";
+import { seededShuffle } from "@/lib/seededShuffle";
+
+// Define a structural interface for our wrapped questions containing locked random layout variants
+interface SeededQuestion extends CleanQuestion {
+  shuffledOptions: {
+    text: string;
+    originalIndex: number;
+  }[];
+}
 
 export default function AssessmentPage() {
   const router = useRouter();
   const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
 
-  const [questions, setQuestions] = useState<CleanQuestion[]>([]);
+  // 🔧 CHANGED: Modified core state array to accept our explicit SeededQuestion structural shape
+  const [questions, setQuestions] = useState<SeededQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({}); // { questionId: selectedOptionIndex }
+  const [answers, setAnswers] = useState<Record<number, number>>({}); // { questionId: selectedOptionIndex (0-3) }
   const [savingId, setSavingId] = useState<number | null>(null); // Visual feedback indicator for auto-save
 
   const [submitting, setSubmitting] = useState(false);
@@ -48,15 +59,40 @@ export default function AssessmentPage() {
 
       const initializeAssessment = async () => {
         try {
-          // Fetch structural questions and user progress in parallel
-          const [questionsRes, progressRes] = await Promise.all([
+          // Fetch structural questions, user response metrics, and profile seed parallelly
+          const [questionsRes, progressRes, profileRes] = await Promise.all([
             fetchAssessmentStructure(),
-            fetchUserSavedProgress(user.id)
+            fetchUserSavedProgress(user.id),
+            supabasedb.from("profiles").select("assessment_seed").eq("id", user.id).single()
           ]);
 
           if (questionsRes.success && questionsRes.data) {
-            const qs = questionsRes.data;
-            setQuestions(qs);
+            // 🔧 CHANGED: Safely pull the user profile assessment seed integer
+            let sessionSeed = profileRes.data?.assessment_seed;
+
+            // 🔧 CHANGED: Secure fallback fallback generation matching the DB trigger pattern if no seed is assigned
+            if (!sessionSeed) {
+              sessionSeed = Math.floor(Math.random() * 100000 + 1);
+              await supabasedb.from("profiles").update({ assessment_seed: sessionSeed }).eq("id", user.id);
+            }
+
+            // 🔧 CHANGED: Map over core structural questions and lock their visual positions permanently inside state
+            const preparedQuestions: SeededQuestion[] = questionsRes.data.map((q) => {
+              const optionWithOriginalIndex = q.options.map((text, orgIndex) => ({
+                text: text,
+                originalIndex: orgIndex // Un-spoofable scoring tracer: 0=SCP, 1=FIE, 2=CCD, 3=SPO
+              }));
+
+              // Unique question seed generation math ensuring different variations cross questions
+              const uniqueSeedValue = sessionSeed + q.question_id;
+              
+              return {
+                ...q,
+                shuffledOptions: seededShuffle(optionWithOriginalIndex, uniqueSeedValue)
+              };
+            });
+
+            setQuestions(preparedQuestions);
 
             // Reconstruct saved progress if it exists
             if (progressRes.success && progressRes.data && progressRes.data.length > 0) {
@@ -67,14 +103,14 @@ export default function AssessmentPage() {
               setAnswers(mappedAnswers);
 
               // Find the first question index that has not been answered yet
-              const firstUnansweredIndex = qs.findIndex(
+              const firstUnansweredIndex = preparedQuestions.findIndex(
                 (q) => mappedAnswers[q.question_id] === undefined
               );
 
               if (firstUnansweredIndex !== -1) {
                 setCurrentIndex(firstUnansweredIndex);
               } else {
-                setCurrentIndex(qs.length - 1);
+                setCurrentIndex(preparedQuestions.length - 1);
               }
             }
           } else {
@@ -108,17 +144,17 @@ export default function AssessmentPage() {
   const isLastQuestion = currentIndex === totalQuestions - 1;
   const isAllCompleted = totalAnsweredCount === totalQuestions;
 
-  const handleSelectOption = async (questionId: number, optionIndex: number) => {
+  const handleSelectOption = async (questionId: number, originalIndex: number) => {
     if (!user) return;
 
-    // Optimistic UI Update: change color instantly in the browser memory first
-    setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
-    setSavingId(questionId); // Triggers sub-text "Saving progress..."
+    // 🔧 CHANGED: Optimistically update state tracking via the locked originalIndex identity contract (0-3)
+    setAnswers((prev) => ({ ...prev, [questionId]: originalIndex }));
+    setSavingId(questionId); 
 
-    // Fire network call instantly behind the scenes
-    const res = await autoSaveSingleResponse(user.id, questionId, optionIndex);
+    // Fire network call instantly behind the scenes using the correct immutable tracker indicator mapping index
+    const res = await autoSaveSingleResponse(user.id, questionId, originalIndex);
 
-    setSavingId(null); // Clear indicator on finish
+    setSavingId(null); 
 
     if (!res.success) {
       alert(`Auto-save failed: ${res.error?.message}`);
@@ -298,13 +334,16 @@ export default function AssessmentPage() {
 
             {/* Answer Options */}
             <div style={{ minHeight: "180px" }}>
-              {currentQuestion.options.map((optionText, index) => {
-                const isSelected = currentAnswerIndex === index;
+              {/* 🔧 CHANGED: Loop dynamically through the locked, cached shuffled options array tool */}
+              {currentQuestion.shuffledOptions.map((option, index) => {
+                // Check selection match directly by referencing its hidden original index identity key
+                const isSelected = currentAnswerIndex === option.originalIndex;
                 const optionLetter = String.fromCharCode(65 + index);
+                
                 return (
                   <button
                     key={index}
-                    onClick={() => handleSelectOption(currentQuestion.question_id, index)}
+                    onClick={() => handleSelectOption(currentQuestion.question_id, option.originalIndex)}
                     onMouseEnter={() => setHoveredOptionIdx(index)}
                     onMouseLeave={() => setHoveredOptionIdx(null)}
                     className={`assessment-option-btn ${isSelected ? "is-selected" : ""}`}
@@ -312,7 +351,7 @@ export default function AssessmentPage() {
                     <div className="assessment-option-circle">
                       {isSelected ? <CheckCircle2 className="h-5 w-5" /> : optionLetter}
                     </div>
-                    <span style={{ flexGrow: 1 }}>{optionText}</span>
+                    <span style={{ flexGrow: 1 }}>{option.text}</span>
                   </button>
                 );
               })}
@@ -353,7 +392,7 @@ export default function AssessmentPage() {
         ) : (
           <button
             onClick={handleNext}
-            disabled={answers[currentQuestion.question_id] === undefined}
+            disabled={currentQuestion && answers[currentQuestion.question_id] === undefined}
             onMouseEnter={() => setHoveredNext(true)}
             onMouseLeave={() => setHoveredNext(false)}
             className="assessment-nav-next"

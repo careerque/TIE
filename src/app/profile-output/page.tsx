@@ -1,5 +1,6 @@
 "use client";
 
+// Version 2.0.0 - Clean Cache-Busting Rewrite
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,9 +20,11 @@ import {
   Shield,
   HelpCircle,
   Brain,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
+import { updateProfile } from "@/services/auth/ProfileServices";
 
 interface ScoringMetrics {
   raw_scores: Record<string, number>;
@@ -225,19 +228,34 @@ function MarkdownRenderer({ content }: { content: string }) {
 
 export default function ProfileOutputPage() {
   const router = useRouter();
-  const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
-  const [showInsights, setShowInsights] = useState(false);
+  const { isLoggedIn, profile, user, loading: authLoading, refreshProfile } = useAuthContext();
   
   // API loading states
   const [apiLoading, setApiLoading] = useState(true);
   const [apiData, setApiData] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingText, setLoadingText] = useState("Analyzing your assessment responses...");
 
-  // Button reveal hover/loading states
-  const [revealLoading, setRevealLoading] = useState(false);
-  const [hoveredButton, setHoveredButton] = useState(false);
+  // PDF generation and hover states
   const [pdfHovered, setPdfHovered] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  useEffect(() => {
+    if (apiLoading) {
+      const texts = [
+        "Analyzing your assessment responses...",
+        "Identifying primary behavioral dimensions...",
+        "Synthesizing workforce archetype profiles...",
+        "Generating dynamic report insights..."
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        i = (i + 1) % texts.length;
+        setLoadingText(texts[i]);
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [apiLoading]);
 
   // Profile Fields States
   const [firstName, setFirstName] = useState("");
@@ -248,6 +266,81 @@ export default function ProfileOutputPage() {
   const [designation, setDesignation] = useState("");
   const [experience, setExperience] = useState("");
 
+  // Profile Inline Form & Submission States
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [interestInput, setInterestInput] = useState("");
+  const [formValidationError, setFormValidationError] = useState<string | null>(null);
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormValidationError(null);
+
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !employeeId.trim() ||
+      !designation.trim() ||
+      !experience.trim() ||
+      interests.length === 0
+    ) {
+      setFormValidationError("Please fill out all fields and add at least one interest.");
+      return;
+    }
+
+    const expNum = Number(experience);
+    if (isNaN(expNum) || expNum < 0) {
+      setFormValidationError("Please enter a valid number of years for experience.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const payload = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        employee_id: employeeId.trim(),
+        designation: designation.trim(),
+        experiense_years: expNum,
+        interests: interests
+      };
+
+      const res = await updateProfile(payload);
+      if (!res.success) {
+        setFormValidationError(res.error?.message || "Failed to update profile.");
+        setIsSavingProfile(false);
+        return;
+      }
+
+      await refreshProfile();
+    } catch (err: any) {
+      console.error("Profile save error:", err);
+      setFormValidationError("An unexpected error occurred while saving your profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const addInterestTag = () => {
+    const val = interestInput.trim();
+    if (val && !interests.includes(val)) {
+      setInterests([...interests, val]);
+      setInterestInput("");
+    }
+  };
+
+  const removeInterestTag = (tagToRemove: string) => {
+    setInterests(interests.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleInterestKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addInterestTag();
+    }
+  };
+
   useEffect(() => {
     if (!authLoading) {
       // Check authentication status
@@ -256,43 +349,6 @@ export default function ProfileOutputPage() {
         return;
       }
 
-      if (profile) {
-        const fName = profile.first_name;
-        const lName = profile.last_name;
-        const emailAddr = profile.email;
-        const empId = profile.employee_id;
-        const storedInterests = profile.interests;
-        const desig = profile.designation;
-        const exp = profile.experiense_years;
-
-        const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
-
-        if (
-          !fName || !fName.trim() ||
-          !lName || !lName.trim() ||
-          !emailAddr || !emailAddr.trim() ||
-          !empId || !empId.trim() ||
-          !hasInterests ||
-          !desig || !desig.trim() ||
-          (exp === undefined || exp === null || String(exp).trim() === "")
-        ) {
-          router.push("/profile?incomplete=true");
-          return;
-        }
-
-        setFirstName(fName || "");
-        setLastName(lName || "");
-        setEmail(emailAddr || "");
-        setEmployeeId(empId || "");
-        setInterests(storedInterests || []);
-        setDesignation(desig || "");
-        setExperience(exp !== null && exp !== undefined ? String(exp) : "");
-      } else {
-        router.push("/profile?incomplete=true");
-        return;
-      }
-
-      // Fetch dynamic analysis result from the python REST API
       const fetchAIAnalysis = async () => {
         try {
           setApiLoading(true);
@@ -325,21 +381,58 @@ export default function ProfileOutputPage() {
         }
       };
 
-      fetchAIAnalysis();
+      if (profile) {
+        const fName = profile.first_name;
+        const lName = profile.last_name;
+        const emailAddr = profile.email;
+        const empId = profile.employee_id;
+        const storedInterests = profile.interests;
+        const desig = profile.designation;
+        const exp = profile.experiense_years;
+
+        const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
+
+        if (
+          !fName || !fName.trim() ||
+          !lName || !lName.trim() ||
+          !emailAddr || !emailAddr.trim() ||
+          !empId || !empId.trim() ||
+          !hasInterests ||
+          !desig || !desig.trim() ||
+          (exp === undefined || exp === null || String(exp).trim() === "")
+        ) {
+          setFirstName(fName || "");
+          setLastName(lName || "");
+          setEmail(emailAddr || "");
+          setEmployeeId(empId || "");
+          setInterests(storedInterests || []);
+          setDesignation(desig || "");
+          setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+
+          setProfileIncomplete(true);
+          setApiLoading(false);
+          return;
+        }
+
+        setFirstName(fName || "");
+        setLastName(lName || "");
+        setEmail(emailAddr || "");
+        setEmployeeId(empId || "");
+        setInterests(storedInterests || []);
+        setDesignation(desig || "");
+        setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+        setProfileIncomplete(false);
+        fetchAIAnalysis();
+      } else {
+        router.push("/profile?incomplete=true");
+        return;
+      }
     }
   }, [profile, isLoggedIn, user, authLoading, router]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [showInsights]);
-
-  const handleRevealInsights = () => {
-    setRevealLoading(true);
-    setTimeout(() => {
-      setRevealLoading(false);
-      setShowInsights(true);
-    }, 1200);
-  };
+  }, [apiLoading]);
 
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
@@ -371,19 +464,365 @@ export default function ProfileOutputPage() {
     }
   };
 
-  if (authLoading || apiLoading) {
+  if (authLoading) {
     return (
       <div className="tie-container">
         <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "300px", textAlign: "center" }}>
+        <div 
+          className="tie-card" 
+          style={{ 
+            alignItems: "center", 
+            justifyContent: "center", 
+            minHeight: "300px", 
+            textAlign: "center",
+            padding: "2rem",
+            maxWidth: "400px",
+            background: "rgba(255, 255, 255, 0.75)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255, 255, 255, 0.5)",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.04)"
+          }}
+        >
           <div className="tie-card-top-bar" />
-          <Loader2 className="h-10 w-10 animate-spin" style={{ color: "#5BA4A4", marginBottom: "1.5rem" }} />
+          
+          <div style={{ position: "relative", marginBottom: "1.5rem", display: "flex", justifyContent: "center", alignItems: "center", width: "70px", height: "70px" }}>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+              style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "50%",
+                border: "2px dashed #5BA4A4",
+                position: "absolute"
+              }}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.15, 1], opacity: [0.15, 0.3, 0.15] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                background: "rgba(91, 164, 164, 0.2)",
+                position: "absolute"
+              }}
+            />
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: "#ffffff",
+                border: "2px solid #5BA4A4",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#5BA4A4",
+                zIndex: 2
+              }}
+            >
+              <Brain size={20} />
+            </div>
+          </div>
+          
           <span style={{ fontSize: "1rem", fontWeight: 700, color: "#243B53" }}>
-            Analyzing your work style traits...
+            Loading your credentials...
           </span>
-          <p style={{ fontSize: "0.85rem", color: "#627D98", marginTop: "0.5rem" }}>
-            Our Talent Intelligence Engine is compiling your report.
+        </div>
+      </div>
+    );
+  }
+
+  if (profileIncomplete) {
+    return (
+      <div className="tie-container" style={{ justifyContent: "center", padding: "2rem 1.5rem" }}>
+        <div className="tie-dot-grid" aria-hidden />
+        
+        <div 
+          className="tie-card" 
+          style={{ 
+            maxWidth: "600px", 
+            width: "100%", 
+            padding: "2.5rem", 
+            boxSizing: "border-box",
+            background: "#ffffff",
+            boxShadow: "0 10px 30px rgba(36, 59, 83, 0.08)"
+          }}
+        >
+          <div className="tie-card-top-bar" />
+          
+          <div className="tie-header" style={{ marginBottom: "2rem", textAlign: "left" }}>
+            <div className="tie-badge">
+              <Sparkles size={11} style={{ marginRight: "2px" }} />
+              Complete Profile
+            </div>
+            <h1 className="tie-title" style={{ fontSize: "1.75rem", letterSpacing: "-0.02em", marginTop: "0.5rem" }}>
+              Professional Profile Details
+            </h1>
+            <p className="tie-desc" style={{ marginTop: "0.5rem" }}>
+              Please finalize your professional information below. TIE uses these details to generate and contextualize your talent archetype report.
+            </p>
+          </div>
+
+          <form onSubmit={handleProfileSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {formValidationError && (
+              <div 
+                style={{ 
+                  background: "rgba(220, 53, 69, 0.06)", 
+                  border: "1px solid rgba(220, 53, 69, 0.12)", 
+                  padding: "0.85rem 1rem", 
+                  borderRadius: "12px", 
+                  color: "#c0392b", 
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  textAlign: "left"
+                }}
+              >
+                {formValidationError}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. Jane"
+                  style={{ width: "100%" }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. Doe"
+                  style={{ width: "100%" }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                Employee ID
+              </label>
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="form-input"
+                placeholder="e.g. EMP-90210"
+                style={{ width: "100%" }}
+                required
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.25rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                  Designation / Role
+                </label>
+                <input
+                  type="text"
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. Senior Software Engineer"
+                  style={{ width: "100%" }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                  Experience (Years)
+                </label>
+                <input
+                  type="number"
+                  value={experience}
+                  onChange={(e) => setExperience(e.target.value)}
+                  className="form-input"
+                  placeholder="e.g. 5"
+                  min="0"
+                  style={{ width: "100%" }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-start" }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", color: "#627D98" }}>
+                Interests / Professional Focus Areas
+              </label>
+              
+              <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                <input
+                  type="text"
+                  placeholder="e.g. TypeScript, System Architecture, UI/UX"
+                  value={interestInput}
+                  onChange={(e) => setInterestInput(e.target.value)}
+                  onKeyDown={handleInterestKeyDown}
+                  className="form-input"
+                  style={{ flexGrow: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={addInterestTag}
+                  style={{
+                    background: "#5BA4A4",
+                    border: "none",
+                    color: "#ffffff",
+                    fontWeight: 700,
+                    fontSize: "0.8125rem",
+                    cursor: "pointer",
+                    padding: "0 16px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center"
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Tag Badges Container */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "0.5rem" }}>
+                {interests.length > 0 ? (
+                  interests.map((tag) => (
+                    <span key={tag} className="profile-tag">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeInterestTag(tag)}
+                        className="profile-tag-remove-btn"
+                        style={{ cursor: "pointer", background: "none", border: "none", padding: "0 0 0 4px", display: "inline-flex", alignItems: "center" }}
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ color: "#9aa8b6", fontStyle: "italic", fontSize: "0.8125rem", fontWeight: 400 }}>No interests added yet (add at least one).</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingProfile}
+              className="tie-btn-primary"
+              style={{ marginTop: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+            >
+              {isSavingProfile ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Saving Profile...
+                </>
+              ) : (
+                <>
+                  Save & Generate Report
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (apiLoading) {
+    return (
+      <div className="tie-container">
+        <div className="tie-dot-grid" aria-hidden />
+        <div 
+          className="tie-card" 
+          style={{ 
+            alignItems: "center", 
+            justifyContent: "center", 
+            minHeight: "360px", 
+            textAlign: "center",
+            padding: "3rem 2rem",
+            maxWidth: "480px",
+            background: "rgba(255, 255, 255, 0.75)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255, 255, 255, 0.5)",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.04)"
+          }}
+        >
+          <div className="tie-card-top-bar" />
+          
+          <div style={{ position: "relative", marginBottom: "2rem", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+              style={{
+                width: "90px",
+                height: "90px",
+                borderRadius: "50%",
+                border: "2px dashed #5BA4A4",
+                position: "absolute"
+              }}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.35, 0.15] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              style={{
+                width: "70px",
+                height: "70px",
+                borderRadius: "50%",
+                background: "rgba(91, 164, 164, 0.2)",
+                position: "absolute"
+              }}
+            />
+            <motion.div
+              animate={{ scale: [0.95, 1.05, 0.95] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "50%",
+                background: "#ffffff",
+                border: "2px solid #5BA4A4",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#5BA4A4",
+                boxShadow: "0 8px 16px rgba(91, 164, 164, 0.1)",
+                zIndex: 2
+              }}
+            >
+              <Brain size={28} />
+            </motion.div>
+          </div>
+
+          <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#243B53", display: "block" }}>
+            {loadingText}
+          </span>
+          <p style={{ fontSize: "0.85rem", color: "#627D98", marginTop: "0.6rem", maxWidth: "320px", lineHeight: 1.5 }}>
+            Our Talent Intelligence Engine is currently processing your data and calculating your behavioral metrics.
           </p>
+
+          <div style={{ width: "100%", height: "4px", background: "#f0f4f8", borderRadius: "99px", overflow: "hidden", marginTop: "2rem", maxWidth: "280px" }}>
+            <motion.div
+              animate={{ x: ["-100%", "100%"] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+              style={{ width: "40%", height: "100%", background: "#5BA4A4", borderRadius: "99px" }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -469,377 +908,313 @@ export default function ProfileOutputPage() {
   const currentManagerSupport = getManagerSupport(apiData?.manager_signals);
 
   return (
-    <div className="tie-container profile-output-container" style={{ justifyContent: showInsights ? "flex-start" : "center" }}>
+    <div className="tie-container profile-output-container" style={{ justifyContent: "flex-start" }}>
       {/* Background blobs */}
       <div aria-hidden style={{ position: "absolute", top: "-130px", right: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,164,164,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div aria-hidden style={{ position: "absolute", bottom: "-130px", left: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(163,177,138,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <AnimatePresence mode="wait">
-        {!showInsights ? (
-          <motion.div
-            key="congratulations"
-            initial={{ opacity: 0, y: 30, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="tie-card"
-            style={{ textAlign: "center" }}
-          >
-            {/* Top Accent glow */}
-            <div className="tie-card-top-bar" />
-
-            {/* Checkmark animation container */}
-            <div style={{ position: "relative", marginBottom: "2rem", display: "flex", justifyContent: "center" }}>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.1, 1] }}
-                transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-                style={{ display: "flex", width: "80px", height: "80px", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "rgba(163,177,138,0.1)", border: "2px solid #A3B18A", boxSizing: "border-box" }}
-              >
-                <CheckCircle className="h-10 w-10 text-[#A3B18A]" />
-              </motion.div>
-              <motion.div
-                animate={{ scale: [1, 1.35, 1], opacity: [0.35, 0, 0.35] }}
-                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                style={{ position: "absolute", inset: 0, margin: "auto", width: "80px", height: "80px", borderRadius: "50%", border: "1px solid rgba(163,177,138,0.3)", pointerEvents: "none" }}
-              />
+        <motion.div
+          key="insights"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="profile-output-dashboard"
+        >
+          {/* Header section */}
+          <div className="profile-output-header">
+            <div className="tie-badge">
+              <Sparkles className="h-3.5 w-3.5" style={{ color: "#5BA4A4", marginRight: "2px" }} />
+              <span>Assessment Output</span>
             </div>
-
-            {/* Content */}
-            <h1 className="tie-title" style={{ fontSize: "2rem", marginBottom: "0.5rem", textAlign: "center" }}>
-              Congratulations!
+            <h1 className="profile-output-title">
+              Your Talent Dynamics Insights
             </h1>
-            <h2 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1.5rem" }}>
-              You Finished Successfully
-            </h2>
-            <p className="tie-desc" style={{ marginBottom: "2.5rem", padding: "0 10px", textAlign: "center" }}>
-              TIE has mapped your workplace patterns and generated your workforce insight profile.
+            <p className="tie-desc" style={{ textAlign: "center" }}>
+              A personalized breakdown of your collaboration habits, change adaptability, and growth vectors.
             </p>
+          </div>
 
-            {/* Action button */}
-            <button
-              onClick={handleRevealInsights}
-              disabled={revealLoading}
-              onMouseEnter={() => setHoveredButton(true)}
-              onMouseLeave={() => setHoveredButton(false)}
-              className="tie-btn-primary"
-            >
-              {revealLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Analyzing Assessment...
-                </>
-              ) : (
-                <>
-                  View My Workforce Insights
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="insights"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="profile-output-dashboard"
-          >
-            {/* Header section */}
-            <div className="profile-output-header">
-              <div className="tie-badge">
-                <Sparkles className="h-3.5 w-3.5" style={{ color: "#5BA4A4", marginRight: "2px" }} />
-                <span>Assessment Output</span>
-              </div>
-              <h1 className="profile-output-title">
-                Your Talent Dynamics Insights
-              </h1>
-              <p className="tie-desc" style={{ textAlign: "center" }}>
-                A personalized breakdown of your collaboration habits, change adaptability, and growth vectors.
+          {/* Employee Details Profile Card on page */}
+          <div className="profile-output-details-card">
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Employee Name</span>
+              <span className="profile-output-detail-value">{firstName} {lastName}</span>
+            </div>
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Employee ID</span>
+              <span className="profile-output-detail-value">{employeeId}</span>
+            </div>
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Interests</span>
+              <span className="profile-output-detail-value">{interests.join(", ") || "None"}</span>
+            </div>
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Designation</span>
+              <span className="profile-output-detail-value">{designation}</span>
+            </div>
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Experience</span>
+              <span className="profile-output-detail-value">{experience} Years</span>
+            </div>
+            <div className="profile-output-detail-col">
+              <span className="profile-output-detail-label">Email Address</span>
+              <span className="profile-output-detail-value">{email}</span>
+            </div>
+          </div>
+
+          {/* Archetype Banner Card */}
+          <div className="profile-output-archetype-card">
+            {/* Graphic accents */}
+            <div className="profile-output-archetype-accent-glow" />
+
+            <div style={{ flex: 1, minWidth: "280px" }}>
+              <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#5BA4A4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", textAlign: "left" }}>
+                Primary Profile Archetype
+              </p>
+              <h2 className="profile-output-archetype-title">
+                {combinationProfile}
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
+                {tagline}
+              </p>
+              <p style={{ fontSize: "0.875rem", color: "#b0bec8", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
+                {summary}
               </p>
             </div>
 
-            {/* Employee Details Profile Card on page */}
-            <div className="profile-output-details-card">
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Employee Name</span>
-                <span className="profile-output-detail-value">{firstName} {lastName}</span>
-              </div>
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Employee ID</span>
-                <span className="profile-output-detail-value">{employeeId}</span>
-              </div>
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Interests</span>
-                <span className="profile-output-detail-value">{interests.join(", ") || "None"}</span>
-              </div>
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Designation</span>
-                <span className="profile-output-detail-value">{designation}</span>
-              </div>
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Experience</span>
-                <span className="profile-output-detail-value">{experience} Years</span>
-              </div>
-              <div className="profile-output-detail-col">
-                <span className="profile-output-detail-label">Email Address</span>
-                <span className="profile-output-detail-value">{email}</span>
-              </div>
+            <div className="profile-output-archetype-badge">
+              <span className="profile-output-archetype-badge-val">
+                {apiData?.scoring_metrics?.primary_strength_pct}%
+              </span>
+              <span className="profile-output-archetype-badge-label">
+                Primary Strength
+              </span>
             </div>
+          </div>
 
-            {/* Archetype Banner Card */}
-            <div className="profile-output-archetype-card">
-              {/* Graphic accents */}
-              <div className="profile-output-archetype-accent-glow" />
-
-              <div style={{ flex: 1, minWidth: "280px" }}>
-                <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#5BA4A4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", textAlign: "left" }}>
-                  Primary Profile Archetype
-                </p>
-                <h2 className="profile-output-archetype-title">
-                  {combinationProfile}
-                </h2>
-                <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
-                  {tagline}
-                </p>
-                <p style={{ fontSize: "0.875rem", color: "#b0bec8", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                  {summary}
-                </p>
-              </div>
-
-              <div className="profile-output-archetype-badge">
-                <span className="profile-output-archetype-badge-val">
-                  {apiData?.scoring_metrics?.primary_strength_pct}%
-                </span>
-                <span className="profile-output-archetype-badge-label">
-                  Primary Strength
-                </span>
-              </div>
-            </div>
-
-            {/* Dimensions Grid */}
-            <div className="profile-output-dimensions-grid">
-              {dimensions.map((dim) => (
-                <div
-                  key={dim.title}
-                  className="profile-output-dimension-card"
-                >
-                  <div>
-                    {/* Header */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <div style={{ background: `${dim.color}12`, padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {dim.icon}
-                        </div>
-                        <h3 style={{ fontSize: "0.875rem", fontWeight: 800, color: "#243B53", margin: 0 }}>
-                          {dim.title}
-                        </h3>
+          {/* Dimensions Grid */}
+          <div className="profile-output-dimensions-grid">
+            {dimensions.map((dim) => (
+              <div
+                key={dim.title}
+                className="profile-output-dimension-card"
+              >
+                <div>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <div style={{ background: `${dim.color}12`, padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {dim.icon}
                       </div>
-                      <span style={{ fontSize: "1.1rem", fontWeight: 800, color: dim.color }}>
-                        {dim.score}%
-                      </span>
+                      <h3 style={{ fontSize: "0.875rem", fontWeight: 800, color: "#243B53", margin: 0 }}>
+                        {dim.title}
+                      </h3>
                     </div>
-
-                    <div style={{ marginBottom: "1rem", textAlign: "left" }}>
-                      <span style={{ fontSize: "9px", fontWeight: 700, border: `1px solid ${dim.color}30`, borderRadius: "99px", padding: "3px 10px", textTransform: "uppercase", color: dim.color, background: `${dim.color}05`, letterSpacing: "0.04em" }}>
-                        {dim.details}
-                      </span>
-                    </div>
-
-                    <p style={{ fontSize: "0.78rem", color: "#627D98", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                      {dim.description}
-                    </p>
+                    <span style={{ fontSize: "1.1rem", fontWeight: 800, color: dim.color }}>
+                      {dim.score}%
+                    </span>
                   </div>
 
-                  {/* Progress Line */}
-                  <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f0f4f8" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", fontWeight: 700, color: "#9aa8b6", textTransform: "uppercase", marginBottom: "0.375rem" }}>
-                      <span>Dimensional Strength</span>
-                      <span>{dim.score}%</span>
-                    </div>
-                    <div style={{ height: "5px", width: "100%", background: "#F4F7FA", borderRadius: "99px", overflow: "hidden" }}>
-                      <div style={{ width: `${dim.score}%`, height: "100%", background: dim.color, borderRadius: "99px" }} />
-                    </div>
+                  <div style={{ marginBottom: "1rem", textAlign: "left" }}>
+                    <span style={{ fontSize: "9px", fontWeight: 700, border: `1px solid ${dim.color}30`, borderRadius: "99px", padding: "3px 10px", textTransform: "uppercase", color: dim.color, background: `${dim.color}05`, letterSpacing: "0.04em" }}>
+                      {dim.details}
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Qualitative Snapshot and Friction/Growth Areas */}
-            <div className="profile-output-split-row">
-              {/* Card 1: Behavioral Dynamics Insights */}
-              <div className="profile-output-split-card">
-                <div className="profile-output-card-header">
-                  <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
-                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                    Workplace Dynamics Insights
-                  </h3>
+                  <p style={{ fontSize: "0.78rem", color: "#627D98", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
+                    {dim.description}
+                  </p>
                 </div>
 
-                {/* Snapshots from API data or Gemini parsed content */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                  <div>
-                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                      Workforce Style Snapshot
-                    </h4>
-                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
-                       "A " + combinationProfile.toLowerCase() + " worker style with primary reliance on structured execution and supportive team dynamics."}
-                    </p>
+                {/* Progress Line */}
+                <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f0f4f8" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", fontWeight: 700, color: "#9aa8b6", textTransform: "uppercase", marginBottom: "0.375rem" }}>
+                    <span>Dimensional Strength</span>
+                    <span>{dim.score}%</span>
                   </div>
-
-                  <div>
-                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                      Growth & Adaptability Style
-                    </h4>
-                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
-                       "Prefers guided execution and responds well when transition parameters are documented."}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                      Collaboration Style
-                    </h4>
-                    <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                      {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
-                       "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
-                    </p>
+                  <div style={{ height: "5px", width: "100%", background: "#F4F7FA", borderRadius: "99px", overflow: "hidden" }}>
+                    <div style={{ width: `${dim.score}%`, height: "100%", background: dim.color, borderRadius: "99px" }} />
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* Card 2: Development & Manager Support Plan */}
-              <div className="profile-output-split-card">
-                <div className="profile-output-card-header">
-                  <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
-                  <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                    Development & Support Plan
-                  </h3>
-                </div>
-
-                {/* Sections */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                  
-                  {/* Friction Area */}
-                  <div className="profile-output-friction-block">
-                    <h4 style={{ fontSize: "0.72rem", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                      Potential Workplace Friction Areas
-                    </h4>
-                    <p style={{ fontSize: "0.85rem", color: "#c0392b", lineHeight: 1.4, margin: 0, textAlign: "left" }}>
-                      {currentFrictionArea}
-                    </p>
-                  </div>
-
-                  {/* Growth Areas */}
-                  <div>
-                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
-                      Suggested Growth Areas
-                    </h4>
-                    <ul className="profile-output-bullet-list">
-                      {currentGrowthAreas.map((area, idx) => (
-                        <li key={idx}>{area}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Manager Support */}
-                  <div style={{ borderTop: "1px solid #f0f4f8", paddingTop: "1rem" }}>
-                    <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
-                      Recommended Manager Support
-                    </h4>
-                    <ul className="profile-output-bullet-list">
-                      {currentManagerSupport.map((support, idx) => (
-                        <li key={idx}>{support}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-
-            {/* AI Narrative Analysis Section (Gemini output divided into beautiful cards) */}
-            <div className="profile-output-suggestions-container">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem" }}>
+          {/* Qualitative Snapshot and Friction/Growth Areas */}
+          <div className="profile-output-split-row">
+            {/* Card 1: Behavioral Dynamics Insights */}
+            <div className="profile-output-split-card">
+              <div className="profile-output-card-header">
                 <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
                 <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                  Detailed Workforce Personality Report
+                  Workplace Dynamics Insights
                 </h3>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-                {parsedSections.map((section, idx) => {
-                  let sectionIcon = <Sparkles className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                  if (section.title.toLowerCase().includes("snapshot")) sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                  else if (section.title.toLowerCase().includes("best work")) sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                  else if (section.title.toLowerCase().includes("change")) sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                  else if (section.title.toLowerCase().includes("responsibility")) sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
-                  else if (section.title.toLowerCase().includes("others")) sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                  else if (section.title.toLowerCase().includes("frustrate")) sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
-                  else if (section.title.toLowerCase().includes("growth")) sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                  else if (section.title.toLowerCase().includes("reflection")) sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
+              {/* Snapshots from API data or Gemini parsed content */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <div>
+                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                    Workforce Style Snapshot
+                  </h4>
+                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                    {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
+                     "A " + combinationProfile.toLowerCase() + " worker style with primary reliance on structured execution and supportive team dynamics."}
+                  </p>
+                </div>
 
-                  return (
-                    <div key={idx} className="profile-output-sug-item" style={{ borderBottom: idx === parsedSections.length - 1 ? "none" : "1px solid #f0f4f8", paddingBottom: "1.5rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                        <div style={{ background: "rgba(91,164,164,0.06)", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {sectionIcon}
-                        </div>
-                        <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
-                          {section.title}
-                        </h4>
-                      </div>
-                      <div style={{ paddingLeft: "0.5rem" }}>
-                        <MarkdownRenderer content={section.content} />
-                      </div>
-                    </div>
-                  );
-                })}
+                <div>
+                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                    Growth & Adaptability Style
+                  </h4>
+                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                    {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
+                     "Prefers guided execution and responds well when transition parameters are documented."}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                    Collaboration Style
+                  </h4>
+                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
+                    {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
+                     "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Footer buttons */}
-            <div className="profile-output-footer-actions">
-              <Link
-                href="/welcome"
-                className="profile-output-btn-retake"
-              >
-                <RefreshCw size={14} />
-                Retake Assessment
-              </Link>
+            {/* Card 2: Development & Manager Support Plan */}
+            <div className="profile-output-split-card">
+              <div className="profile-output-card-header">
+                <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
+                  Development & Support Plan
+                </h3>
+              </div>
 
-              {/* Download PDF Button */}
-              <button
-                onClick={handleDownloadPdf}
-                disabled={isGeneratingPdf}
-                onMouseEnter={() => setPdfHovered(true)}
-                onMouseLeave={() => setPdfHovered(false)}
-                className="profile-output-btn-pdf"
-              >
-                {isGeneratingPdf ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <Download size={14} />
-                    Download PDF Report
-                  </>
-                )}
-              </button>
+              {/* Sections */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                
+                {/* Friction Area */}
+                <div className="profile-output-friction-block">
+                  <h4 style={{ fontSize: "0.72rem", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
+                    Potential Workplace Friction Areas
+                  </h4>
+                  <p style={{ fontSize: "0.85rem", color: "#c0392b", lineHeight: 1.4, margin: 0, textAlign: "left" }}>
+                    {currentFrictionArea}
+                  </p>
+                </div>
 
-              <Link
-                href="/"
-                className="profile-output-btn-return"
-              >
-                Return to Dashboard
-              </Link>
+                {/* Growth Areas */}
+                <div>
+                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
+                    Suggested Growth Areas
+                  </h4>
+                  <ul className="profile-output-bullet-list">
+                    {currentGrowthAreas.map((area, idx) => (
+                      <li key={idx}>{area}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Manager Support */}
+                <div style={{ borderTop: "1px solid #f0f4f8", paddingTop: "1rem" }}>
+                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
+                    Recommended Manager Support
+                  </h4>
+                  <ul className="profile-output-bullet-list">
+                    {currentManagerSupport.map((support, idx) => (
+                      <li key={idx}>{support}</li>
+                    ))}
+                  </ul>
+                </div>
+
+              </div>
             </div>
-          </motion.div>
-        )}
+          </div>
+
+          {/* AI Narrative Analysis Section (Gemini output divided into beautiful cards) */}
+          <div className="profile-output-suggestions-container">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem" }}>
+              <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
+              <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
+                Detailed Workforce Personality Report
+              </h3>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+              {parsedSections.map((section, idx) => {
+                let sectionIcon = <Sparkles className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                if (section.title.toLowerCase().includes("snapshot")) sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                else if (section.title.toLowerCase().includes("best work")) sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                else if (section.title.toLowerCase().includes("change")) sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                else if (section.title.toLowerCase().includes("responsibility")) sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
+                else if (section.title.toLowerCase().includes("others")) sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                else if (section.title.toLowerCase().includes("frustrate")) sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
+                else if (section.title.toLowerCase().includes("growth")) sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                else if (section.title.toLowerCase().includes("reflection")) sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
+
+                return (
+                  <div key={idx} className="profile-output-sug-item" style={{ borderBottom: idx === parsedSections.length - 1 ? "none" : "1px solid #f0f4f8", paddingBottom: "1.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                      <div style={{ background: "rgba(91,164,164,0.06)", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {sectionIcon}
+                      </div>
+                      <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
+                        {section.title}
+                      </h4>
+                    </div>
+                    <div style={{ paddingLeft: "0.5rem" }}>
+                      <MarkdownRenderer content={section.content} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer buttons */}
+          <div className="profile-output-footer-actions">
+            <Link
+              href="/welcome"
+              className="profile-output-btn-retake"
+            >
+              <RefreshCw size={14} />
+              Retake Assessment
+            </Link>
+
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              onMouseEnter={() => setPdfHovered(true)}
+              onMouseLeave={() => setPdfHovered(false)}
+              className="profile-output-btn-pdf"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  Download PDF Report
+                </>
+              )}
+            </button>
+
+            <Link
+              href="/"
+              className="profile-output-btn-return"
+            >
+              Return to Dashboard
+            </Link>
+          </div>
+        </motion.div>
       </AnimatePresence>
 
       {/* Invisible wrapper for html2canvas PDF rendering */}
@@ -1001,7 +1376,7 @@ export default function ProfileOutputPage() {
             {/* Left Column */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
               {/* Workplace Friction Areas */}
-              <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.1)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
+              <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.15)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
                 <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
                   Potential Workplace Friction Areas
                 </h4>

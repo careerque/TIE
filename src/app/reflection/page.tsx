@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, Brain, RotateCw, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuthContext } from "@/context/AuthContext";
+import { supabasedb } from "@/lib/supabaseClient";
 
 export default function ReflectionPage() {
   const router = useRouter();
+  const { user } = useAuthContext();
 
   // Form States
   const [accuracyRating, setAccuracyRating] = useState<number | null>(null);
@@ -29,8 +32,35 @@ export default function ReflectionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+
+    try {
+      if (user) {
+        // Map focusArea key ('collab', 'adapt', 'growth') to the database ENUM string
+        const focusMapping: Record<string, string> = {
+          collab: "Collaboration",
+          adapt: "Adaptability",
+          growth: "Growth Style"
+        };
+        const importantDimension = focusMapping[focusArea] || null;
+
+        const { error } = await supabasedb
+          .from("assessment_feedback")
+          .insert({
+            user_id: user.id,
+            work_style_accuracy: accuracyRating,
+            important_dimension: importantDimension,
+            takeaways_reflection: feedback || null
+          });
+
+        if (error) {
+          console.error("Error inserting feedback:", error);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to submit feedback to Supabase:", err);
+    }
     
-    // Simulate compilation of insights
+    // Simulate compilation of insights (small delay for visual flow)
     await new Promise((resolve) => setTimeout(resolve, 1800));
     
     router.push("/profile-output");
