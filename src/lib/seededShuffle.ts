@@ -1,8 +1,14 @@
 /**
  * Creates a predictable pseudo-random number generator based on a seed.
  */
-function createRandomGenerator(seed :number) :()=>number{
-  let currentSeed = seed;
+function createRandomGenerator(seed: number): () => number {
+  // Scramble the seed using a MurmurHash3-like 32-bit mixer
+  // to ensure consecutive seeds result in wildly different random streams.
+  let h = seed ^ 0xdeadbeef;
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  let currentSeed = (h ^ (h >>> 16)) >>> 0;
+
   return function() {
     // Standard LCG Math parameters used by runtime engines
     currentSeed = (currentSeed * 1664525 + 1013904223) % 4294967296;

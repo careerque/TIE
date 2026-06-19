@@ -28,7 +28,7 @@ export default function Navbar() {
         {/* Logo container to crop the whitespace in logo.png without clipping sides */}
         <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
           <Image
-            src="/Logo.png"
+            src="/logo.png"
             alt="TIE Logo"
             width={112}
             height={48}

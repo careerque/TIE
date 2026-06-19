@@ -1,5 +1,6 @@
 "use client";
 
+// Version 2.0.0 - Random Option Shuffling with Locked DB Seed
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -35,7 +36,6 @@ export default function AssessmentPage() {
   const router = useRouter();
   const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
 
-  // 🔧 CHANGED: Modified core state array to accept our explicit SeededQuestion structural shape
   const [questions, setQuestions] = useState<SeededQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,13 +67,21 @@ export default function AssessmentPage() {
           ]);
 
           if (questionsRes.success && questionsRes.data) {
-            // 🔧 CHANGED: Safely pull the user profile assessment seed integer
-            let sessionSeed = profileRes.data?.assessment_seed;
+            console.log("Initialize Assessment - profileRes:", profileRes);
+            
+            // 🔧 CHANGED: Safely pull the user profile assessment seed integer and cast it to a number
+            let sessionSeed = profileRes.data?.assessment_seed 
+              ? Number(profileRes.data.assessment_seed) 
+              : null;
 
-            // 🔧 CHANGED: Secure fallback fallback generation matching the DB trigger pattern if no seed is assigned
-            if (!sessionSeed) {
+            console.log("Parsed sessionSeed:", sessionSeed);
+
+            // 🔧 CHANGED: Secure fallback generation if no valid seed is assigned
+            if (!sessionSeed || isNaN(sessionSeed)) {
               sessionSeed = Math.floor(Math.random() * 100000 + 1);
-              await supabasedb.from("profiles").update({ assessment_seed: sessionSeed }).eq("id", user.id);
+              console.log("No valid seed found. Generated random sessionSeed:", sessionSeed);
+              const updateRes = await supabasedb.from("profiles").update({ assessment_seed: sessionSeed }).eq("id", user.id);
+              console.log("DB Update Seed Result:", updateRes);
             }
 
             // 🔧 CHANGED: Map over core structural questions and lock their visual positions permanently inside state
@@ -85,12 +93,23 @@ export default function AssessmentPage() {
 
               // Unique question seed generation math ensuring different variations cross questions
               const uniqueSeedValue = sessionSeed + q.question_id;
+              const shuffled = seededShuffle(optionWithOriginalIndex, uniqueSeedValue);
               
+              if (q.question_id === 1) {
+                console.log("Question 1 details:", {
+                  originalOptions: q.options,
+                  shuffledOptions: shuffled,
+                  uniqueSeedValue
+                });
+              }
+
               return {
                 ...q,
-                shuffledOptions: seededShuffle(optionWithOriginalIndex, uniqueSeedValue)
+                shuffledOptions: shuffled
               };
             });
+
+            console.log("First prepared question shuffledOptions:", preparedQuestions[0]?.shuffledOptions);
 
             setQuestions(preparedQuestions);
 
@@ -334,7 +353,7 @@ export default function AssessmentPage() {
 
             {/* Answer Options */}
             <div style={{ minHeight: "180px" }}>
-              {/* 🔧 CHANGED: Loop dynamically through the locked, cached shuffled options array tool */}
+              {/* 🔧 CHANGED: Loop dynamically through the locked, cached shuffled options array */}
               {currentQuestion.shuffledOptions.map((option, index) => {
                 // Check selection match directly by referencing its hidden original index identity key
                 const isSelected = currentAnswerIndex === option.originalIndex;
