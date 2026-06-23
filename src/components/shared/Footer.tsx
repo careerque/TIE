@@ -37,15 +37,15 @@ export default function Footer() {
 
           <div className="tie-footer-contact-item">
             <Phone size={15} style={{ color: "#5BA4A4", flexShrink: 0 }} />
-            <a href="tel:+15550192834">
-              +1 (555) 019-2834
+            <a href="tel:+91 9940196998">
+              +91 9940196998
             </a>
           </div>
 
           <div className="tie-footer-contact-item">
             <MessageCircle size={15} style={{ color: "#5BA4A4", flexShrink: 0 }} />
-            <a href="https://wa.me/15550192835" target="_blank" rel="noopener noreferrer">
-              +1 (555) 019-2835 (WhatsApp)
+            <a href="https://wa.me/9940196998" target="_blank" rel="noopener noreferrer">
+              +91 9940196998 (WhatsApp)
             </a>
           </div>
         </div>

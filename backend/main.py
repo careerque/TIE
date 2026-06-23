@@ -8,6 +8,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from supabase import create_client, Client # 🆕 Import Supabase Client
+from profile_content_library import PROFILE_CONTENT_LIBRARY
 
 # Load environment variables from .env.local in the project root
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env.local")
@@ -152,36 +153,95 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         if raw_scores["SPO"] >= 14: flags.append("High Stability Need")  
         if all(score <= 9 for score in raw_scores.values()): flags.append("Balanced Profile")  
 
+        # Retrieve Profile Content Library reference data
+        library_data = PROFILE_CONTENT_LIBRARY.get(profile_combination, PROFILE_CONTENT_LIBRARY["Flexible Adapter"])
+
         # STEP 3: INVOKE GEMINI API FOR GENERATION  
         system_instruction = """
         You are an AI processing engine for the Talent Intelligence Engine (TIE).  
-        Your task is to generate the Employee Report based strictly on the provided scores.  
+        Your task is to generate a highly personalized, practical Employee Report using the provided scoring metrics and the matching Profile Content Library reference data as your source of truth.
         
         CRITICAL COMPLIANCE RULES:
-        - Use simple English. Speak directly to the employee.  
-        - Avoid ALL HR, competency, or psychological terminology.  
-        - Do not label or rank the employee.  
-        - NEVER use words like: weak, poor, low performer, resistant, dependent, disengaged.  
-        - Use phrases like: "You tend to...", "You often perform best when...", "You may benefit from...".  
-        - Tone: positive, practical, supportive, and easy to understand.  
+        - Use simple, clear English. Speak directly to the employee using "you" and "your".
+        - Focus on workplace behavior, communication, collaboration, adaptability, support preferences, and growth recommendations.
+        - Tone: positive, practical, supportive, constructive, and easy to understand.
+        - Absolute Prohibition on Psychological/Personality Labels:
+          - Avoid ALL HR jargon, psychological terminology, or diagnostic labels (e.g., personality types).
+          - Do NOT label or rank the employee. TIE is a workplace preference insight tool, NOT a personality assessment, psychological test, intelligence test, or leadership diagnostic.
+          - NEVER use negative or judgmental words like: weak, weakness, poor performer, resistant, defensive, lazy, dependent, disengaged.
+          - Use growth-oriented and supportive phrasing: "You tend to...", "You often perform best when...", "You may benefit from...", "You prefer...", "A helpful growth area is...".
         """
 
         user_prompt = f"""
-        Generate an 8-part narrative report for an employee with these psychometric results:  
-        - Primary Work Style: {primary} ({primary_strength}% strength)  
-        - Secondary Work Style: {secondary} ({secondary_strength}% strength)  
-        - Overall Combination Profile Match: {profile_combination}  
+        Generate a detailed 14-part narrative report for an employee.
         
-        The output MUST follow this exact 8-part markdown structural format:  
+        SCORING METRICS INPUT:
+        - Primary Pattern: {primary} ({primary_strength}% strength)
+        - Secondary Pattern: {secondary} ({secondary_strength}% strength)
+        - Overall Combination Profile: {profile_combination}
+        - Section Dominant Styles:
+          - S1 (Adaptability): {s1_dom}
+          - S2 (Responsibility): {s2_dom}
+          - S3 (Collaboration): {s3_dom}
+          - S4 (Engagement): {s4_dom}
+          
+        PROFILE CONTENT LIBRARY REFERENCE CONTEXT (Source of Truth):
+        - Tagline: {library_data["tagline"]}
+        - Description: {library_data["description"]}
+        - Core Value: {library_data["core_value"]}
+        - Strengths: {", ".join(library_data["strengths"])}
+        - Communication Style: {library_data["communication_style"]}
+        - Collaboration Setting: {library_data["collaboration_setting"]}
+        - Change Handling: {library_data["change_handling"]}
+        - Responsibility Approach: {library_data["responsibility_approach"]}
+        - Frustrations: {", ".join(library_data["frustrations"])}
+        - Manager Guidance: {library_data["manager_guidance"]}
+        - Growth Recommendations: {", ".join(library_data["growth_recommendations"])}
+
+        OUTPUT FORMAT:
+        The output MUST follow this exact 14-part markdown structural format. Use exactly the numbered headings below. Provide 2-3 sentences or bullet points of highly tailored, practical content for each section:
+
+        # 1. Dominant Workplace Pattern
+        Provide a positive, clear summary of their work style based on their combination profile {profile_combination} ({library_data["tagline"]}) and core value. Do not use personality labels.
         
-        # 1. Your Work Style Snapshot  
-        # 2. What Helps You Do Your Best Work  
-        # 3. How You Usually Handle Change (S1 Dominant style was {s1_dom})  
-        # 4. How You Approach Responsibility (S2 Dominant style was {s2_dom})  
-        # 5. How You Prefer To Work With Others (S3 Dominant style was {s3_dom})  
-        # 6. Situations That May Frustrate You  
-        # 7. Three Suggestions For Growth  
-        # 8. Reflection Questions  
+        # 2. What TIE Observed
+        Describe their primary workplace behavior and preferences using the library description as reference.
+        
+        # 3. Workplace Value
+        Explain the core value and specific strengths they bring to a team environment.
+        
+        # 4. Workplace Implications
+        Detail how their combination profile affects their daily work style, pacing, and approach.
+        
+        # 5. Thrive Conditions
+        Describe the ideal work and collaboration settings where they feel most aligned and productive (incorporating S3/S4 dominant styles if relevant).
+        
+        # 6. Challenge Conditions
+        Outline work scenarios that can test their adaptability or pacing (S1 adaptability dominant style: {s1_dom}).
+        
+        # 7. Watch-outs
+        Mention common operational situations that might cause friction for them (referencing the library frustrations). Frame these constructively.
+        
+        # 8. How Others May Experience You
+        Provide advice on how peers might perceive their communication and collaboration style, and how to maintain alignment.
+        
+        # 9. What Your Manager Should Know
+        Summarize their primary support preferences and how they approach accountability (S2 responsibility dominant style: {s2_dom}).
+        
+        # 10. Manager Support Suggestions
+        Give actionable, practical recommendations for how their manager can support them, keep them aligned, and respect their work style.
+        
+        # 11. Growth Suggestions
+        Suggest 2-3 specific, actionable growth guidelines to help them stretch and develop their versatility.
+        
+        # 12. Why TIE Reached This Conclusion
+        Explain in simple terms how the 24-question work preference questionnaire highlights these patterns based on scoring primary ({primary}) and secondary ({secondary}) focus.
+        
+        # 13. What TIE Measures
+        State clearly that TIE measures subjective workplace environment preferences, communication styles, collaboration styles, and task pacing.
+        
+        # 14. What TIE Does Not Measure
+        Explicitly state that TIE does NOT measure personality, intelligence, psychological health, clinical traits, technical capability, or leadership performance.
         """
 
         # Corrected method instantiation typo: changed models to client SDK syntax config

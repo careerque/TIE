@@ -149,7 +149,7 @@ export default function AssessmentPage() {
 
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : undefined;
   const currentAnswerIndex = currentQuestion ? answers[currentQuestion.question_id] : undefined;
-  const totalQuestions = questions.length;
+  const totalQuestions = questions.length || 24;
 
   const totalAnsweredCount = useMemo(() => {
     return Object.keys(answers).length;

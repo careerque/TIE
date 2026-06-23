@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, Brain, RotateCw, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/context/AuthContext";
-import { supabasedb } from "@/lib/supabaseClient";
+import { projectService } from "@/services/projectService";
 
 export default function ReflectionPage() {
   const router = useRouter();
@@ -43,18 +43,11 @@ export default function ReflectionPage() {
         };
         const importantDimension = focusMapping[focusArea] || null;
 
-        const { error } = await supabasedb
-          .from("assessment_feedback")
-          .insert({
-            user_id: user.id,
-            work_style_accuracy: accuracyRating,
-            important_dimension: importantDimension,
-            takeaways_reflection: feedback || null
-          });
-
-        if (error) {
-          console.error("Error inserting feedback:", error);
-        }
+        await projectService.saveReflection(user.id, {
+          work_style_accuracy: accuracyRating,
+          important_dimension: importantDimension,
+          takeaways_reflection: feedback || null
+        });
       }
     } catch (err) {
       console.error("Failed to submit feedback to Supabase:", err);

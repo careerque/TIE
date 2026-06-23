@@ -69,7 +69,7 @@ export const projectService = {
    */
   async getReflections(userId: string) {
     const { data, error } = await supabase
-      .from('reflections')
+      .from('assessment_feedback')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -83,10 +83,12 @@ export const projectService = {
 
   async saveReflection(userId: string, reflectionData: any) {
     const { data, error } = await supabase
-      .from('reflections')
+      .from('assessment_feedback')
       .insert({
         user_id: userId,
-        ...reflectionData,
+        work_style_accuracy: reflectionData.work_style_accuracy,
+        important_dimension: reflectionData.important_dimension,
+        takeaways_reflection: reflectionData.takeaways_reflection,
         created_at: new Date().toISOString(),
       })
       .select()

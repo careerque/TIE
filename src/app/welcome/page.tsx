@@ -36,7 +36,7 @@ export default function AssessmentWelcomePage() {
     }
   }, [isLoggedIn, profile, loading, router]);
 
-  const totalQuestions = questionCount || 10;
+  const totalQuestions = questionCount || 24;
   const estimatedMins = totalQuestions * 1; // 1 min per question
 
   if (loading) {

@@ -285,16 +285,15 @@ export default function WelcomePage() {
 
           {/* main heading */}
           <h1 className="home-h1 animate-fade-up delay-100">
-            Understand Your Workforce{" "}
+            Workforce Intelligence{" "}
             <span className="home-h1-gradient">
-              Beyond Performance
+              For High-Performing Teams
             </span>
           </h1>
 
           {/* subheading */}
           <p className="home-subheading animate-fade-up delay-200">
-            TIE surfaces how your people collaborate, adapt, and grow — giving
-            leaders the depth to build teams that thrive, not just perform.
+            TIE is a workforce intelligence platform that maps how your people naturally work, collaborate, adapt, and grow — giving leaders and HR teams the actionable depth to align talent and build workplaces that thrive.
           </p>
 
           {/* CTA buttons */}
@@ -331,10 +330,10 @@ export default function WelcomePage() {
         <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "center", padding: "5rem 1.5rem" }}>
           <span className="home-section-tag">Why TIE</span>
           <h2 className="home-section-title" style={{ marginTop: "0.5rem" }}>
-            Understand Workforce Preferences
+            Workforce Intelligence, Not Personality Testing
           </h2>
           <p className="home-section-desc" style={{ maxWidth: "720px", fontSize: "1.1rem", lineHeight: 1.7, color: "#243B53", fontWeight: 500, margin: "1.5rem auto 0" }}>
-            TIE (Talent Intelligence Engine) helps organizations better understand how employees prefer to work, learn, collaborate and adapt. It is designed to provide workforce insights that help managers and leaders support employees more effectively.
+            TIE (Talent Intelligence Engine) helps organizations identify hidden operational patterns related to work style, collaboration, adaptability, support needs, and growth readiness. By providing evidence-based insights at the employee, team, department, and business levels, TIE helps managers support employees more effectively without intrusive monitoring.
           </p>
         </div>
       </section>
@@ -348,49 +347,49 @@ export default function WelcomePage() {
           </div>
           <h2 className="home-section-title">Integrated Insights for Every Layer</h2>
           <p className="home-section-desc">
-            Explore TIE's specialized features tailored for employees, team managers, and organizational leaders.
+            Explore TIE's specialized workforce intelligence dashboards designed for employees, team managers, and organizational leaders.
           </p>
           
           <div className="home-features-grid">
-            {/* Card 1: Employee Assessment */}
+            {/* Card 1: Employee Dynamics */}
             <div className="home-feature-card">
               <div className="home-feature-card-icon" style={{ background: "rgba(91,164,164,0.12)", color: "#5BA4A4" }}>
                 <Users size={22} />
               </div>
-              <span className="home-feature-card-tag" style={{ color: "#5BA4A4", background: "rgba(91,164,164,0.1)" }}>Assessment</span>
-              <h3 className="home-feature-card-title">Employee Assessment</h3>
+              <span className="home-feature-card-tag" style={{ color: "#5BA4A4", background: "rgba(91,164,164,0.1)" }}>Employees</span>
+              <h3 className="home-feature-card-title">Workplace Style Insights</h3>
               <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
-                <li>24-question assessment</li>
-                <li>Workforce pattern identification</li>
-                <li>Personalized employee report</li>
+                <li>24-question work preference mapper</li>
+                <li>Primary and secondary pattern identification</li>
+                <li>Richer, 14-section personalized reports</li>
               </ul>
             </div>
 
-            {/* Card 2: Manager Insights */}
+            {/* Card 2: Manager Support */}
             <div className="home-feature-card">
               <div className="home-feature-card-icon" style={{ background: "rgba(36,59,83,0.12)", color: "#243B53" }}>
                 <Zap size={22} />
               </div>
               <span className="home-feature-card-tag" style={{ color: "#243B53", background: "rgba(36,59,83,0.1)" }}>Managers</span>
-              <h3 className="home-feature-card-title">Manager Insights</h3>
+              <h3 className="home-feature-card-title">Team Alignment Guides</h3>
               <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
-                <li>Team-level workforce patterns</li>
-                <li>Suggested manager actions</li>
-                <li>Team support recommendations</li>
+                <li>Cooperation and support mapping</li>
+                <li>Suggested manager communication actions</li>
+                <li>Team change adaptability trends</li>
               </ul>
             </div>
 
-            {/* Card 3: Leadership Insights */}
+            {/* Card 3: Enterprise Analytics */}
             <div className="home-feature-card">
               <div className="home-feature-card-icon" style={{ background: "rgba(163,177,138,0.12)", color: "#A3B18A" }}>
                 <TrendingUp size={22} />
               </div>
-              <span className="home-feature-card-tag" style={{ color: "#A3B18A", background: "rgba(163,177,138,0.1)" }}>Leadership</span>
-              <h3 className="home-feature-card-title">Leadership Insights</h3>
+              <span className="home-feature-card-tag" style={{ color: "#A3B18A", background: "rgba(163,177,138,0.1)" }}>HR & Leaders</span>
+              <h3 className="home-feature-card-title">Workforce Dashboards</h3>
               <ul className="profile-output-bullet-list" style={{ paddingLeft: "1.25rem", margin: "1rem 0 0", color: "#627D98", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
-                <li>Organization-wide workforce trends</li>
-                <li>Workforce strengths</li>
-                <li>Opportunity areas</li>
+                <li>Department-level trend reports</li>
+                <li>Cross-functional communication friction mapping</li>
+                <li>Strategic organizational resilience signals</li>
               </ul>
             </div>
           </div>
@@ -439,10 +438,10 @@ export default function WelcomePage() {
 
           <div className="home-timeline-grid">
             {[
-              { step: "01", title: "Connect", body: "Integrate existing tools — calendar, comms, project boards. No new workflows, no surveillance.", color: "#5BA4A4" },
-              { step: "02", title: "Analyse", body: "TIE's AI models surface patterns in collaboration, energy, and contribution — ethically.", color: "#243B53" },
-              { step: "03", title: "Understand", body: "Leaders receive clear, contextual intelligence — not scores. Human stories, not metrics.", color: "#A3B18A" },
-              { step: "04", title: "Act", body: "Take targeted actions with confidence — better support, smarter structure, right timing.", color: "#5BA4A4" },
+              { step: "01", title: "Assess", body: "Employees take a brief, 24-question work style preference mapper. No surveillance, no intrusive monitoring.", color: "#5BA4A4" },
+              { step: "02", title: "Map", body: "TIE's scoring engine identifies the employee's primary and secondary operational patterns.", color: "#243B53" },
+              { step: "03", title: "Analyze", body: "Gemini combines patterns with our Profile Content Library to generate a highly personalized, practical report.", color: "#A3B18A" },
+              { step: "04", title: "Align", body: "Managers, HR, and executives use contextual dashboards to support teams and optimize workflows.", color: "#5BA4A4" },
             ].map((item, i) => (
               <div
                 key={item.step}

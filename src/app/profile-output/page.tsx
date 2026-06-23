@@ -177,7 +177,7 @@ function formatInlineMarkdown(text: string): string {
   return formatted;
 }
 
-function MarkdownRenderer({ content }: { content: string }) {
+function MarkdownRenderer({ content, fontSize = "0.85rem", color = "#627D98" }: { content: string; fontSize?: string; color?: string }) {
   if (!content) return null;
 
   const lines = content.split("\n");
@@ -189,7 +189,7 @@ function MarkdownRenderer({ content }: { content: string }) {
       elements.push(
         <ul key={`list-${key}`} style={{ paddingLeft: "1.25rem", margin: "0.5rem 0", listStyleType: "disc", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
           {listItems.map((item, idx) => (
-            <li key={idx} style={{ fontSize: "0.85rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
+            <li key={idx} style={{ fontSize, color, lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
           ))}
         </ul>
       );
@@ -214,7 +214,7 @@ function MarkdownRenderer({ content }: { content: string }) {
           );
         } else {
           elements.push(
-            <p key={index} style={{ marginBottom: "0.75rem", fontSize: "0.85rem", color: "#627D98", lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
+            <p key={index} style={{ marginBottom: "0.75rem", fontSize, color, lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
           );
         }
       }
@@ -440,22 +440,31 @@ export default function ProfileOutputPage() {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
 
-      const element = document.getElementById("tie-report-pdf-template");
-      if (!element) return;
-
-      const canvas = await html2canvas(element, {
-        scale: 2, // High resolution crisp text rendering
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
+      const pageIds = ["tie-report-pdf-page-1", "tie-report-pdf-page-2", "tie-report-pdf-page-3"];
       const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210; // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgHeight = 297; // A4 height in mm
 
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      for (let i = 0; i < pageIds.length; i++) {
+        const element = document.getElementById(pageIds[i]);
+        if (!element) continue;
+
+        const canvas = await html2canvas(element, {
+          scale: 2, // High resolution crisp text rendering
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      }
+
       pdf.save(`TIE_Workforce_Insight_Report_${firstName}_${lastName}.pdf`);
     } catch (error) {
       console.error("PDF generation failed:", error);
@@ -1059,7 +1068,7 @@ export default function ProfileOutputPage() {
                     Workforce Style Snapshot
                   </h4>
                   <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
+                    {parsedSections.find(s => s.title.toLowerCase().includes("observed") || s.title.toLowerCase().includes("snapshot") || s.title.toLowerCase().includes("dominant"))?.content?.split("\n")[0] || 
                      "A " + combinationProfile.toLowerCase() + " worker style with primary reliance on structured execution and supportive team dynamics."}
                   </p>
                 </div>
@@ -1069,7 +1078,7 @@ export default function ProfileOutputPage() {
                     Growth & Adaptability Style
                   </h4>
                   <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
+                    {parsedSections.find(s => s.title.toLowerCase().includes("thrive") || s.title.toLowerCase().includes("growth") || s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
                      "Prefers guided execution and responds well when transition parameters are documented."}
                   </p>
                 </div>
@@ -1079,7 +1088,7 @@ export default function ProfileOutputPage() {
                     Collaboration Style
                   </h4>
                   <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
+                    {parsedSections.find(s => s.title.toLowerCase().includes("others") || s.title.toLowerCase().includes("implications") || s.title.toLowerCase().includes("collaboration"))?.content?.split("\n")[0] || 
                      "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
                   </p>
                 </div>
@@ -1148,14 +1157,25 @@ export default function ProfileOutputPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
               {parsedSections.map((section, idx) => {
                 let sectionIcon = <Sparkles className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                if (section.title.toLowerCase().includes("snapshot")) sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                else if (section.title.toLowerCase().includes("best work")) sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                else if (section.title.toLowerCase().includes("change")) sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                else if (section.title.toLowerCase().includes("responsibility")) sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
-                else if (section.title.toLowerCase().includes("others")) sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                else if (section.title.toLowerCase().includes("frustrate")) sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
-                else if (section.title.toLowerCase().includes("growth")) sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                else if (section.title.toLowerCase().includes("reflection")) sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
+                const titleLower = section.title.toLowerCase();
+                
+                if (titleLower.includes("snapshot") || titleLower.includes("dominant") || titleLower.includes("observed")) {
+                  sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                } else if (titleLower.includes("best work") || titleLower.includes("thrive") || titleLower.includes("value")) {
+                  sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                } else if (titleLower.includes("change") || titleLower.includes("implications") || titleLower.includes("challenge")) {
+                  sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                } else if (titleLower.includes("responsibility") || titleLower.includes("manager") || titleLower.includes("what your manager")) {
+                  sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
+                } else if (titleLower.includes("others") || titleLower.includes("experience")) {
+                  sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
+                } else if (titleLower.includes("frustrate") || titleLower.includes("watch-out")) {
+                  sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
+                } else if (titleLower.includes("growth") || titleLower.includes("suggestion")) {
+                  sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
+                } else if (titleLower.includes("reflection") || titleLower.includes("conclusion") || titleLower.includes("measure")) {
+                  sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
+                }
 
                 return (
                   <div key={idx} className="profile-output-sug-item" style={{ borderBottom: idx === parsedSections.length - 1 ? "none" : "1px solid #f0f4f8", paddingBottom: "1.5rem" }}>
@@ -1218,198 +1238,202 @@ export default function ProfileOutputPage() {
       </AnimatePresence>
 
       {/* Invisible wrapper for html2canvas PDF rendering */}
-      <div style={{ position: "absolute", width: "0", height: "0", overflow: "hidden", zIndex: -100 }}>
+      <div style={{ position: "absolute", left: "-9999px", top: "-9999px", zIndex: -100 }}>
+        {/* PAGE 1: Executive Summary & Metrics */}
         <div
-          id="tie-report-pdf-template"
+          id="tie-report-pdf-page-1"
           style={{
-            width: "794px", // exact A4 pixel width at 96dpi
-            height: "auto", // auto height to allow content fit
-            minHeight: "1123px",
-            padding: "50px",
+            width: "794px",
+            height: "1123px",
+            padding: "45px 50px",
             background: "#ffffff",
             fontFamily: "'Inter', -apple-system, sans-serif",
             boxSizing: "border-box",
             color: "#1F2933",
-            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
           }}
         >
-          {/* PDF Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-            <img
-              src="/logo.png"
-              alt="TIE Logo"
+          <div>
+            {/* PDF Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <img
+                src="/logo.png"
+                alt="TIE Logo"
+                style={{
+                  height: "52px",
+                  width: "auto",
+                  display: "block",
+                }}
+              />
+              <div style={{ textAlign: "right" }}>
+                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
+                  Talent Intelligence Engine
+                </h2>
+                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
+                  Workforce Style Insights Report
+                </p>
+              </div>
+            </div>
+
+            {/* Teal Divider */}
+            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
+
+            {/* Title Area */}
+            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 16px", textTransform: "uppercase", textAlign: "left" }}>
+              Employee Workforce Assessment Profile
+            </h1>
+
+            {/* Employee Details flex layout */}
+            <div
               style={{
-                height: "52px",
-                width: "auto",
-                display: "block",
+                background: "#F4F7FA",
+                border: "1px solid rgba(36, 59, 83, 0.08)",
+                borderRadius: "14px",
+                padding: "16px 20px",
+                marginBottom: "20px",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px 0px",
               }}
-            />
-            <div style={{ textAlign: "right" }}>
-              <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
-                Talent Intelligence Engine
-              </h2>
-              <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
-                Workforce Style Insights Report
-              </p>
-            </div>
-          </div>
-
-          {/* Teal Divider */}
-          <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
-
-          {/* Title Area */}
-          <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 16px", textTransform: "uppercase", textAlign: "left" }}>
-            Employee Workforce Assessment Profile
-          </h1>
-
-          {/* Employee Details flex layout */}
-          <div
-            style={{
-              background: "#F4F7FA",
-              border: "1px solid rgba(36, 59, 83, 0.08)",
-              borderRadius: "14px",
-              padding: "16px 20px",
-              marginBottom: "20px",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px 0px",
-            }}
-          >
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee Name:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{firstName} {lastName}</span>
-            </div>
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee ID:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{employeeId}</span>
-            </div>
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Interests:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{interests.join(", ") || "None"}</span>
-            </div>
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Designation:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{designation}</span>
-            </div>
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Experience:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{experience} Years</span>
-            </div>
-            <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-              <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Email Address:</span>
-              <span style={{ fontWeight: 700, color: "#243B53" }}>{email}</span>
-            </div>
-          </div>
-
-          {/* Archetype Banner */}
-          <div
-            style={{
-              background: "linear-gradient(135deg, #243B53 0%, #1a2d40 100%)",
-              borderRadius: "16px",
-              padding: "20px 24px",
-              color: "#ffffff",
-              marginBottom: "20px",
-              boxSizing: "border-box",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ textAlign: "left" }}>
-                <span style={{ fontSize: "9px", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  Primary Profile Archetype
-                </span>
-                <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em", color: "#ffffff" }}>
-                  {combinationProfile}
-                </h3>
-                <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>
-                  {tagline}
-                </p>
+            >
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee Name:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{firstName} {lastName}</span>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 16px", borderRadius: "12px", textAlign: "center" }}>
-                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#5BA4A4", lineHeight: 1 }}>
-                  {apiData?.scoring_metrics?.primary_strength_pct}%
-                </span>
-                <span style={{ display: "block", fontSize: "7px", color: "#b0bec8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>
-                  Strength
-                </span>
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee ID:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{employeeId}</span>
+              </div>
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Interests:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{interests.join(", ") || "None"}</span>
+              </div>
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Designation:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{designation}</span>
+              </div>
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Experience:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{experience} Years</span>
+              </div>
+              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
+                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Email Address:</span>
+                <span style={{ fontWeight: 700, color: "#243B53" }}>{email}</span>
               </div>
             </div>
-          </div>
 
-          {/* Dynamic Insights Section */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", boxSizing: "border-box" }}>
-            {/* Workforce Style Snapshot */}
-            <div style={{ borderLeft: "4px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
-              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                Workforce Style Snapshot
-              </h4>
-              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                {parsedSections.find(s => s.title.toLowerCase().includes("snapshot"))?.content?.split("\n")[0] || 
-                 "A " + combinationProfile.toLowerCase() + " worker style with reliance on structured execution and supportive team dynamics."}
-              </p>
+            {/* Archetype Banner */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #243B53 0%, #1a2d40 100%)",
+                borderRadius: "16px",
+                padding: "20px 24px",
+                color: "#ffffff",
+                marginBottom: "20px",
+                boxSizing: "border-box",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ textAlign: "left" }}>
+                  <span style={{ fontSize: "9px", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                    Primary Profile Archetype
+                  </span>
+                  <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em", color: "#ffffff" }}>
+                    {combinationProfile}
+                  </h3>
+                  <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>
+                    {tagline}
+                  </p>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 16px", borderRadius: "12px", textAlign: "center" }}>
+                  <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#5BA4A4", lineHeight: 1 }}>
+                    {apiData?.scoring_metrics?.primary_strength_pct}%
+                  </span>
+                  <span style={{ display: "block", fontSize: "7px", color: "#b0bec8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>
+                    Strength
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Growth & Adaptability Style */}
-            <div style={{ borderLeft: "4px solid #243B53", paddingLeft: "14px", textAlign: "left" }}>
-              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                Growth & Adaptability Style
-              </h4>
-              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                {parsedSections.find(s => s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
-                 "Prefers guided execution and responds well when transition parameters are documented."}
-              </p>
-            </div>
-
-            {/* Collaboration Style */}
-            <div style={{ borderLeft: "4px solid #A3B18A", paddingLeft: "14px", textAlign: "left" }}>
-              <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                Collaboration Style
-              </h4>
-              <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                {parsedSections.find(s => s.title.toLowerCase().includes("others"))?.content?.split("\n")[0] || 
-                 "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
-              </p>
-            </div>
-          </div>
-
-          {/* Friction & Growth Columns */}
-          <div style={{ display: "flex", gap: "24px", marginBottom: "25px", boxSizing: "border-box" }}>
-            {/* Left Column */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
-              {/* Workplace Friction Areas */}
-              <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.15)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
-                  Potential Workplace Friction Areas
+            {/* Dynamic Insights Section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", boxSizing: "border-box" }}>
+              {/* Workforce Style Snapshot */}
+              <div style={{ borderLeft: "4px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                  Workforce Style Snapshot
                 </h4>
-                <p style={{ fontSize: "10.5px", color: "#c0392b", lineHeight: 1.4, margin: 0 }}>
-                  {currentFrictionArea}
+                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                  {parsedSections.find(s => s.title.toLowerCase().includes("observed") || s.title.toLowerCase().includes("snapshot") || s.title.toLowerCase().includes("dominant"))?.content?.split("\n")[0] || 
+                   "A " + combinationProfile.toLowerCase() + " worker style with reliance on structured execution and supportive team dynamics."}
                 </p>
               </div>
 
-              {/* Suggested Growth Areas */}
-              <div style={{ background: "#FDFDFD", border: "1px solid rgba(36, 59, 83, 0.06)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                  Suggested Growth Areas
+              {/* Growth & Adaptability Style */}
+              <div style={{ borderLeft: "4px solid #243B53", paddingLeft: "14px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                  Growth & Adaptability Style
                 </h4>
-                <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {currentGrowthAreas.map((area, idx) => (
-                    <li key={idx}>{area}</li>
-                  ))}
-                </ul>
+                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                  {parsedSections.find(s => s.title.toLowerCase().includes("thrive") || s.title.toLowerCase().includes("growth") || s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
+                   "Prefers guided execution and responds well when transition parameters are documented."}
+                </p>
+              </div>
+
+              {/* Collaboration Style */}
+              <div style={{ borderLeft: "4px solid #A3B18A", paddingLeft: "14px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
+                  Collaboration Style
+                </h4>
+                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
+                  {parsedSections.find(s => s.title.toLowerCase().includes("others") || s.title.toLowerCase().includes("implications") || s.title.toLowerCase().includes("collaboration"))?.content?.split("\n")[0] || 
+                   "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
+                </p>
               </div>
             </div>
 
-            {/* Right Column */}
-            <div style={{ flex: 1, boxSizing: "border-box" }}>
-              {/* Recommended Manager Support */}
-              <div style={{ height: "100%", background: "#F4F9F9", border: "1px solid rgba(91, 164, 164, 0.15)", borderRadius: "12px", padding: "12px 16px", boxSizing: "border-box", textAlign: "left" }}>
-                <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                  Recommended Manager Support
-                </h4>
-                <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {currentManagerSupport.map((support, idx) => (
-                    <li key={idx}>{support}</li>
-                  ))}
-                </ul>
+            {/* Friction & Growth Columns */}
+            <div style={{ display: "flex", gap: "24px", boxSizing: "border-box" }}>
+              {/* Left Column */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
+                {/* Workplace Friction Areas */}
+                <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.15)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
+                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
+                    Potential Workplace Friction Areas
+                  </h4>
+                  <p style={{ fontSize: "10.5px", color: "#c0392b", lineHeight: 1.4, margin: 0 }}>
+                    {currentFrictionArea}
+                  </p>
+                </div>
+
+                {/* Suggested Growth Areas */}
+                <div style={{ background: "#FDFDFD", border: "1px solid rgba(36, 59, 83, 0.06)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
+                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                    Suggested Growth Areas
+                  </h4>
+                  <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {currentGrowthAreas.map((area, idx) => (
+                      <li key={idx}>{area}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div style={{ flex: 1, boxSizing: "border-box" }}>
+                {/* Recommended Manager Support */}
+                <div style={{ height: "100%", background: "#F4F9F9", border: "1px solid rgba(91, 164, 164, 0.15)", borderRadius: "12px", padding: "12px 16px", boxSizing: "border-box", textAlign: "left" }}>
+                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                    Recommended Manager Support
+                  </h4>
+                  <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {currentManagerSupport.map((support, idx) => (
+                      <li key={idx}>{support}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -1417,6 +1441,145 @@ export default function ProfileOutputPage() {
           {/* PDF Footer */}
           <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
             <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
+            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 1 of 3</span>
+            <span>Generated on {new Date().toLocaleDateString()}</span>
+          </div>
+        </div>
+
+        {/* PAGE 2: Detailed Narrative (Part 1 - Sections 1 to 7) */}
+        <div
+          id="tie-report-pdf-page-2"
+          style={{
+            width: "794px",
+            height: "1123px",
+            padding: "45px 50px",
+            background: "#ffffff",
+            fontFamily: "'Inter', -apple-system, sans-serif",
+            boxSizing: "border-box",
+            color: "#1F2933",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            {/* PDF Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <img
+                src="/logo.png"
+                alt="TIE Logo"
+                style={{
+                  height: "52px",
+                  width: "auto",
+                  display: "block",
+                }}
+              />
+              <div style={{ textAlign: "right" }}>
+                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
+                  Talent Intelligence Engine
+                </h2>
+                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
+                  Workforce Style Insights Report
+                </p>
+              </div>
+            </div>
+
+            {/* Teal Divider */}
+            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
+
+            {/* Title Area */}
+            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 24px", textTransform: "uppercase", textAlign: "left" }}>
+              Detailed Behavioral Insights (Part 1)
+            </h1>
+
+            {/* Narrative Sections 1 to 7 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {parsedSections.slice(0, 7).map((section, idx) => (
+                <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
+                  <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
+                    {idx + 1}. {section.title}
+                  </h4>
+                  <div style={{ paddingLeft: "4px" }}>
+                    <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* PDF Footer */}
+          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
+            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
+            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 2 of 3</span>
+            <span>Generated on {new Date().toLocaleDateString()}</span>
+          </div>
+        </div>
+
+        {/* PAGE 3: Detailed Narrative (Part 2 - Sections 8 to 14) */}
+        <div
+          id="tie-report-pdf-page-3"
+          style={{
+            width: "794px",
+            height: "1123px",
+            padding: "45px 50px",
+            background: "#ffffff",
+            fontFamily: "'Inter', -apple-system, sans-serif",
+            boxSizing: "border-box",
+            color: "#1F2933",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            {/* PDF Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <img
+                src="/logo.png"
+                alt="TIE Logo"
+                style={{
+                  height: "52px",
+                  width: "auto",
+                  display: "block",
+                }}
+              />
+              <div style={{ textAlign: "right" }}>
+                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
+                  Talent Intelligence Engine
+                </h2>
+                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
+                  Workforce Style Insights Report
+                </p>
+              </div>
+            </div>
+
+            {/* Teal Divider */}
+            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
+
+            {/* Title Area */}
+            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 24px", textTransform: "uppercase", textAlign: "left" }}>
+              Detailed Behavioral Insights (Part 2)
+            </h1>
+
+            {/* Narrative Sections 8 to 14 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {parsedSections.slice(7).map((section, idx) => (
+                <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
+                  <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
+                    {idx + 8}. {section.title}
+                  </h4>
+                  <div style={{ paddingLeft: "4px" }}>
+                    <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* PDF Footer */}
+          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
+            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
+            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 3 of 3</span>
             <span>Generated on {new Date().toLocaleDateString()}</span>
           </div>
         </div>
