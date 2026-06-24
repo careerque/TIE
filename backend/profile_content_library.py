@@ -43,7 +43,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Anxiety or frustration when guidelines are missing",
             "Siloing themselves in process creation rather than executing"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern can establish scalable workflows, align collaborative efforts, and ensure high operational quality.",
             "When support needs remain unmet, execution may stall due to ambiguity, and collaboration conflicts over ownership might arise."
         ]
@@ -89,7 +89,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Expressing overwhelm under shifting priorities",
             "Silence or withdrawal during chaotic work periods"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern provide deep reliability, long-term focus, and consistent delivery of high-quality results.",
             "When support needs remain unmet, bottleneck risks can develop under rapid pivots, and disengagement due to burn-out or change fatigue may occur."
         ]
@@ -135,7 +135,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Reduced communication about intermediate states",
             "High frustration with administrative overhead"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern drive deep analytical focus, solve complex technical challenges, and build robust autonomous solutions.",
             "When support needs remain unmet, they may isolate their workflows entirely, causing team alignment gaps and integration friction."
         ]
@@ -181,7 +181,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Lower engagement",
             "Withdrawal from team discussions"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern can improve collaboration, adaptability and team effectiveness.",
             "When support needs remain unmet, communication gaps and engagement challenges may emerge."
         ]
@@ -227,7 +227,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Over-committing to support others at the expense of own tasks",
             "Passive withdrawal from team discussions under pressure"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern foster high team trust, group cohesion, psychological safety, and sustainable execution.",
             "When support needs remain unmet, they may experience burn-out from emotional labor or avoid making necessary independent decisions."
         ]
@@ -273,7 +273,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Expressing frustration with theoretical or process discussions",
             "Lower engagement in non-execution meetings"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern bring high execution flexibility, practical troubleshooting skills, and pragmatic problem-solving.",
             "When support needs remain unmet, they may create technical debt through non-standard workarounds or drift from strategic long-term goals."
         ]
@@ -319,7 +319,7 @@ PROFILE_CONTENT_LIBRARY = {
             "Uncertainty or hesitation due to lack of defined expectations",
             "Lower effectiveness when forced to stay in one mode indefinitely"
         ],
-        "business_implications": [
+        "workplace_impact": [
             "When supported effectively, individuals with this pattern act as highly resilient contributors who fill critical team gaps and adapt to dynamic workflows.",
             "When support needs remain unmet, they can experience burnout from constant context switching and lose alignment with core deliverables."
         ]

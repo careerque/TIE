@@ -215,7 +215,7 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         - Support Needs: {", ".join(library_data["support_needs"])}
         - Potential Growth Blocks: {", ".join(library_data["potential_growth_blocks"])}
         - Early Risk Indicators: {", ".join(library_data["early_risk_indicators"])}
-        - Business Implications: {", ".join(library_data["business_implications"])}
+        - Workplace Impact: {", ".join(library_data["workplace_impact"])}
 
         OUTPUT FORMAT:
         The output MUST follow this exact 18-part markdown structural format. Use exactly the numbered headings below. Provide 2-3 sentences of highly tailored, practical content for each section:
