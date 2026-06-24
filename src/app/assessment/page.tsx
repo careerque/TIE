@@ -201,6 +201,10 @@ export default function AssessmentPage() {
     router.push("/reflection");
   };
 
+  if (!authLoading && !isLoggedIn) {
+    return null; // Redirecting in useEffect
+  }
+
   // Render Loader
   if (authLoading || loading) {
     return (

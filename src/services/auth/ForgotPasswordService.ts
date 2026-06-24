@@ -15,9 +15,10 @@ export const forgotPassword = async (email: string): Promise<ServiceResponse<nul
             return { success: false, data: null, error: { message: "This email does not exist or account is unverified." } };
         }
 
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
         // If found, safely proceed to send the reset link
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'http://localhost:3000/update-password',
+            redirectTo: `${origin}/update-password`,
         });
 
         if (resetError) {
