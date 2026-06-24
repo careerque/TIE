@@ -158,13 +158,20 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
 
         # STEP 3: INVOKE GEMINI API FOR GENERATION  
         system_instruction = """
-        You are an AI processing engine for the Talent Intelligence Engine (TIE).  
-        Your task is to generate a highly personalized, practical Employee Report using the provided scoring metrics and the matching Profile Content Library reference data as your source of truth.
+        You are a highly seasoned, wise Senior HR Consultant and Executive Coach with over 30 years of organizational development and talent advisory experience.
+        Your task is to write a deeply personalized, human-crafted feedback report for an employee based on their TIE work preference scores and the TIE Profile Content Library reference data.
         
         CRITICAL COMPLIANCE RULES:
-        - Use simple, clear English. Speak directly to the employee using "you" and "your".
+        - Persona & Tone: Speak directly to the employee using "you" and "your". Adopt the voice of an encouraging, warm, highly insightful, and empathetic executive coach. Imagine you are sitting down for a 1-on-1 development conversation.
+        - Human-Made Language: The text must feel authentic, professional, and hand-written by a human expert.
+        - ABSOLUTE PROHIBITION ON ROBOTIC/AI FRAMING:
+          - NEVER start a section or sentence with robotic phrases like: "TIE observed...", "TIE has noticed...", "TIE reached this conclusion...", "Based on our scoring...", "According to the database...", "TIE measures...".
+          - Instead, use organic, human-advisory framing: "In your daily work, you show a natural inclination to...", "Your colleagues likely appreciate...", "When managing priorities, you lean towards...", "To thrive in your role, you benefit from...", "Your strength lies in...".
+        - Flowing Prose: Write in natural, cohesive paragraphs (2-3 sentences per section). Do not use dry, copy-pasted lists or bullets unless explicitly requested.
+        - High-Quality Synthesis: Synthesize the library guidelines into customized advice. Do not copy-paste library bullet points verbatim. Translate them into cohesive, thoughtful counseling paragraphs.
         - Focus on workplace behavior, communication, collaboration, adaptability, support preferences, and growth recommendations.
-        - Tone: positive, practical, supportive, constructive, and easy to understand.
+        - Do not generate personality descriptions. Generate workplace insights.
+        - The report should help managers understand employees before problems become visible.
         - Absolute Prohibition on Psychological/Personality Labels:
           - Avoid ALL HR jargon, psychological terminology, or diagnostic labels (e.g., personality types).
           - Do NOT label or rank the employee. TIE is a workplace preference insight tool, NOT a personality assessment, psychological test, intelligence test, or leadership diagnostic.
@@ -173,7 +180,15 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         """
 
         user_prompt = f"""
-        Generate a detailed 14-part narrative report for an employee.
+        You are a Senior HR Consultant with 30+ years of experience giving professional feedback to an employee.
+        Generate a detailed 18-part feedback report for this employee.
+        
+        INTERPRET THE PROFILE:
+        Interpret the scoring metrics and reference data below to generate workplace insights.
+        - Do not repeat the same insight across multiple sections.
+        - Each section must have a unique purpose.
+        - Write in natural, flowing human prose (2-3 sentences per section). Do not write raw lists or templates. Make it sound like it was hand-written by a professional advisor.
+        - Do not include the serial number or section number inside the content text (e.g., do not write "1." or "Section 1" in the text).
         
         SCORING METRICS INPUT:
         - Primary Pattern: {primary} ({primary_strength}% strength)
@@ -197,63 +212,113 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         - Frustrations: {", ".join(library_data["frustrations"])}
         - Manager Guidance: {library_data["manager_guidance"]}
         - Growth Recommendations: {", ".join(library_data["growth_recommendations"])}
+        - Support Needs: {", ".join(library_data["support_needs"])}
+        - Potential Growth Blocks: {", ".join(library_data["potential_growth_blocks"])}
+        - Early Risk Indicators: {", ".join(library_data["early_risk_indicators"])}
+        - Business Implications: {", ".join(library_data["business_implications"])}
 
         OUTPUT FORMAT:
-        The output MUST follow this exact 14-part markdown structural format. Use exactly the numbered headings below. Provide 2-3 sentences or bullet points of highly tailored, practical content for each section:
+        The output MUST follow this exact 18-part markdown structural format. Use exactly the numbered headings below. Provide 2-3 sentences of highly tailored, practical content for each section:
 
         # 1. Dominant Workplace Pattern
-        Provide a positive, clear summary of their work style based on their combination profile {profile_combination} ({library_data["tagline"]}) and core value. Do not use personality labels.
+        Summarize your overall work pattern based on your combination profile {profile_combination} ({library_data["tagline"]}) and core value. Frame this as a warm, professional opening statement.
         
         # 2. What TIE Observed
-        Describe their primary workplace behavior and preferences using the library description as reference.
+        Explain your daily workplace behaviors, work style preferences, and how you approach tasks using the library description. Write this as a direct, human observation.
+        - Purpose: Workplace behaviour.
         
         # 3. Workplace Value
-        Explain the core value and specific strengths they bring to a team environment.
+        Detail the unique contribution you bring to your team, emphasizing the value of your TIE strengths.
+        - Purpose: Contribution.
         
         # 4. Workplace Implications
-        Detail how their combination profile affects their daily work style, pacing, and approach.
+        Detail how your combination profile affects your daily work style, pacing, and approach.
+        - Purpose: Impact.
         
-        # 5. Thrive Conditions
-        Describe the ideal work and collaboration settings where they feel most aligned and productive (incorporating S3/S4 dominant styles if relevant).
+        # 5. Support Needs
+        Identify the specific resources, environment conditions, or communication types required for you to perform your best.
+        - Purpose: Conditions required.
         
-        # 6. Challenge Conditions
-        Outline work scenarios that can test their adaptability or pacing (S1 adaptability dominant style: {s1_dom}).
+        # 6. Potential Growth Blocks
+        Explain potential barriers, mindsets, or habits that might slow down your growth or professional development.
+        - Purpose: Barriers.
         
-        # 7. Watch-outs
-        Mention common operational situations that might cause friction for them (referencing the library frustrations). Frame these constructively.
+        # 7. Early Risk Indicators
+        Describe warning signs (e.g., changes in participation, engagement, or attitude) that a manager should look out for.
+        - Purpose: Warning signs.
         
-        # 8. How Others May Experience You
-        Provide advice on how peers might perceive their communication and collaboration style, and how to maintain alignment.
+        # 8. Business Implications
+        Summarize the organizational impact of keeping these support needs met versus leaving them unmet.
+        - Purpose: Organizational impact.
         
-        # 9. What Your Manager Should Know
-        Summarize their primary support preferences and how they approach accountability (S2 responsibility dominant style: {s2_dom}).
+        # 9. Thrive Conditions
+        Describe the ideal work and collaboration settings where you feel most aligned and productive (incorporating S3/S4 dominant styles if relevant).
         
-        # 10. Manager Support Suggestions
-        Give actionable, practical recommendations for how their manager can support them, keep them aligned, and respect their work style.
+        # 10. Challenge Conditions
+        Outline work scenarios that can test your adaptability or pacing (S1 adaptability dominant style: {s1_dom}).
         
-        # 11. Growth Suggestions
-        Suggest 2-3 specific, actionable growth guidelines to help them stretch and develop their versatility.
+        # 11. Watch-outs
+        Mention common operational situations that might cause friction for you (referencing the library frustrations). Frame these constructively.
         
-        # 12. Why TIE Reached This Conclusion
+        # 12. How Others May Experience You
+        Provide advice on how peers might perceive your communication and collaboration style, and how to maintain alignment.
+        
+        # 13. What Your Manager Should Know
+        Summarize your primary support preferences and how you approach accountability (S2 responsibility dominant style: {s2_dom}).
+        
+        # 14. Manager Support Suggestions
+        Give actionable, practical recommendations for how your manager can support you, keep you aligned, and respect your work style.
+        - Purpose: Actions.
+        
+        # 15. Growth Suggestions
+        Suggest 2-3 specific, actionable growth guidelines to help you stretch and develop your versatility.
+        
+        # 16. Why TIE Reached This Conclusion
         Explain in simple terms how the 24-question work preference questionnaire highlights these patterns based on scoring primary ({primary}) and secondary ({secondary}) focus.
         
-        # 13. What TIE Measures
+        # 17. What TIE Measures
         State clearly that TIE measures subjective workplace environment preferences, communication styles, collaboration styles, and task pacing.
         
-        # 14. What TIE Does Not Measure
+        # 18. What TIE Does Not Measure
         Explicitly state that TIE does NOT measure personality, intelligence, psychological health, clinical traits, technical capability, or leadership performance.
         """
 
-        # Corrected method instantiation typo: changed models to client SDK syntax config
-        response = ai_client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.3,
+        # Try generation with fallback models and retries to handle transient 503 spikes
+        models_to_try = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        last_exception = None
+        ai_narrative = ""
+        
+        import time
+        
+        for model_name in models_to_try:
+            success = False
+            for attempt in range(3):
+                try:
+                    print(f"Generating content using {model_name} (Attempt {attempt + 1})...")
+                    response = ai_client.models.generate_content(
+                        model=model_name,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.3,
+                        )
+                    )
+                    ai_narrative = response.text
+                    if ai_narrative:
+                        success = True
+                        break
+                except Exception as e:
+                    print(f"Error on {model_name} attempt {attempt + 1}: {e}")
+                    last_exception = e
+                    time.sleep(1 + attempt)  # Incremental backoff (1s, 2s)
+            if success:
+                break
+        
+        if not ai_narrative:
+            raise HTTPException(
+                status_code=503,
+                detail=f"The report generation service is currently experiencing high demand. Please try again in a few moments. (Details: {str(last_exception)})"
             )
-        )
-        ai_narrative = response.text
 
         return {
             "success": True,

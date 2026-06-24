@@ -1,7 +1,7 @@
 "use client";
 
 // Version 2.0.0 - Clean Cache-Busting Rewrite
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -341,6 +341,39 @@ export default function ProfileOutputPage() {
     }
   };
 
+  const fetchAIAnalysis = useCallback(async () => {
+    if (!user) return;
+    try {
+      setApiLoading(true);
+      setError(null);
+      
+      let apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      if (apiBaseUrl.endsWith("/")) {
+        apiBaseUrl = apiBaseUrl.slice(0, -1);
+      }
+      const response = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.detail || "Failed to process assessment metrics.");
+      }
+
+      setApiData(result);
+    } catch (err: any) {
+      console.error("Analysis Fetch Error:", err);
+      setError(err.message || "An unexpected error occurred while compiling your report.");
+    } finally {
+      setApiLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!authLoading) {
       // Check authentication status
@@ -348,38 +381,6 @@ export default function ProfileOutputPage() {
         router.push("/login");
         return;
       }
-
-      const fetchAIAnalysis = async () => {
-        try {
-          setApiLoading(true);
-          setError(null);
-          
-          let apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-          if (apiBaseUrl.endsWith("/")) {
-            apiBaseUrl = apiBaseUrl.slice(0, -1);
-          }
-          const response = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id: user.id }),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            throw new Error(result.detail || "Failed to process assessment metrics.");
-          }
-
-          setApiData(result);
-        } catch (err: any) {
-          console.error("Analysis Fetch Error:", err);
-          setError(err.message || "An unexpected error occurred while compiling your report.");
-        } finally {
-          setApiLoading(false);
-        }
-      };
 
       if (profile) {
         const fName = profile.first_name;
@@ -428,7 +429,7 @@ export default function ProfileOutputPage() {
         return;
       }
     }
-  }, [profile, isLoggedIn, user, authLoading, router]);
+  }, [profile, isLoggedIn, user, authLoading, router, fetchAIAnalysis]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -852,13 +853,22 @@ export default function ProfileOutputPage() {
           <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.6, marginBottom: "2rem" }}>
             {error}
           </p>
-          <button
-            onClick={() => router.push("/welcome")}
-            className="tie-btn-primary"
-            style={{ background: "#5BA4A4", border: "none" }}
-          >
-            Return to Assessment
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%" }}>
+            <button
+              onClick={() => fetchAIAnalysis()}
+              className="tie-btn-primary"
+              style={{ background: "#5BA4A4", border: "none" }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Analysis
+            </button>
+            <button
+              onClick={() => router.push("/welcome")}
+              className="tie-btn-secondary"
+            >
+              Return to Assessment
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1492,12 +1502,12 @@ export default function ProfileOutputPage() {
               Detailed Behavioral Insights (Part 1)
             </h1>
 
-            {/* Narrative Sections 1 to 7 */}
+            {/* Narrative Sections 1 to 9 */}
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {parsedSections.slice(0, 7).map((section, idx) => (
+              {parsedSections.slice(0, 9).map((section, idx) => (
                 <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                    {idx + 1}. {section.title}
+                    {section.title}
                   </h4>
                   <div style={{ paddingLeft: "4px" }}>
                     <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
@@ -1515,7 +1525,7 @@ export default function ProfileOutputPage() {
           </div>
         </div>
 
-        {/* PAGE 3: Detailed Narrative (Part 2 - Sections 8 to 14) */}
+        {/* PAGE 3: Detailed Narrative (Part 2 - Sections 10 to 18) */}
         <div
           id="tie-report-pdf-page-3"
           style={{
@@ -1561,12 +1571,12 @@ export default function ProfileOutputPage() {
               Detailed Behavioral Insights (Part 2)
             </h1>
 
-            {/* Narrative Sections 8 to 14 */}
+            {/* Narrative Sections 10 to 18 */}
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {parsedSections.slice(7).map((section, idx) => (
+              {parsedSections.slice(9).map((section, idx) => (
                 <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
                   <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                    {idx + 8}. {section.title}
+                    {section.title}
                   </h4>
                   <div style={{ paddingLeft: "4px" }}>
                     <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />

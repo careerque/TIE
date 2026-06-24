@@ -24,6 +24,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Practice making decisions in fast-paced scenarios without waiting for full documentation.",
             "Build tolerance for small, un-documented experiments within the team."
+        ],
+        "support_needs": [
+            "Clear process documentation",
+            "Defined roles in collaborative tasks",
+            "Shared project boards and tools",
+            "Regular structured team syncs"
+        ],
+        "potential_growth_blocks": [
+            "Fast-paced, un-documented workflows",
+            "Lack of clear ownership lines",
+            "Working in complete isolation without team syncs",
+            "Highly chaotic or ad-hoc team settings"
+        ],
+        "early_risk_indicators": [
+            "Reluctance to proceed without full documentation",
+            "Repeatedly asking for role clarification",
+            "Anxiety or frustration when guidelines are missing",
+            "Siloing themselves in process creation rather than executing"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern can establish scalable workflows, align collaborative efforts, and ensure high operational quality.",
+            "When support needs remain unmet, execution may stall due to ambiguity, and collaboration conflicts over ownership might arise."
         ]
     },
     "Steady Executor": {
@@ -48,6 +70,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Learn to adapt to shifting priorities by dividing tasks into modular, flexible segments.",
             "Practice communicating progress early, even if the task is not fully completed to your standards."
+        ],
+        "support_needs": [
+            "Predictable project timelines",
+            "Minimal context-switching or priority redirection",
+            "Well-defined scope and execution instructions",
+            "Gradual transition pacing during changes"
+        ],
+        "potential_growth_blocks": [
+            "Frequent and sudden workflow changes",
+            "High-pressure environments with tight, shifting deadlines",
+            "Lack of operational structure or long-term plan",
+            "Continuous ad-hoc multitasking"
+        ],
+        "early_risk_indicators": [
+            "Decline in execution speed or output quality",
+            "Increased resistance to process changes",
+            "Expressing overwhelm under shifting priorities",
+            "Silence or withdrawal during chaotic work periods"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern provide deep reliability, long-term focus, and consistent delivery of high-quality results.",
+            "When support needs remain unmet, bottleneck risks can develop under rapid pivots, and disengagement due to burn-out or change fatigue may occur."
         ]
     },
     "Independent Problem Solver": {
@@ -72,6 +116,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Proactively share intermediate updates and thoughts before the final solution is complete.",
             "Align independent work streams with overall team architecture and goals."
+        ],
+        "support_needs": [
+            "High autonomy over execution methods",
+            "Clear definition of the problem/goal rather than the process",
+            "Dedicated quiet blocks for uninterrupted focus",
+            "Asynchronous check-ins to respect focus time"
+        ],
+        "potential_growth_blocks": [
+            "Micro-management or excessive check-ins",
+            "Highly rigid, bureaucratic constraints on how to execute",
+            "Continuous mandatory group brainstorming sessions",
+            "Lack of freedom to experiment or choose tools"
+        ],
+        "early_risk_indicators": [
+            "Defensive behavior during progress inquiries",
+            "Bypassing team syncs or documentation protocols",
+            "Reduced communication about intermediate states",
+            "High frustration with administrative overhead"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern drive deep analytical focus, solve complex technical challenges, and build robust autonomous solutions.",
+            "When support needs remain unmet, they may isolate their workflows entirely, causing team alignment gaps and integration friction."
         ]
     },
     "Adaptive Team Contributor": {
@@ -96,6 +162,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Create dedicated quiet focus blocks to prevent collaboration burnout and ensure solo tasks are completed.",
             "Practice documenting decisions made during brainstorming sessions to build a process trail."
+        ],
+        "support_needs": [
+            "Open communication",
+            "Collaborative discussion",
+            "Flexibility in execution",
+            "Early visibility of change"
+        ],
+        "potential_growth_blocks": [
+            "Working in isolation",
+            "Limited communication",
+            "Excessive bureaucracy",
+            "Highly rigid environments"
+        ],
+        "early_risk_indicators": [
+            "Reduced participation",
+            "Frustration during change",
+            "Lower engagement",
+            "Withdrawal from team discussions"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern can improve collaboration, adaptability and team effectiveness.",
+            "When support needs remain unmet, communication gaps and engagement challenges may emerge."
         ]
     },
     "Supportive Team Stabilizer": {
@@ -120,6 +208,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Practice sharing critical feedback directly when necessary, focusing on operational improvement.",
             "Build confidence in independent decision-making when team consensus is delayed."
+        ],
+        "support_needs": [
+            "Harmonious, low-conflict team environment",
+            "Opportunities to check in on team alignment and well-being",
+            "Sustainable work pace and predictable timelines",
+            "Recognition of supportive, team-building efforts"
+        ],
+        "potential_growth_blocks": [
+            "Aggressive, highly competitive work settings",
+            "Sudden changes that disrupt team structures or relationships",
+            "Pressure to execute at an unsustainable, frantic pace",
+            "Lack of opportunities for peer support or consensus"
+        ],
+        "early_risk_indicators": [
+            "Reluctance to voice dissenting opinions",
+            "Stress and anxiety during team conflicts",
+            "Over-committing to support others at the expense of own tasks",
+            "Passive withdrawal from team discussions under pressure"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern foster high team trust, group cohesion, psychological safety, and sustainable execution.",
+            "When support needs remain unmet, they may experience burn-out from emotional labor or avoid making necessary independent decisions."
         ]
     },
     "Practical Adapter": {
@@ -144,6 +254,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Spend time understanding and aligning with the long-term strategic plan, not just immediate tasks.",
             "Document critical workarounds so other team members can repeat and benefit from them."
+        ],
+        "support_needs": [
+            "Hands-on learning and execution opportunities",
+            "Practical, concrete project objectives rather than abstract theories",
+            "Autonomy to pivot execution details to overcome bottlenecks",
+            "Grounded check-ins focused on immediate next steps"
+        ],
+        "potential_growth_blocks": [
+            "Highly abstract or theoretical planning sessions with no execution",
+            "Bureaucracy that prioritizes strict process over practical results",
+            "Lack of hands-on tools or resources to solve problems",
+            "Highly rigid workflows that prevent practical workarounds"
+        ],
+        "early_risk_indicators": [
+            "Impatience during long-term planning discussions",
+            "Implementing undocumented workarounds that bypass standards",
+            "Expressing frustration with theoretical or process discussions",
+            "Lower engagement in non-execution meetings"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern bring high execution flexibility, practical troubleshooting skills, and pragmatic problem-solving.",
+            "When support needs remain unmet, they may create technical debt through non-standard workarounds or drift from strategic long-term goals."
         ]
     },
     "Flexible Adapter": {
@@ -168,6 +300,28 @@ PROFILE_CONTENT_LIBRARY = {
         "growth_recommendations": [
             "Establish a clear personal core workflow so you maintain consistent execution even when switching contexts.",
             "Document your style switches so team members understand how to work best with you in different modes."
+        ],
+        "support_needs": [
+            "Clear context setting to understand current operational priorities",
+            "Balanced split between independent work and collaboration",
+            "Support in establishing stable personal core workflows",
+            "Recognition of their gap-filling versatility"
+        ],
+        "potential_growth_blocks": [
+            "Environments that enforce a single, narrow style of working",
+            "Complete operational chaos without any structural baseline",
+            "Lack of clarity on whether process or speed is the priority",
+            "Extreme isolation or continuous collaborative overload"
+        ],
+        "early_risk_indicators": [
+            "Difficulty maintaining consistency across different contexts",
+            "Expressed fatigue from continuous role-switching",
+            "Uncertainty or hesitation due to lack of defined expectations",
+            "Lower effectiveness when forced to stay in one mode indefinitely"
+        ],
+        "business_implications": [
+            "When supported effectively, individuals with this pattern act as highly resilient contributors who fill critical team gaps and adapt to dynamic workflows.",
+            "When support needs remain unmet, they can experience burnout from constant context switching and lose alignment with core deliverables."
         ]
     }
 }
