@@ -10,7 +10,7 @@ import { fetchUserSavedProgress } from "@/services/assessmentService";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isLoggedIn, profile, user, loading, refreshProfile } = useAuthContext();
+  const { isLoggedIn, profile, user, loading, refreshProfile, logout } = useAuthContext();
   const [updating, setUpdating] = useState(false);
 
   // Profile Fields States
@@ -105,6 +105,12 @@ export default function ProfilePage() {
     if (field !== "email") {
       const res = await updateProfile(dbPayload);
       if (!res.success) {
+        if (res.error?.message?.includes("Unauthorized") || res.error?.message?.includes("session")) {
+          console.warn("Session expired on profile page. Redirecting to login...");
+          await logout();
+          router.push("/login");
+          return;
+        }
         alert(res.error?.message || "Failed to update profile in database.");
         setUpdating(false);
         return;

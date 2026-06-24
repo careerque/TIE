@@ -228,7 +228,7 @@ function MarkdownRenderer({ content, fontSize = "0.85rem", color = "#627D98" }: 
 
 export default function ProfileOutputPage() {
   const router = useRouter();
-  const { isLoggedIn, profile, user, loading: authLoading, refreshProfile } = useAuthContext();
+  const { isLoggedIn, profile, user, loading: authLoading, refreshProfile, logout } = useAuthContext();
   
   // API loading states
   const [apiLoading, setApiLoading] = useState(true);
@@ -239,6 +239,7 @@ export default function ProfileOutputPage() {
   // PDF generation and hover states
   const [pdfHovered, setPdfHovered] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgressText, setPdfProgressText] = useState("");
 
   useEffect(() => {
     if (apiLoading) {
@@ -308,6 +309,12 @@ export default function ProfileOutputPage() {
 
       const res = await updateProfile(payload);
       if (!res.success) {
+        if (res.error?.message?.includes("Unauthorized") || res.error?.message?.includes("session")) {
+          console.warn("Session expired on profile-output page. Redirecting to login...");
+          await logout();
+          router.push("/login");
+          return;
+        }
         setFormValidationError(res.error?.message || "Failed to update profile.");
         setIsSavingProfile(false);
         return;
@@ -437,6 +444,7 @@ export default function ProfileOutputPage() {
 
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
+    setPdfProgressText("Initializing PDF engine...");
     try {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
@@ -449,6 +457,13 @@ export default function ProfileOutputPage() {
       for (let i = 0; i < pageIds.length; i++) {
         const element = document.getElementById(pageIds[i]);
         if (!element) continue;
+
+        if (i === 0) setPdfProgressText("Rendering Page 1 (Overview & Summary)...");
+        else if (i === 1) setPdfProgressText("Rendering Page 2 (Behavioral Insights)...");
+        else if (i === 2) setPdfProgressText("Rendering Page 3 (Growth & Criteria)...");
+
+        // Yield execution to the browser for 60ms to let the state changes repaint on screen before heavy CPU work blocks the main thread
+        await new Promise((resolve) => setTimeout(resolve, 60));
 
         const canvas = await html2canvas(element, {
           scale: 2, // High resolution crisp text rendering
@@ -466,11 +481,15 @@ export default function ProfileOutputPage() {
         pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
       }
 
+      setPdfProgressText("Saving and downloading document...");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       pdf.save(`TIE_Workforce_Insight_Report_${firstName}_${lastName}.pdf`);
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
       setIsGeneratingPdf(false);
+      setPdfProgressText("");
     }
   };
 
@@ -1246,6 +1265,100 @@ export default function ProfileOutputPage() {
           </div>
         </motion.div>
       </AnimatePresence>
+
+      {/* Full-screen interactive overlay loader for PDF generation */}
+      {isGeneratingPdf && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.75)", // Dark slate backdrop
+          backdropFilter: "blur(12px)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999, // On top of everything
+          fontFamily: "'Inter', sans-serif",
+          animation: "fadeIn 0.3s ease-out both"
+        }}>
+          <div style={{
+            background: "#ffffff",
+            borderRadius: "24px",
+            padding: "3rem 2.5rem",
+            width: "90%",
+            maxWidth: "400px",
+            textAlign: "center",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            border: "1px solid rgba(226, 232, 240, 0.8)",
+            boxSizing: "border-box",
+            animation: "scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both"
+          }}>
+            {/* Spinning Loader Icon */}
+            <div style={{
+              width: "64px",
+              height: "64px",
+              margin: "0 auto 1.5rem",
+              position: "relative"
+            }}>
+              <div style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                border: "4px solid #F1F5F9",
+                borderTopColor: "#243B53", // Corporate primary
+                animation: "spin 1s linear infinite"
+              }} />
+            </div>
+
+            <h3 style={{
+              fontSize: "1.25rem",
+              fontWeight: 800,
+              color: "#0F172A",
+              margin: "0 0 0.5rem"
+            }}>
+              Preparing Your Report
+            </h3>
+
+            <p style={{
+              fontSize: "0.9375rem",
+              color: "#64748B",
+              margin: "0 0 1.5rem",
+              lineHeight: 1.5
+            }}>
+              Please wait while we render a high-resolution, print-ready PDF document.
+            </p>
+
+            {/* Progress Text Badge */}
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0.5rem 1rem",
+              background: "#F8FAFC",
+              border: "1px solid #E2E8F0",
+              borderRadius: "99px",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              color: "#243B53"
+            }}>
+              {pdfProgressText || "Processing pages..."}
+            </div>
+          </div>
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes scaleIn {
+              from { opacity: 0; transform: scale(0.95); }
+              to { opacity: 1; transform: scale(1); }
+            }
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
 
       {/* Invisible wrapper for html2canvas PDF rendering */}
       <div style={{ position: "absolute", left: "-9999px", top: "-9999px", zIndex: -100 }}>
