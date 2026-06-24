@@ -147,6 +147,38 @@ export default function AssessmentPage() {
     }
   }, [isLoggedIn, profile, user, authLoading, router]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to realtime updates for user responses to sync devices
+    const channel = supabasedb
+      .channel(`user_responses_sync_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_responses',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Realtime user response update:', payload);
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newRow = payload.new as { question_id: number; selected_option_index: number };
+            setAnswers((prev) => ({
+              ...prev,
+              [newRow.question_id]: newRow.selected_option_index,
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabasedb.removeChannel(channel);
+    };
+  }, [user]);
+
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : undefined;
   const currentAnswerIndex = currentQuestion ? answers[currentQuestion.question_id] : undefined;
   const totalQuestions = questions.length || 24;

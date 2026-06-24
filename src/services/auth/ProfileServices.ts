@@ -42,8 +42,7 @@ export const updateProfile = async (updates: {
 
         const { data, error: dbError } = await supabasedb
             .from("profiles")
-            .update(updates)
-            .eq("id", user.id)
+            .upsert({ id: user.id, email: user.email || "", ...updates })
             .select()
             .single();
 
