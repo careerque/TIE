@@ -79,32 +79,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // 1. Initial Session Check
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabasedb.auth.getSession();
-        if (error) {
-          console.error("Error getting session:", error);
-        }
-        if (session?.user) {
-          setUser(session.user);
-          await fetchProfile(session.user.id, session.user.email || "");
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
-      } catch (err) {
-        console.error("Error checking initial session:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    // 2. Auth State Change Listener
+    // Listen for auth state changes (including the initial session retrieval on mount)
     const { data: { subscription } } = supabasedb.auth.onAuthStateChange(async (event, session) => {
-      setLoading(true);
+      // Only set loading back to true for initial loads or explicit sign-ins to avoid background token refresh flashes
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        setLoading(true);
+      }
+
       if (session?.user) {
         setUser(session.user);
         await fetchProfile(session.user.id, session.user.email || "");
@@ -112,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setProfile(null);
       }
+
       setLoading(false);
       window.dispatchEvent(new Event("auth-change"));
     });
