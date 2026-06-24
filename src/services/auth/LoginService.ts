@@ -24,8 +24,7 @@ export const loginUser = async (email: string, psw: string): Promise<ServiceResp
             };
         }
 
-        // Revoke all other active sessions for this user on other devices/tabs on the server
-        await superbase.auth.signOut({ scope: 'others' });
+
 
         const { data: profileData, error: profileError } = await superbase.from('profiles').select('role, first_name, last_name').eq('id', userData.user.id).single();
 

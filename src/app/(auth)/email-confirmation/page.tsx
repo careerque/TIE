@@ -51,8 +51,7 @@ export default function EmailConfirmationPage() {
           localStorage.setItem('isLoggedIn', 'true');
           localStorage.setItem('userEmail', session.user.email || '');
 
-          // Revoke all other active sessions for this user on other devices/tabs
-          await supabasedb.auth.signOut({ scope: 'others' });
+
 
           // Dispatch event to update global header
           window.dispatchEvent(new Event('auth-change'));
