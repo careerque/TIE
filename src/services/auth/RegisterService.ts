@@ -5,11 +5,12 @@ import { ServiceResponse } from "@/types/serviceResponse";
 export const registerUser = async (email: string, psw: string, firstName: string, lastName: string): Promise<ServiceResponse<any>> => {
   const superbase = supabasedb;
   try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     const { data: authData, error: authError } = await superbase.auth.signUp({
       email,
       password: psw,
       options: {
-        emailRedirectTo: 'http://localhost:3000/email-confirmation',
+        emailRedirectTo: `${origin}/email-confirmation`,
         // Send both formats just to be 100% safe across versions
         data: {
           first_name: firstName,

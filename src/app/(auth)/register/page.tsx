@@ -124,17 +124,18 @@ export default function RegisterPage() {
       <div style={{ background:'#fff', borderRadius:'20px', boxShadow:'0 8px 40px rgba(36,59,83,0.12)', border:'1px solid rgba(36,59,83,0.08)', width:'100%', maxWidth:'440px', overflow:'hidden', textAlign:'center', animation:'cardIn .52s cubic-bezier(.22,1,.36,1) both' }}>
         <div style={{ height:'4px', background:'linear-gradient(90deg,#243B53 0%,#5BA4A4 55%,#A3B18A 100%)' }} />
         <div className="auth-card-inner" style={{ padding:'2.5rem 2.5rem 2.75rem' }}>
-          <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'rgba(163,177,138,0.14)', border:'2px solid #A3B18A', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.25rem' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A3B18A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20,6 9,17 4,12"/>
+          <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'rgba(91,164,164,0.13)', border:'2px solid #5BA4A4', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.25rem' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5BA4A4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
             </svg>
           </div>
-          <h2 style={{ fontSize:'1.4rem', fontWeight:800, color:'#243B53', marginBottom:'0.5rem', letterSpacing:'-0.025em' }}>Account Created!</h2>
+          <h2 style={{ fontSize:'1.45rem', fontWeight:800, color:'#243B53', marginBottom:'0.5rem', letterSpacing:'-0.025em' }}>Confirm Your Email</h2>
           <p style={{ fontSize:'0.9rem', color:'#627D98', marginBottom:'1.75rem', lineHeight:1.6 }}>
-            Welcome aboard, <strong style={{ color:'#243B53' }}>{firstName}</strong>! Your account has been created successfully.
+            Welcome aboard, <strong style={{ color:'#243B53' }}>{firstName}</strong>! We've sent a secure verification link to <strong style={{ color:'#243B53' }}>{email}</strong>. Please check your inbox (and spam folder) and click the link to confirm your account.
           </p>
           <Link href="/login" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'100%', padding:'0.825rem 1.5rem', background:'#5BA4A4', color:'#fff', borderRadius:'10px', fontSize:'0.9375rem', fontWeight:700, textDecoration:'none', boxShadow:'0 3px 14px rgba(91,164,164,0.34)' }}>
-            Go to Sign In →
+            Go to Login →
           </Link>
         </div>
       </div>
