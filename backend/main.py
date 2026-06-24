@@ -283,8 +283,9 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         Explicitly state that TIE does NOT measure personality, intelligence, psychological health, clinical traits, technical capability, or leadership performance.
         """
 
-        # Try generation with fallback models and retries to handle transient 503 spikes
-        models_to_try = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        # Try generation with fallback models and retries to handle transient 503 spikes.
+        # We target only verified 2.5 family models (flash-lite and flash) and skip permanent 404/429 failures instantly.
+        models_to_try = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
         last_exception = None
         ai_narrative = ""
         
@@ -292,7 +293,7 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         
         for model_name in models_to_try:
             success = False
-            for attempt in range(3):
+            for attempt in range(2): # Reduce to 2 attempts for faster failover
                 try:
                     print(f"Generating content using {model_name} (Attempt {attempt + 1})...")
                     response = ai_client.models.generate_content(
@@ -310,7 +311,18 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
                 except Exception as e:
                     print(f"Error on {model_name} attempt {attempt + 1}: {e}")
                     last_exception = e
-                    time.sleep(1 + attempt)  # Incremental backoff (1s, 2s)
+                    
+                    # Prevent wasting time: fail-fast on permanent configurations or exhausted quotas
+                    err_str = str(e).lower()
+                    if "404" in err_str or "not_found" in err_str or "400" in err_str or "invalid" in err_str:
+                        print(f"Permanent error (404/400) on {model_name}. Skipping to next model.")
+                        break
+                    if "quota exceeded" in err_str and "limit: 0" in err_str:
+                        print(f"Model {model_name} has 0 quota. Skipping to next model.")
+                        break
+                        
+                    # Backoff before retrying transient issues
+                    time.sleep(1.5)
             if success:
                 break
         
