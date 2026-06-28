@@ -449,36 +449,143 @@ export default function ProfileOutputPage() {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
 
-      const pageIds = ["tie-report-pdf-page-1", "tie-report-pdf-page-2", "tie-report-pdf-page-3"];
+      // Create PDF in A4 format
       const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210; // A4 width in mm
       const imgHeight = 297; // A4 height in mm
 
-      for (let i = 0; i < pageIds.length; i++) {
-        const element = document.getElementById(pageIds[i]);
-        if (!element) continue;
-
-        if (i === 0) setPdfProgressText("Rendering Page 1 (Overview & Summary)...");
-        else if (i === 1) setPdfProgressText("Rendering Page 2 (Behavioral Insights)...");
-        else if (i === 2) setPdfProgressText("Rendering Page 3 (Growth & Criteria)...");
-
-        // Yield execution to the browser for 60ms to let the state changes repaint on screen before heavy CPU work blocks the main thread
+      // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
+      setPdfProgressText("Rendering Executive Summary...");
+      const page1Element = document.getElementById("tie-report-pdf-page-1");
+      if (page1Element) {
         await new Promise((resolve) => setTimeout(resolve, 60));
-
-        const canvas = await html2canvas(element, {
-          scale: 2, // High resolution crisp text rendering
+        const canvas1 = await html2canvas(page1Element, {
+          scale: 2,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
         });
+        const imgData1 = canvas1.toDataURL("image/png");
+        pdf.addImage(imgData1, "PNG", 0, 0, imgWidth, imgHeight);
+      }
 
+      // --- PAGES 2+: Detailed Narrative (Section-by-Section with Dynamic Breaks) ---
+      setPdfProgressText("Preparing layout templates...");
+      
+      // Capture the header template
+      const headerElement = document.getElementById("tie-report-pdf-header-template");
+      let headerImgData = "";
+      let headerHeightMm = 0;
+      if (headerElement) {
+        const headerCanvas = await html2canvas(headerElement, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+        headerImgData = headerCanvas.toDataURL("image/png");
+        headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
+      }
+
+      // Capture all dynamic sections individually
+      const sectionElements = document.getElementsByClassName("pdf-narrative-section");
+      const sectionImgDataList = [];
+      for (let i = 0; i < sectionElements.length; i++) {
+        setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
+        const el = sectionElements[i] as HTMLElement;
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
         const imgData = canvas.toDataURL("image/png");
+        const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
+        sectionImgDataList.push({ imgData, heightMm });
+      }
+
+      // Layout on PDF pages
+      setPdfProgressText("Assembling pages...");
+      let currentPageNum = 2;
+      let currentY = 15; // Top margin
+
+      // Start Page 2
+      pdf.addPage();
+      
+      // Draw Header on Page 2
+      if (headerImgData) {
+        pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+        currentY += headerHeightMm + 10; // Header + Gap
+      }
+
+      // Draw Main Title on Page 2
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(36, 59, 83); // #243B53
+      pdf.text("DETAILED BEHAVIORAL INSIGHTS & GUIDANCE", 15, currentY);
+      currentY += 12; // Title + Gap
+
+      const bottomLimit = 297 - 25; // 25mm bottom margin for footer
+
+      for (let i = 0; i < sectionImgDataList.length; i++) {
+        const section = sectionImgDataList[i];
         
-        if (i > 0) {
+        // If it doesn't fit on the current page, add a new page
+        if (currentY + section.heightMm > bottomLimit) {
           pdf.addPage();
+          currentPageNum++;
+          currentY = 15; // Reset top margin
+          
+          // Draw header on new page
+          if (headerImgData) {
+            pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+            currentY += headerHeightMm + 10;
+          }
         }
         
-        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+        // Draw the section
+        pdf.addImage(section.imgData, "PNG", 15, currentY, 180, section.heightMm);
+        currentY += section.heightMm + 8; // Section + Gap (8mm)
+      }
+
+      // --- PAGINATION AND FOOTER RENDERING ---
+      setPdfProgressText("Applying page numbers...");
+      const totalPages = (pdf as any).internal.getNumberOfPages();
+      
+      const drawFooter = (doc: any, pageNum: number, total: number) => {
+        doc.setPage(pageNum);
+        const pageSize = doc.internal.pageSize;
+        const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+        
+        // Draw divider line
+        doc.setDrawColor(220, 225, 230);
+        doc.setLineWidth(0.2);
+        doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
+        
+        // Confidential report note
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(143, 163, 184); // #8fa3b8
+        doc.text("TALENT INTELLIGENCE ENGINE (TIE)", 15, pageHeight - 15);
+        
+        // Page number center-aligned
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(36, 59, 83); // #243B53
+        const pageText = `Page ${pageNum} of ${total}`;
+        const textWidth = doc.getTextWidth(pageText);
+        doc.text(pageText, (pageWidth - textWidth) / 2, pageHeight - 15);
+        
+        // Generation date right-aligned
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(143, 163, 184);
+        const dateText = `Generated on ${new Date().toLocaleDateString()}`;
+        const dateWidth = doc.getTextWidth(dateText);
+        doc.text(dateText, pageWidth - 15 - dateWidth, pageHeight - 15);
+      };
+
+      for (let i = 1; i <= totalPages; i++) {
+        drawFooter(pdf, i, totalPages);
       }
 
       setPdfProgressText("Saving and downloading document...");
@@ -1561,20 +1668,15 @@ export default function ProfileOutputPage() {
             </div>
           </div>
 
-          {/* PDF Footer */}
-          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
-            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
-            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 1 of 3</span>
-            <span>Generated on {new Date().toLocaleDateString()}</span>
-          </div>
+          {/* Spacer to preserve layout structure instead of visible footer */}
+          <div style={{ height: "25px" }} />
         </div>
 
-        {/* PAGE 2: Detailed Narrative (Part 1 - Sections 1 to 7) */}
+        {/* PAGES 2+: Detailed Narrative (rendered dynamically in a single tall container) */}
         <div
-          id="tie-report-pdf-page-2"
+          id="tie-report-pdf-narrative"
           style={{
             width: "794px",
-            height: "1123px",
             padding: "45px 50px",
             background: "#ffffff",
             fontFamily: "'Inter', -apple-system, sans-serif",
@@ -1582,12 +1684,13 @@ export default function ProfileOutputPage() {
             color: "#1F2933",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
+            gap: "24px",
           }}
         >
-          <div>
+          {/* Header Template */}
+          <div id="tie-report-pdf-header-template" style={{ display: "flex", flexDirection: "column", gap: "15px", width: "100%" }}>
             {/* PDF Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <img
                 src="/logo.png"
                 alt="TIE Logo"
@@ -1608,102 +1711,26 @@ export default function ProfileOutputPage() {
             </div>
 
             {/* Teal Divider */}
-            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
+            <div style={{ height: "4px", width: "100%", background: "#5BA4A4" }} />
+          </div>
 
-            {/* Title Area */}
-            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 24px", textTransform: "uppercase", textAlign: "left" }}>
-              Detailed Behavioral Insights (Part 1)
-            </h1>
+          {/* Title Area */}
+          <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 10px", textTransform: "uppercase", textAlign: "left" }}>
+            Detailed Behavioral Insights & Guidance
+          </h1>
 
-            {/* Narrative Sections 1 to 9 */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {parsedSections.slice(0, 9).map((section, idx) => (
-                <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
-                  <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                    {section.title}
-                  </h4>
-                  <div style={{ paddingLeft: "4px" }}>
-                    <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
-                  </div>
+          {/* Narrative Sections */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {parsedSections.map((section, idx) => (
+              <div key={idx} className="pdf-narrative-section" style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
+                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
+                  {section.title}
+                </h4>
+                <div style={{ paddingLeft: "4px" }}>
+                  <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* PDF Footer */}
-          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
-            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
-            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 2 of 3</span>
-            <span>Generated on {new Date().toLocaleDateString()}</span>
-          </div>
-        </div>
-
-        {/* PAGE 3: Detailed Narrative (Part 2 - Sections 10 to 18) */}
-        <div
-          id="tie-report-pdf-page-3"
-          style={{
-            width: "794px",
-            height: "1123px",
-            padding: "45px 50px",
-            background: "#ffffff",
-            fontFamily: "'Inter', -apple-system, sans-serif",
-            boxSizing: "border-box",
-            color: "#1F2933",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            {/* PDF Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-              <img
-                src="/logo.png"
-                alt="TIE Logo"
-                style={{
-                  height: "52px",
-                  width: "auto",
-                  display: "block",
-                }}
-              />
-              <div style={{ textAlign: "right" }}>
-                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
-                  Talent Intelligence Engine
-                </h2>
-                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
-                  Workforce Style Insights Report
-                </p>
               </div>
-            </div>
-
-            {/* Teal Divider */}
-            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
-
-            {/* Title Area */}
-            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 24px", textTransform: "uppercase", textAlign: "left" }}>
-              Detailed Behavioral Insights (Part 2)
-            </h1>
-
-            {/* Narrative Sections 10 to 18 */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {parsedSections.slice(9).map((section, idx) => (
-                <div key={idx} style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
-                  <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                    {section.title}
-                  </h4>
-                  <div style={{ paddingLeft: "4px" }}>
-                    <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* PDF Footer */}
-          <div style={{ borderTop: "1px solid rgba(36, 59, 83, 0.08)", paddingTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#8fa3b8", fontWeight: 500 }}>
-            <span>CONFIDENTIAL REPORT - TALENT INTELLIGENCE ENGINE (TIE)</span>
-            <span style={{ fontWeight: 700, color: "#243B53" }}>Page 3 of 3</span>
-            <span>Generated on {new Date().toLocaleDateString()}</span>
+            ))}
           </div>
         </div>
       </div>

@@ -9,10 +9,14 @@ from google.genai import types
 from dotenv import load_dotenv
 from supabase import create_client, Client # 🆕 Import Supabase Client
 from profile_content_library import PROFILE_CONTENT_LIBRARY
+from llm_manager import LLMManager
 
 # Load environment variables from .env.local in the project root
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env.local")
 load_dotenv(env_path)
+
+# Initialize multi-provider LLM Manager
+llm_manager = LLMManager()
 
 app = FastAPI(
     title="TIE Assessment Engine",
@@ -85,6 +89,32 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
                 status_code=status.HTTP_400_BAD_REQUEST, 
                 detail=f"Incomplete answers. User has completed {len(saved_answers) if saved_answers else 0} of 24 tasks."
             )
+
+        # Generate a deterministic hash of the user's answers to detect changes
+        sorted_answers = sorted(saved_answers, key=lambda x: x["question_id"])
+        current_answers_hash = "".join(str(row["selected_option_index"]) for row in sorted_answers)
+
+        # STEP 2: CHECK CACHE DIRECTLY (Bypasses LLM and calculations for sub-second load times)
+        try:
+            db_cache_query = supabase.table("saved_reports").select("scoring_metrics, manager_signals, report_markdown").eq("user_id", payload.user_id).execute()
+            if db_cache_query.data and len(db_cache_query.data) > 0:
+                cached = db_cache_query.data[0]
+                cached_metrics = cached.get("scoring_metrics", {})
+                cached_hash = cached_metrics.get("answers_hash")
+                
+                if cached_hash == current_answers_hash:
+                    print(f"CACHE HIT: Serving report from cache database for user {payload.user_id}")
+                    return {
+                        "success": True,
+                        "scoring_metrics": cached["scoring_metrics"],
+                        "manager_signals": cached["manager_signals"],
+                        "report_markdown": cached["report_markdown"]
+                    }
+                else:
+                    print(f"CACHE STALE: User changed options (cached: {cached_hash}, current: {current_answers_hash}). Regenerating...")
+        except Exception as e:
+            # Table doesn't exist yet or read error: proceed dynamically
+            print(f"CACHE MISS/SKIPPED (expected if table not created yet): {e}")
 
         # Initialize scoring structures
         raw_scores = {"SCP": 0, "FIE": 0, "CCD": 0, "SPO": 0}
@@ -283,72 +313,50 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         Explicitly state that TIE does NOT measure personality, intelligence, psychological health, clinical traits, technical capability, or leadership performance.
         """
 
-        # Try generation with fallback models and retries to handle transient 503 spikes.
-        # We target only verified 2.5 family models (flash-lite and flash) and skip permanent 404/429 failures instantly.
-        models_to_try = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
-        last_exception = None
-        ai_narrative = ""
-        
-        import time
-        
-        for model_name in models_to_try:
-            success = False
-            for attempt in range(2): # Reduce to 2 attempts for faster failover
-                try:
-                    print(f"Generating content using {model_name} (Attempt {attempt + 1})...")
-                    response = ai_client.models.generate_content(
-                        model=model_name,
-                        contents=user_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=0.3,
-                        )
-                    )
-                    ai_narrative = response.text
-                    if ai_narrative:
-                        success = True
-                        break
-                except Exception as e:
-                    print(f"Error on {model_name} attempt {attempt + 1}: {e}")
-                    last_exception = e
-                    
-                    # Prevent wasting time: fail-fast on permanent configurations or exhausted quotas
-                    err_str = str(e).lower()
-                    if "404" in err_str or "not_found" in err_str or "400" in err_str or "invalid" in err_str:
-                        print(f"Permanent error (404/400) on {model_name}. Skipping to next model.")
-                        break
-                    if "quota exceeded" in err_str and "limit: 0" in err_str:
-                        print(f"Model {model_name} has 0 quota. Skipping to next model.")
-                        break
-                        
-                    # Backoff before retrying transient issues
-                    time.sleep(1.5)
-            if success:
-                break
-        
-        if not ai_narrative:
+        # STEP 3: GENERATE REPORT VIA LLM MANAGER (with multi-provider failover)
+        try:
+            ai_narrative, model_used = llm_manager.generate_report(system_instruction, user_prompt)
+            print(f"Successfully generated report using: {model_used}")
+        except Exception as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"The report generation service is currently experiencing high demand. Please try again in a few moments. (Details: {str(last_exception)})"
+                detail=f"Failed to generate report from any LLM provider. (Details: {str(e)})"
             )
+
+        # STEP 4: SAVE NEWLY GENERATED REPORT TO CACHE DATABASE
+        scoring_metrics_data = {
+            "raw_scores": raw_scores,
+            "primary_pattern": primary,
+            "secondary_pattern": secondary,
+            "combination_profile": profile_combination,
+            "primary_strength_pct": primary_strength,
+            "secondary_strength_pct": secondary_strength,
+            "flags": flags,
+            "answers_hash": current_answers_hash
+        }
+        
+        manager_signals_data = {
+            "s1_adaptability_dominant": s1_dom,
+            "s2_execution_dominant": s2_dom,
+            "s3_support_dominant": s3_dom,
+            "s4_engagement_dominant": s4_dom
+        }
+
+        try:
+            supabase.table("saved_reports").upsert({
+                "user_id": payload.user_id,
+                "report_markdown": ai_narrative,
+                "scoring_metrics": scoring_metrics_data,
+                "manager_signals": manager_signals_data
+            }).execute()
+            print(f"CACHE SAVE: Successfully cached report for user {payload.user_id}")
+        except Exception as e:
+            print(f"CACHE SAVE FAILED (expected if SQL script not run yet): {e}")
 
         return {
             "success": True,
-            "scoring_metrics": {
-                "raw_scores": raw_scores,
-                "primary_pattern": primary,
-                "secondary_pattern": secondary,
-                "combination_profile": profile_combination,
-                "primary_strength_pct": primary_strength,
-                "secondary_strength_pct": secondary_strength,
-                "flags": flags  
-            },
-            "manager_signals": {
-                "s1_adaptability_dominant": s1_dom,
-                "s2_execution_dominant": s2_dom,
-                "s3_support_dominant": s3_dom,
-                "s4_engagement_dominant": s4_dom
-            },
+            "scoring_metrics": scoring_metrics_data,
+            "manager_signals": manager_signals_data,
             "report_markdown": ai_narrative
         }
 
