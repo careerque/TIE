@@ -32,6 +32,58 @@ export default function EmailConfirmationPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resendEmail) return;
+    setResendStatus('loading');
+    setResendMessage('');
+    try {
+      // 1. Check if the email exists in the profiles database
+      const { data: profile, error: profileError } = await supabasedb
+        .from('profiles')
+        .select('email')
+        .eq('email', resendEmail.trim())
+        .maybeSingle();
+
+      if (profileError) {
+        setResendStatus('error');
+        setResendMessage(profileError.message || 'Failed to check email status.');
+        return;
+      }
+
+      if (!profile) {
+        setResendStatus('error');
+        setResendMessage('This email does not exist. Please create an account.');
+        return;
+      }
+
+      // 2. If it exists, resend the verification link
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const { error } = await supabasedb.auth.resend({
+        type: 'signup',
+        email: resendEmail.trim(),
+        options: {
+          emailRedirectTo: `${origin}/email-confirmation`
+        }
+      });
+      
+      if (error) {
+        setResendStatus('error');
+        setResendMessage(error.message || 'Failed to resend verification email.');
+      } else {
+        setResendStatus('success');
+        setResendMessage('A new verification link has been sent to your email. Please check your inbox.');
+      }
+    } catch (err: any) {
+      setResendStatus('error');
+      setResendMessage(err.message || 'An unexpected error occurred.');
+    }
+  };
+
   useEffect(() => {
     const verifyEmailSession = async () => {
       try {
@@ -242,12 +294,94 @@ export default function EmailConfirmationPage() {
                   textDecoration: 'none',
                   boxShadow: '0 3px 14px rgba(36,59,83,0.2)',
                   transition: 'background .18s, transform .12s, box-shadow .18s',
+                  marginBottom: '1rem'
                 }}
                 onMouseEnter={e => { const b = e.currentTarget; b.style.background='#1a2d40'; b.style.transform='translateY(-1px)'; b.style.boxShadow='0 6px 20px rgba(36,59,83,0.3)'; }}
                 onMouseLeave={e => { const b = e.currentTarget; b.style.background='#243B53'; b.style.transform='none'; b.style.boxShadow='0 3px 14px rgba(36,59,83,0.2)'; }}
               >
                 Return to Login
               </Link>
+
+              {/* Resend Link UI */}
+              <div style={{ 
+                marginTop: '1.75rem', 
+                paddingTop: '1.5rem', 
+                borderTop: '1px dashed rgba(36, 59, 83, 0.15)',
+                textAlign: 'left'
+              }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#243B53', marginBottom: '0.375rem' }}>
+                  Need a new verification link?
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: '#627D98', marginBottom: '1rem', lineHeight: 1.45 }}>
+                  Enter your email address below to request a fresh verification link.
+                </p>
+                
+                {resendStatus === 'success' ? (
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(163,177,138,0.1)',
+                    border: '1px solid rgba(163,177,138,0.3)',
+                    borderRadius: '8px',
+                    color: '#4f5e3e',
+                    fontSize: '0.8rem',
+                    lineHeight: 1.45,
+                  }}>
+                    {resendMessage}
+                  </div>
+                ) : (
+                  <form onSubmit={handleResend} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <input
+                      type="email"
+                      placeholder="name@company.com"
+                      value={resendEmail}
+                      onChange={e => setResendEmail(e.target.value)}
+                      required
+                      style={{
+                        padding: '0.75rem 1rem',
+                        border: '1.5px solid rgba(36, 59, 83, 0.15)',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        transition: 'border-color 0.15s ease',
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#5BA4A4'}
+                      onBlur={e => e.currentTarget.style.borderColor = 'rgba(36, 59, 83, 0.15)'}
+                    />
+                    
+                    {resendStatus === 'error' && (
+                      <span style={{ fontSize: '0.8rem', color: '#c0392b', fontWeight: 500, lineHeight: 1.4 }}>
+                        {resendMessage}
+                        {resendMessage.includes('create an account') && (
+                          <Link href="/register" style={{ color: '#5BA4A4', marginLeft: '0.35rem', fontWeight: 700, textDecoration: 'underline' }}>
+                            Register here.
+                          </Link>
+                        )}
+                      </span>
+                    )}
+                    
+                    <button
+                      type="submit"
+                      disabled={resendStatus === 'loading'}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        background: '#5BA4A4',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        cursor: resendStatus === 'loading' ? 'not-allowed' : 'pointer',
+                        opacity: resendStatus === 'loading' ? 0.7 : 1,
+                        transition: 'background 0.15s ease, transform 0.1s ease',
+                      }}
+                      onMouseEnter={e => { if (resendStatus !== 'loading') e.currentTarget.style.background = '#4a9393'; }}
+                      onMouseLeave={e => { if (resendStatus !== 'loading') e.currentTarget.style.background = '#5BA4A4'; }}
+                    >
+                      {resendStatus === 'loading' ? 'Sending link...' : 'Resend Verification Link'}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           )}
 
