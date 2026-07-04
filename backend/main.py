@@ -90,6 +90,15 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
                 detail=f"Incomplete answers. User has completed {len(saved_answers) if saved_answers else 0} of 24 tasks."
             )
 
+        # Fetch profile data to get metadata for personalization
+        profile_data = {}
+        try:
+            profile_query = supabase.table("profiles").select("*").eq("id", payload.user_id).execute()
+            if profile_query.data and len(profile_query.data) > 0:
+                profile_data = profile_query.data[0]
+        except Exception as e:
+            print(f"PROFILE FETCH FAILED (using fallback defaults): {e}")
+
         # Generate a deterministic hash of the user's answers to detect changes
         sorted_answers = sorted(saved_answers, key=lambda x: x["question_id"])
         current_answers_hash = "".join(str(row["selected_option_index"]) for row in sorted_answers)
@@ -187,9 +196,111 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         library_data = PROFILE_CONTENT_LIBRARY.get(profile_combination, PROFILE_CONTENT_LIBRARY["Flexible Adapter"])
 
         # STEP 3: INVOKE GEMINI API FOR GENERATION  
+        # Step 1 payload information
+        employee_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip() or "Employee"
+        designation_str = profile_data.get("designation") or "Not Specified"
+        experience_str = str(profile_data.get("experiense_years")) if profile_data.get("experiense_years") is not None else "Not Specified"
+        
+        designation_lower = designation_str.lower()
+        is_manager_words = ["manager", "lead", "head", "director", "chief", "vp", "president", "supervisor", "officer", "exec"]
+        is_mgr = any(word in designation_lower for word in is_manager_words)
+        management_status = "Manager / Leader" if is_mgr else "Individual Contributor"
+        
+        dept = "Not Specified"
+        if any(w in designation_lower for w in ["hr", "human resources", "people", "talent"]):
+            dept = "Human Resources"
+        elif any(w in designation_lower for w in ["engineer", "developer", "programmer", "tech", "software", "architect", "data"]):
+            dept = "Technology & Engineering"
+        elif any(w in designation_lower for w in ["pharmacist", "doctor", "clinical", "therapist", "medical", "nurse"]):
+            dept = "Healthcare & Medical"
+        elif any(w in designation_lower for w in ["finance", "accountant", "account", "audit", "billing"]):
+            dept = "Finance & Accounting"
+        elif any(w in designation_lower for w in ["sales", "marketing", "business development", "growth"]):
+            dept = "Sales & Marketing"
+        elif any(w in designation_lower for w in ["support", "customer", "operations", "consultant"]):
+            dept = "Operations & Support"
+        
+        pattern_full_names = {
+            "SCP": "Structure & Clarity Preference (SCP)",
+            "FIE": "Focus & Independence Preference (FIE)",
+            "CCD": "Collaboration & Connection Preference (CCD)",
+            "SPO": "Stability & Process Preference (SPO)"
+        }
+        
+        primary_full = pattern_full_names.get(primary, primary)
+        secondary_full = pattern_full_names.get(secondary, secondary)
+        
+        behavior_behaviors = {
+            "SCP": "Prefers defined expectations, detailed requirements, and structured processes before starting tasks.",
+            "FIE": "Favors high autonomy, self-directed execution, and solving problems independently.",
+            "CCD": "Values team connection, open communication, group alignment, and collaborative settings.",
+            "SPO": "Prefers stable workflows, consistent processes, and predictable day-to-day operations."
+        }
+        
+        avoid_behaviors = {
+            "SCP": "Avoids executing tasks under vague directions, undocumented changes, or highly ambiguous goals.",
+            "FIE": "Avoids working in highly micromanaged or dependency-heavy settings that limit personal initiative.",
+            "CCD": "Avoids working in complete isolation without peer check-ins or team feedback loops.",
+            "SPO": "Avoids highly volatile, constantly changing workflows without clear process guidelines."
+        }
+        
+        most_repeated = behavior_behaviors.get(primary, "Active preference for " + primary)
+        weakest_pattern = min(raw_scores.keys(), key=lambda p: raw_scores[p])
+        least_shown = avoid_behaviors.get(weakest_pattern, "Less preference for " + weakest_pattern)
+        
+        if raw_scores[primary] >= 12:
+            consistent_desc = f"Demonstrated highly consistent preferences across different scenarios, heavily prioritizing the {primary} style."
+        else:
+            consistent_desc = "Balanced preference distribution, showing adaptability across tasks."
+            
+        score_diff = raw_scores[primary] - raw_scores[secondary]
+        if score_diff <= 2:
+            mixed_desc = f"Responses show a very close split between {primary} and {secondary}, indicating situational adaptability between these preferences."
+        else:
+            mixed_desc = f"Clear operational boundary between your dominant {primary} preference and secondary {secondary} style."
+            
+        if raw_scores[primary] >= 12:
+            confidence_level = "High"
+        elif raw_scores[primary] >= 8:
+            confidence_level = "Medium"
+        else:
+            confidence_level = "Low"
+            
+        try:
+            questions_query = supabase.table("assessment_questions").select("question_id, question_text, options").execute()
+            questions_map = {q["question_id"]: q for q in questions_query.data} if questions_query.data else {}
+        except Exception:
+            questions_map = {}
+            
+        responses_list = []
+        for ans in sorted_answers:
+            qid = ans["question_id"]
+            opt_idx = ans["selected_option_index"]
+            pat = index_to_pattern.get(opt_idx, "Unknown")
+            q_text = "Assessment Question"
+            ans_text = "Option Selected"
+            if qid in questions_map:
+                q_info = questions_map[qid]
+                q_text = q_info.get("question_text", q_text)
+                opts = q_info.get("options", [])
+                if 0 <= opt_idx < len(opts):
+                    ans_text = opts[opt_idx]
+            responses_list.append(f"- Question {qid}: \"{q_text}\"\n  Employee's Selection: \"{ans_text}\" (Maps to style: {pat})")
+            
+        responses_payload_str = "\n".join(responses_list)
+        
+        behaviour_summary = f"""Behaviour Summary:
+ • Strongest pattern: {primary_full}
+ • Second strongest pattern: {secondary_full}
+ • Most repeated behaviour: {most_repeated}
+ • Least shown behaviour: {least_shown}
+ • Areas where answers were consistent: {consistent_desc}
+ • Areas where answers were mixed: {mixed_desc}
+ • Confidence level: {confidence_level}"""
+
         system_instruction = """
         You are a highly seasoned, wise Senior HR Consultant and Executive Coach with over 30 years of organizational development and talent advisory experience.
-        Your task is to write a deeply personalized, human-crafted feedback report for an employee based on their TIE work preference scores and the TIE Profile Content Library reference data.
+        Your task is to write a deeply personalized, human-crafted feedback report for an employee based on their TIE work preference scores, behavior summary, actual question responses, and professional background.
         
         CRITICAL COMPLIANCE RULES:
         - Persona & Tone: Speak directly to the employee using "you" and "your". Adopt the voice of an encouraging, warm, highly insightful, and empathetic executive coach. Imagine you are sitting down for a 1-on-1 development conversation.
@@ -198,7 +309,7 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
           - NEVER start a section or sentence with robotic phrases like: "TIE observed...", "TIE has noticed...", "TIE reached this conclusion...", "Based on our scoring...", "According to the database...", "TIE measures...".
           - Instead, use organic, human-advisory framing: "In your daily work, you show a natural inclination to...", "Your colleagues likely appreciate...", "When managing priorities, you lean towards...", "To thrive in your role, you benefit from...", "Your strength lies in...".
         - Flowing Prose: Write in natural, cohesive paragraphs (2-3 sentences per section). Do not use dry, copy-pasted lists or bullets unless explicitly requested.
-        - High-Quality Synthesis: Synthesize the library guidelines into customized advice. Do not copy-paste library bullet points verbatim. Translate them into cohesive, thoughtful counseling paragraphs.
+        - High-Quality Synthesis: Translate scoring patterns into cohesive, thoughtful counseling paragraphs.
         - Focus on workplace behavior, communication, collaboration, adaptability, support preferences, and growth recommendations.
         - Do not generate personality descriptions. Generate workplace insights.
         - The report should help managers understand employees before problems become visible.
@@ -208,28 +319,45 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
           - NEVER use negative or judgmental words like: weak, weakness, poor performer, resistant, defensive, lazy, dependent, disengaged.
           - Use growth-oriented and supportive phrasing: "You tend to...", "You often perform best when...", "You may benefit from...", "You prefer...", "A helpful growth area is...".
         """
-
+        
         user_prompt = f"""
         You are a Senior HR Consultant with 30+ years of experience giving professional feedback to an employee.
         Generate a detailed 18-part feedback report for this employee.
         
-        INTERPRET THE PROFILE:
-        Interpret the scoring metrics and reference data below to generate workplace insights.
-        - Do not repeat the same insight across multiple sections.
-        - Each section must have a unique purpose.
-        - Write in natural, flowing human prose (2-3 sentences per section). Do not write raw lists or templates. Make it sound like it was hand-written by a professional advisor.
-        - Do not include the serial number or section number inside the content text (e.g., do not write "1." or "Section 1" in the text).
+        PERSONALIZATION & CONTEXT RULES (CRITICAL):
+        1. Do not write only based on the profile title. Use the employee’s actual responses, score distribution, role, department and experience to make the report feel personal.
+        2. For every major section, mention at least one response-based observation. Avoid generic statements that can apply to everyone.
+           Instead of generic text like "You are a Structured Collaborator.", make it sound like: "Across several responses, you preferred clarity before execution and shared visibility during teamwork. This suggests you may work best when expectations, ownership and communication are clear."
+        3. If the employee shows a strong primary pattern but also has a meaningful secondary pattern, explain the nuance.
+           Example: "Your responses show a clear preference for structure. However, some responses also show that you can work independently when the task is clear."
+        4. Use the employee’s role and department to make examples relevant. Do not use business examples for healthcare, education or support roles unless relevant.
+        5. Below any pattern strength or percentage scores presented in Section 16 ("Why TIE Reached This Conclusion"), write this exact explanation: 
+           "This percentage reflects how consistently this pattern appeared across your responses. It is not a performance score, capability score or rating."
+           Ensure this exact sentence appears verbatim.
+
+        EMPLOYEE METADATA & DATA PAYLOAD:
+        - Employee Name: {employee_name}
+        - Role / Designation: {designation_str}
+        - Department / Function: {dept}
+        - Experience: {experience_str} years
+        - Leadership Level: {management_status}
+        
+        {behaviour_summary}
         
         SCORING METRICS INPUT:
         - Primary Pattern: {primary} ({primary_strength}% strength)
         - Secondary Pattern: {secondary} ({secondary_strength}% strength)
         - Overall Combination Profile: {profile_combination}
+        - Raw Scores: {raw_scores}
         - Section Dominant Styles:
           - S1 (Adaptability): {s1_dom}
           - S2 (Responsibility): {s2_dom}
           - S3 (Collaboration): {s3_dom}
           - S4 (Engagement): {s4_dom}
           
+        ACTUAL QUESTION RESPONSES:
+        {responses_payload_str}
+        
         PROFILE CONTENT LIBRARY REFERENCE CONTEXT (Source of Truth):
         - Tagline: {library_data["tagline"]}
         - Description: {library_data["description"]}
@@ -246,65 +374,58 @@ async def analyze_assessment(payload: AssessmentAnalysisRequest):
         - Potential Growth Blocks: {", ".join(library_data["potential_growth_blocks"])}
         - Early Risk Indicators: {", ".join(library_data["early_risk_indicators"])}
         - Workplace Impact: {", ".join(library_data["workplace_impact"])}
-
+        
         OUTPUT FORMAT:
         The output MUST follow this exact 18-part markdown structural format. Use exactly the numbered headings below. Provide 2-3 sentences of highly tailored, practical content for each section:
 
         # 1. Dominant Workplace Pattern
-        Summarize your overall work pattern based on your combination profile {profile_combination} ({library_data["tagline"]}) and core value. Frame this as a warm, professional opening statement.
+        Provide a warm opening summarizing the employee's work pattern, addressing them contextually as a {designation_str} with {experience_str} years of experience. Highlight their primary profile archetype: {profile_combination}.
         
         # 2. What TIE Observed
-        Explain your daily workplace behaviors, work style preferences, and how you approach tasks using the library description. Write this as a direct, human observation.
-        - Purpose: Workplace behaviour.
+        Incorporate specific choices from their actual question responses below to describe their day-to-day work style and pacing. Avoid generic statements.
         
         # 3. Workplace Value
-        Detail the unique contribution you bring to your team, emphasizing the value of your TIE strengths.
-        - Purpose: Contribution.
+        Explain the unique value they bring to their {dept} department, linking their TIE strengths (e.g. {", ".join(library_data["strengths"])}) directly to their role.
         
         # 4. Workplace Implications
-        Detail how your combination profile affects your daily work style, pacing, and approach.
-        - Purpose: Impact.
+        Explain how their combination profile affects their daily work. If they have a secondary pattern ({secondary}), explain the nuance of combining it with {primary} (e.g., "Your responses show a clear preference for structure. However, some responses also show that you can work independently when the task is clear.").
         
         # 5. Support Needs
-        Identify the specific resources, environment conditions, or communication types required for you to perform your best.
-        - Purpose: Conditions required.
+        Identify the environment, resources, and communication conditions they need to perform best, referencing their specific question answers about what they seek in a team or workspace.
         
         # 6. Potential Growth Blocks
-        Explain potential barriers, mindsets, or habits that might slow down your growth or professional development.
-        - Purpose: Barriers.
+        Identify personal barriers, mindsets, or habits that might slow them down, referencing their chosen question responses regarding challenge or frustration.
         
         # 7. Early Risk Indicators
-        Describe warning signs (e.g., changes in participation, engagement, or attitude) that a manager should look out for.
-        - Purpose: Warning signs.
+        Describe early warning signs (e.g. withdrawal or frustration) relevant to a {designation_str} in their {dept} department.
         
         # 8. Business Implications
-        Summarize the organizational impact of keeping these support needs met versus leaving them unmet.
-        - Purpose: Organizational impact.
+        Describe the organizational impact of keeping their support needs met versus unmet in their specific role context.
         
         # 9. Thrive Conditions
-        Describe the ideal work and collaboration settings where you feel most aligned and productive (incorporating S3/S4 dominant styles if relevant).
+        Describe the ideal work and collaboration settings they prefer, utilizing their S3 ({s3_dom}) and S4 ({s4_dom}) dominant styles and responses.
         
         # 10. Challenge Conditions
-        Outline work scenarios that can test your adaptability or pacing (S1 adaptability dominant style: {s1_dom}).
+        Outline scenarios that test their adaptability or pacing, referencing their S1 ({s1_dom}) dominant style and question answers.
         
         # 11. Watch-outs
-        Mention common operational situations that might cause friction for you (referencing the library frustrations). Frame these constructively.
+        Mention operational friction points (e.g., from frustrations like {", ".join(library_data["frustrations"])}) and constructive advice, referencing specific response choices.
         
         # 12. How Others May Experience You
-        Provide advice on how peers might perceive your communication and collaboration style, and how to maintain alignment.
+        Explain how peers in a similar role or {dept} department might experience their collaboration and communication style.
         
         # 13. What Your Manager Should Know
-        Summarize your primary support preferences and how you approach accountability (S2 responsibility dominant style: {s2_dom}).
+        Detail how their manager should approach accountability and support, referencing their S2 ({s2_dom}) responsibility approach.
         
         # 14. Manager Support Suggestions
-        Give actionable, practical recommendations for how your manager can support you, keep you aligned, and respect your work style.
-        - Purpose: Actions.
+        Provide actionable, role-relevant actions the manager can take to support a {designation_str} with {experience_str} years of experience.
         
         # 15. Growth Suggestions
-        Suggest 2-3 specific, actionable growth guidelines to help you stretch and develop your versatility.
+        Suggest 2-3 specific growth steps targeting their secondary style ({secondary}) and versatility, referencing their actual question responses.
         
         # 16. Why TIE Reached This Conclusion
-        Explain in simple terms how the 24-question work preference questionnaire highlights these patterns based on scoring primary ({primary}) and secondary ({secondary}) focus.
+        Explain the scoring of primary ({primary}: {primary_strength}%) and secondary ({secondary}: {secondary_strength}%) patterns. Below the percentages, you MUST write this exact statement:
+        "This percentage reflects how consistently this pattern appeared across your responses. It is not a performance score, capability score or rating."
         
         # 17. What TIE Measures
         State clearly that TIE measures subjective workplace environment preferences, communication styles, collaboration styles, and task pacing.

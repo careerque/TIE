@@ -73,7 +73,12 @@ export default function EmailConfirmationPage() {
       
       if (error) {
         setResendStatus('error');
-        setResendMessage(error.message || 'Failed to resend verification email.');
+        const errMsg = error.message.toLowerCase();
+        if (errMsg.includes('already confirmed') || errMsg.includes('already verified')) {
+          setResendMessage('This email is already verified. Please return to login and sign in.');
+        } else {
+          setResendMessage(error.message || 'Failed to resend verification email.');
+        }
       } else {
         setResendStatus('success');
         setResendMessage('A new verification link has been sent to your email. Please check your inbox.');
