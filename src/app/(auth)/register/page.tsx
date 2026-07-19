@@ -99,6 +99,16 @@ export default function RegisterPage() {
     }
   };
 
+  const handleAutofill = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const randomId = Math.floor(Math.random() * 90000) + 10000;
+    setFirstName("Test");
+    setLastName(`User${randomId}`);
+    setEmail(`test.user.${randomId}@example.com`);
+    setPassword("TestPassword123!");
+    setError('');
+  };
+
   /* Shared input style */
   const inp = (field: string): CSSProperties => ({
     display: 'block',
@@ -221,6 +231,35 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
+
+          {/* Auto-fill Button */}
+          <button
+            type="button"
+            onClick={handleAutofill}
+            style={{
+              padding: '8px 14px',
+              background: 'rgba(91,164,164,0.08)',
+              border: '1.5px dashed #5BA4A4',
+              color: '#5BA4A4',
+              borderRadius: '10px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              marginBottom: '1.25rem',
+              alignSelf: 'center',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background 0.2s',
+              width: '100%',
+              justifyContent: 'center',
+              boxSizing: 'border-box'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(91,164,164,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(91,164,164,0.08)'}
+          >
+            <span>⚡ Auto-fill Test Data</span>
+          </button>
 
           {/* ── Form ── */}
           <form onSubmit={handleSubmit} noValidate style={{ display:'flex', flexDirection:'column', gap:'1.1rem', animation:'fadeUp .5s .20s both' }}>

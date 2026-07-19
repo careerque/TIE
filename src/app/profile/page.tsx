@@ -13,6 +13,34 @@ export default function ProfilePage() {
   const { isLoggedIn, profile, user, loading, refreshProfile, logout } = useAuthContext();
   const [updating, setUpdating] = useState(false);
 
+  const handleAutofillProfile = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const demoInterests = ["React", "Python", "Data Analysis", "FastAPI"];
+    setFirstName(profile?.first_name || "Test");
+    setLastName(profile?.last_name || "User");
+    setEmployeeId("EMP12345");
+    setDesignation("Software Engineer");
+    setExperience("5");
+    setInterests(demoInterests);
+    
+    setUpdating(true);
+    try {
+      await updateProfile({
+        first_name: profile?.first_name || "Test",
+        last_name: profile?.last_name || "User",
+        employee_id: "EMP12345",
+        designation: "Software Engineer",
+        experience_years: 5,
+        interests: demoInterests
+      });
+      await refreshProfile();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   // Profile Fields States
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -45,7 +73,7 @@ export default function ProfilePage() {
         setEmail(profile.email || "");
         setEmployeeId(profile.employee_id || "");
         setDesignation(profile.designation || "");
-        setExperience(profile.experiense_years || "");
+        setExperience(profile.experience_years || "");
         setInterests(profile.interests || []);
       }
 
@@ -98,7 +126,7 @@ export default function ProfilePage() {
       else if (field === "employeeId") dbPayload = { employee_id: valueToSave };
       else if (field === "designation") dbPayload = { designation: valueToSave };
       else if (field === "experience") {
-        dbPayload = { experiense_years: Number(valueToSave) || null };
+        dbPayload = { experience_years: Number(valueToSave) || null };
       }
     }
 
@@ -212,9 +240,36 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div className="tie-badge">
-            <User size={11} style={{ marginRight: "2px" }} />
-            My Profile
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "8px", marginBottom: "0.5rem" }}>
+            <div className="tie-badge" style={{ margin: 0 }}>
+              <User size={11} style={{ marginRight: "2px" }} />
+              My Profile
+            </div>
+            {profile?.role === "user" && !isProfileComplete && (
+              <button
+                type="button"
+                onClick={handleAutofillProfile}
+                disabled={updating}
+                style={{
+                  padding: '6px 12px',
+                  background: 'rgba(91,164,164,0.08)',
+                  border: '1.5px dashed #5BA4A4',
+                  color: '#5BA4A4',
+                  borderRadius: '8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(91,164,164,0.15)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(91,164,164,0.08)'}
+              >
+                <span>⚡ Auto-fill Profile</span>
+              </button>
+            )}
           </div>
           <h1 className="tie-title">
             Profile Details
@@ -352,9 +407,25 @@ export default function ProfilePage() {
           })}
         </div>
 
-        {/* 3. Action Area */}
         <div className="profile-action-block">
-          {isProfileComplete ? (
+          {profile?.role !== "user" ? (
+            <div style={{ display: "flex", width: "100%", boxSizing: "border-box" }}>
+              <Link
+                href="/dashboard"
+                onMouseEnter={() => setBackHovered(true)}
+                onMouseLeave={() => setBackHovered(false)}
+                className="tie-btn-primary"
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                <span>Back to Dashboard</span>
+                <ArrowRight
+                  size={16}
+                  className="dashboard-btn-icon-right"
+                  style={{ color: "#ffffff" }}
+                />
+              </Link>
+            </div>
+          ) : isProfileComplete ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", width: "100%", boxSizing: "border-box" }}>
               {/* Unlock success banner */}
               <div className="profile-success-banner">

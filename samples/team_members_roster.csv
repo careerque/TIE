@@ -1,0 +1,6 @@
+email,first_name,last_name,role,team_name
+alice.smith@company.com,Alice,Smith,user,Engineering
+bob.jones@company.com,Bob,Jones,user,Engineering
+charlie.brown@company.com,Charlie,Brown,user,Product
+david.miller@company.com,David,Miller,user,Product
+clark.kent@company.com,Clark,Kent,user,Operations

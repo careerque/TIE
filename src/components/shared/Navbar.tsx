@@ -45,6 +45,16 @@ export default function Navbar() {
         <div className="tie-navbar-desktop-group">
           {/* Main navigation links */}
           <div className="tie-navbar-links">
+            {isLoggedIn && (
+              <Link href="/dashboard" className="tie-navbar-btn-link">
+                Dashboard
+              </Link>
+            )}
+            {isLoggedIn && profile?.role === "super_admin" && (
+              <Link href="/super-admin" className="tie-navbar-btn-link" style={{ fontWeight: 600 }}>
+                Super Admin
+              </Link>
+            )}
             <Link href="/#why-tie" className="tie-navbar-btn-link">
               Why TIE
             </Link>
@@ -64,11 +74,29 @@ export default function Navbar() {
                 {profile?.email}
               </span>
 
-              {/* Take Assessment Button */}
-              <Link href="/welcome" className="tie-navbar-btn-cta">
-                <Sparkles size={14} />
-                <span className="navbar-btn-text">Take Assessment</span>
-              </Link>
+              {/* Take Assessment or View Dashboard CTA Button */}
+              {profile?.role === "user" ? (
+                <Link href="/welcome" className="tie-navbar-btn-cta">
+                  <Sparkles size={14} />
+                  <span className="navbar-btn-text">Take Assessment</span>
+                </Link>
+              ) : profile?.role ? (
+                <Link
+                  href={
+                    profile.role === "super_admin"
+                      ? "/super-admin"
+                      : profile.role === "hr_admin"
+                      ? "/hr-admin"
+                      : profile.role === "manager"
+                      ? "/manager"
+                      : "/dashboard"
+                  }
+                  className="tie-navbar-btn-cta"
+                >
+                  <Sparkles size={14} />
+                  <span className="navbar-btn-text">View Dashboard</span>
+                </Link>
+              ) : null}
 
               {/* Sign Out Button */}
               <button onClick={handleLogout} className="tie-navbar-btn-signout">
@@ -109,6 +137,25 @@ export default function Navbar() {
           <div className="tie-navbar-mobile-drawer">
             {/* Menu links */}
             <div className="tie-navbar-mobile-links">
+              {isLoggedIn && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-mobile-btn-link"
+                >
+                  Dashboard
+                </Link>
+              )}
+              {isLoggedIn && profile?.role === "super_admin" && (
+                <Link
+                  href="/super-admin"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="tie-navbar-mobile-btn-link"
+                  style={{ fontWeight: 600 }}
+                >
+                  Super Admin
+                </Link>
+              )}
               <Link
                 href="/#why-tie"
                 onClick={() => setIsMenuOpen(false)}
@@ -140,15 +187,17 @@ export default function Navbar() {
                 <span className="tie-navbar-mobile-email">
                   {profile?.email}
                 </span>
-                <Link
-                  href="/welcome"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="tie-navbar-btn-cta"
-                  style={{ width: "100%", justifyContent: "center" }}
-                >
-                  <Sparkles size={14} />
-                  Take Assessment
-                </Link>
+                {profile?.role === "user" && (
+                  <Link
+                    href="/welcome"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="tie-navbar-btn-cta"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    <Sparkles size={14} />
+                    Take Assessment
+                  </Link>
+                )}
                 <button
                   onClick={() => { setIsMenuOpen(false); handleLogout(); }}
                   className="tie-navbar-btn-signout"

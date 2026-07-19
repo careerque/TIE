@@ -175,7 +175,15 @@ function StatPill({
 export default function WelcomePage() {
   const [statsVisible, setStatsVisible] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn } = useAuthContext();
+  const { isLoggedIn, profile } = useAuthContext();
+
+  const getDashboardLink = () => {
+    if (!profile) return "/dashboard";
+    if (profile.role === "super_admin") return "/super-admin";
+    if (profile.role === "hr_admin") return "/hr-admin";
+    if (profile.role === "manager") return "/manager";
+    return "/dashboard";
+  };
 
 
   useEffect(() => {
@@ -299,10 +307,17 @@ export default function WelcomePage() {
           {/* CTA buttons */}
           <div className="home-cta-group animate-fade-up delay-300">
             {isLoggedIn ? (
-              <Link href="/welcome" className="home-btn-primary">
-                Take Assessment
-                <ArrowRight size={16} />
-              </Link>
+              profile?.role && profile.role !== "user" ? (
+                <Link href={getDashboardLink()} className="home-btn-primary">
+                  View Dashboard
+                  <ArrowRight size={16} />
+                </Link>
+              ) : (
+                <Link href="/welcome" className="home-btn-primary">
+                  Take Assessment
+                  <ArrowRight size={16} />
+                </Link>
+              )
             ) : (
               <Link href="/register" className="home-btn-primary">
                 Get Started
@@ -595,33 +610,40 @@ export default function WelcomePage() {
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}
           >
             {isLoggedIn ? (
-              <>
-                <Link href="/welcome" className="home-btn-primary">
-                  Take Assessment
+              profile?.role && profile.role !== "user" ? (
+                <Link href={getDashboardLink()} className="home-btn-primary">
+                  View Dashboard
                   <ArrowRight size={16} />
                 </Link>
-                <Link
-                  href="/profile-output"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "0.875rem 1.75rem",
-                    background: "rgba(255,255,255,0.08)",
-                    color: "rgba(255,255,255,0.80)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    borderRadius: "12px",
-                    fontSize: "0.9375rem",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  View Insights
-                </Link>
-              </>
+              ) : (
+                <>
+                  <Link href="/welcome" className="home-btn-primary">
+                    Take Assessment
+                    <ArrowRight size={16} />
+                  </Link>
+                  <Link
+                    href="/profile-output"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "0.875rem 1.75rem",
+                      background: "rgba(255,255,255,0.08)",
+                      color: "rgba(255,255,255,0.80)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      borderRadius: "12px",
+                      fontSize: "0.9375rem",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    View Insights
+                  </Link>
+                </>
+              )
             ) : (
               <>
                 <Link href="/register" className="home-btn-primary">

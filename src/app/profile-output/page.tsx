@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
 import { updateProfile } from "@/services/auth/ProfileServices";
+import { supabasedb } from "@/lib/supabaseClient";
 
 interface ScoringMetrics {
   raw_scores: Record<string, number>;
@@ -235,6 +236,7 @@ export default function ProfileOutputPage() {
   const [apiData, setApiData] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState("Analyzing your assessment responses...");
+  const [resolvedTargetUserId, setResolvedTargetUserId] = useState<string>("");
 
   // PDF generation and hover states
   const [pdfHovered, setPdfHovered] = useState(false);
@@ -303,7 +305,7 @@ export default function ProfileOutputPage() {
         last_name: lastName.trim(),
         employee_id: employeeId.trim(),
         designation: designation.trim(),
-        experiense_years: expNum,
+        experience_years: expNum,
         interests: interests
       };
 
@@ -348,7 +350,7 @@ export default function ProfileOutputPage() {
     }
   };
 
-  const fetchAIAnalysis = useCallback(async () => {
+  const fetchAIAnalysis = useCallback(async (targetUserId: string) => {
     if (!user) return;
     try {
       setApiLoading(true);
@@ -358,18 +360,27 @@ export default function ProfileOutputPage() {
       if (apiBaseUrl.endsWith("/")) {
         apiBaseUrl = apiBaseUrl.slice(0, -1);
       }
-      const response = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_id: user.id }),
-      });
-
+      const response = await fetch(`${apiBaseUrl}/api/assessment/report/${targetUserId}?requester_id=${user.id}`);
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || "Failed to process assessment metrics.");
+        // If report does not exist and target is current user, trigger calculation
+        if (response.status === 404 && targetUserId === user.id) {
+          const genResponse = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: user.id }),
+          });
+          const genResult = await genResponse.json();
+          if (!genResponse.ok) {
+            throw new Error(genResult.detail || "Failed to process assessment metrics.");
+          }
+          setApiData(genResult);
+          return;
+        }
+        throw new Error(result.detail || "Failed to retrieve assessment report.");
       }
 
       setApiData(result);
@@ -389,52 +400,95 @@ export default function ProfileOutputPage() {
         return;
       }
 
-      if (profile) {
-        const fName = profile.first_name;
-        const lName = profile.last_name;
-        const emailAddr = profile.email;
-        const empId = profile.employee_id;
-        const storedInterests = profile.interests;
-        const desig = profile.designation;
-        const exp = profile.experiense_years;
+      const resolveProfileAndFetch = async () => {
+        try {
+          let targetUserId = user.id;
+          if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const queryUserId = params.get("userId");
+            if (queryUserId) {
+              targetUserId = queryUserId;
+            }
+          }
+          setResolvedTargetUserId(targetUserId);
 
-        const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
+          let profileToUse = profile;
+          if (targetUserId !== user.id) {
+            const { data, error: profileErr } = await supabasedb
+              .from("profiles")
+              .select("*")
+              .eq("id", targetUserId)
+              .single();
+            if (!profileErr && data) {
+              const expVal = data.experience_years !== null && data.experience_years !== undefined 
+                ? data.experience_years 
+                : 0;
+              profileToUse = {
+                ...data,
+                experience_years: String(expVal)
+              };
+            } else {
+              setError("Failed to fetch target user profile details.");
+              setApiLoading(false);
+              return;
+            }
+          }
 
-        if (
-          !fName || !fName.trim() ||
-          !lName || !lName.trim() ||
-          !emailAddr || !emailAddr.trim() ||
-          !empId || !empId.trim() ||
-          !hasInterests ||
-          !desig || !desig.trim() ||
-          (exp === undefined || exp === null || String(exp).trim() === "")
-        ) {
-          setFirstName(fName || "");
-          setLastName(lName || "");
-          setEmail(emailAddr || "");
-          setEmployeeId(empId || "");
-          setInterests(storedInterests || []);
-          setDesignation(desig || "");
-          setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+          if (profileToUse) {
+            const fName = profileToUse.first_name;
+            const lName = profileToUse.last_name;
+            const emailAddr = profileToUse.email;
+            const empId = profileToUse.employee_id;
+            const storedInterests = profileToUse.interests;
+            const desig = profileToUse.designation;
+            const exp = profileToUse.experience_years;
 
-          setProfileIncomplete(true);
+            const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
+
+            if (
+              !fName || !fName.trim() ||
+              !lName || !lName.trim() ||
+              !emailAddr || !emailAddr.trim() ||
+              !empId || !empId.trim() ||
+              !hasInterests ||
+              !desig || !desig.trim() ||
+              (exp === undefined || exp === null || String(exp).trim() === "")
+            ) {
+              setFirstName(fName || "");
+              setLastName(lName || "");
+              setEmail(emailAddr || "");
+              setEmployeeId(empId || "");
+              setInterests(storedInterests || []);
+              setDesignation(desig || "");
+              setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+
+              setProfileIncomplete(true);
+              setApiLoading(false);
+              return;
+            }
+
+            setFirstName(fName || "");
+            setLastName(lName || "");
+            setEmail(emailAddr || "");
+            setEmployeeId(empId || "");
+            setInterests(storedInterests || []);
+            setDesignation(desig || "");
+            setExperience(exp !== null && exp !== undefined ? String(exp) : "");
+            setProfileIncomplete(false);
+            
+            await fetchAIAnalysis(targetUserId);
+          } else {
+            router.push("/profile?incomplete=true");
+            return;
+          }
+        } catch (err: any) {
+          console.error("Error in resolveProfileAndFetch:", err);
+          setError(err.message || "Failed to load profile context.");
           setApiLoading(false);
-          return;
         }
+      };
 
-        setFirstName(fName || "");
-        setLastName(lName || "");
-        setEmail(emailAddr || "");
-        setEmployeeId(empId || "");
-        setInterests(storedInterests || []);
-        setDesignation(desig || "");
-        setExperience(exp !== null && exp !== undefined ? String(exp) : "");
-        setProfileIncomplete(false);
-        fetchAIAnalysis();
-      } else {
-        router.push("/profile?incomplete=true");
-        return;
-      }
+      resolveProfileAndFetch();
     }
   }, [profile, isLoggedIn, user, authLoading, router, fetchAIAnalysis]);
 
@@ -445,6 +499,41 @@ export default function ProfileOutputPage() {
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     setPdfProgressText("Initializing PDF engine...");
+    
+    // Save original getComputedStyle
+    const originalGetComputedStyle = window.getComputedStyle;
+
+    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
+    window.getComputedStyle = function (el, pseudoElt) {
+      const style = originalGetComputedStyle(el, pseudoElt);
+      
+      const convertOklch = (val: any) => {
+        if (typeof val === "string" && val.includes("oklch")) {
+          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
+          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
+          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
+          return "rgb(240, 240, 240)";
+        }
+        return val;
+      };
+
+      return new Proxy(style, {
+        get(target, prop) {
+          if (prop === "getPropertyValue") {
+            return function(propertyName: string) {
+              const val = target.getPropertyValue(propertyName);
+              return convertOklch(val);
+            };
+          }
+          const val = target[prop as any];
+          if (typeof val === "function") {
+            return (val as any).bind(target);
+          }
+          return convertOklch(val);
+        }
+      });
+    };
+
     try {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
@@ -595,6 +684,8 @@ export default function ProfileOutputPage() {
     } catch (error) {
       console.error("PDF generation failed:", error);
     } finally {
+      // Restore original getComputedStyle
+      window.getComputedStyle = originalGetComputedStyle;
       setIsGeneratingPdf(false);
       setPdfProgressText("");
     }
@@ -981,7 +1072,7 @@ export default function ProfileOutputPage() {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%" }}>
             <button
-              onClick={() => fetchAIAnalysis()}
+              onClick={() => fetchAIAnalysis(resolvedTargetUserId || user?.id || "")}
               className="tie-btn-primary"
               style={{ background: "#5BA4A4", border: "none" }}
             >

@@ -57,6 +57,11 @@ export default function AssessmentPage() {
         return;
       }
 
+      if (profile?.role && profile.role !== "user") {
+        router.push("/dashboard");
+        return;
+      }
+
       const initializeAssessment = async () => {
         try {
           // Fetch structural questions, user response metrics, and profile seed parallelly

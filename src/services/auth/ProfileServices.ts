@@ -10,7 +10,7 @@ export const getProfile = async (): Promise<ServiceResponse<any>> => {
 
         const { data, error: dbError } = await supabasedb
             .from("profiles")
-            .select("first_name, last_name, employee_id, designation, experiense_years, interests, role")
+            .select("first_name, last_name, employee_id, designation, experience_years, interests, role, company_id, team_id, manager_id")
             .eq("id", user.id)
             .single();
 
@@ -18,7 +18,11 @@ export const getProfile = async (): Promise<ServiceResponse<any>> => {
             return { success: false, data: null, error: { message: dbError.message } };
         }
 
-        return { success: true, data: { ...data, email: user.email }, error: null };
+        const expVal = data.experience_years !== null && data.experience_years !== undefined 
+            ? data.experience_years 
+            : 0;
+
+        return { success: true, data: { ...data, experience_years: expVal, email: user.email }, error: null };
     }
     catch (err: any) {
         return { success: false, data: null, error: { message: err.message || 'Unexpected retrieval error' } };
@@ -30,9 +34,12 @@ export const updateProfile = async (updates: {
     last_name?: string;
     employee_id?: string | number;
     designation?: string;
-    experiense_years?: number;
+    experience_years?: number;
     interests?: string[];
     role?: string;
+    company_id?: string;
+    team_id?: string;
+    manager_id?: string;
 }): Promise<ServiceResponse<any>> => {
     try {
         const { data: { user }, error: authError } = await supabasedb.auth.getUser();
@@ -55,4 +62,4 @@ export const updateProfile = async (updates: {
     catch (err: any) {
         return { success: false, data: null, error: { message: err.message || 'Unexpected update error' } };
     }
-};
+};

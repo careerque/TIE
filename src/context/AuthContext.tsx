@@ -11,9 +11,13 @@ interface Profile {
   email: string;
   employee_id: string;
   designation: string;
-  experiense_years: string;
+  experience_years: string;
   interests: string[];
   role: string;
+  company_id?: string;
+  team_id?: string;
+  manager_id?: string;
+  assessment_seed?: number;
 }
 
 interface AuthContextType {
@@ -38,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabasedb
         .from("profiles")
-        .select("first_name, last_name, employee_id, designation, experiense_years, interests, role")
+        .select("first_name, last_name, employee_id, designation, experience_years, interests, role, company_id, team_id, manager_id, assessment_seed")
         .eq("id", userId)
         .single();
 
@@ -57,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               last_name: "",
               employee_id: "",
               designation: "",
-              experiense_years: 0,
+              experience_years: 0,
               interests: [],
               role: "user"
             })
@@ -65,16 +69,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (!createError && newData) {
-            setProfile({
+            const expVal = newData.experience_years !== null && newData.experience_years !== undefined 
+              ? newData.experience_years 
+              : 0;
+
+            const profileData = {
               first_name: newData.first_name || "",
               last_name: newData.last_name || "",
               email: userEmail || "",
               employee_id: newData.employee_id ? String(newData.employee_id) : "",
               designation: newData.designation || "",
-              experiense_years: newData.experiense_years ? String(newData.experiense_years) : "",
+              experience_years: String(expVal),
               interests: newData.interests || [],
               role: newData.role || "user",
-            });
+              company_id: newData.company_id || undefined,
+              team_id: newData.team_id || undefined,
+              manager_id: newData.manager_id || undefined,
+              assessment_seed: newData.assessment_seed ? Number(newData.assessment_seed) : undefined,
+            };
+            setProfile(profileData);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("tie-user-profile", JSON.stringify(profileData));
+            }
             return;
           } else {
             console.error("Failed to create self-healing profile row:", createError);
@@ -82,16 +98,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setProfile(null);
       } else if (data) {
-        setProfile({
+        const expVal = data.experience_years !== null && data.experience_years !== undefined 
+          ? data.experience_years 
+          : 0;
+
+        const profileData = {
           first_name: data.first_name || "",
           last_name: data.last_name || "",
           email: userEmail || "",
           employee_id: data.employee_id ? String(data.employee_id) : "",
           designation: data.designation || "",
-          experiense_years: data.experiense_years ? String(data.experiense_years) : "",
+          experience_years: String(expVal),
           interests: data.interests || [],
           role: data.role || "user",
-        });
+          company_id: data.company_id || undefined,
+          team_id: data.team_id || undefined,
+          manager_id: data.manager_id || undefined,
+          assessment_seed: data.assessment_seed ? Number(data.assessment_seed) : undefined,
+        };
+        setProfile(profileData);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tie-user-profile", JSON.stringify(profileData));
+        }
       }
     } catch (err) {
       console.error("Unexpected error fetching profile:", err);
@@ -107,6 +135,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("tie-user-profile");
+      }
       await supabasedb.auth.signOut();
       setUser(null);
       setProfile(null);
@@ -118,11 +149,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // Check if there is any Supabase session in localStorage
+    if (typeof window !== "undefined") {
+      let hasSession = false;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes("-auth-token")) {
+          hasSession = true;
+          break;
+        }
+      }
+      
+      // Load cached profile if it exists
+      const cached = localStorage.getItem("tie-user-profile");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setProfile(parsed);
+          setLoading(false);
+        } catch (e) {
+          // ignore
+        }
+      } else if (!hasSession) {
+        // If there is no session token at all, the user is guest (skip initial load delay)
+        setLoading(false);
+      }
+    }
+
     // Listen for auth state changes (including the initial session retrieval on mount)
     const { data: { subscription } } = supabasedb.auth.onAuthStateChange(async (event, session) => {
       // Only set loading back to true for initial loads or explicit sign-ins to avoid background token refresh flashes
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
-        setLoading(true);
+        // Only trigger loading block if we don't have a cached profile to avoid layout redraw flashes
+        if (!localStorage.getItem("tie-user-profile")) {
+          setLoading(true);
+        }
       }
 
       if (session?.user) {
@@ -131,6 +192,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(null);
         setProfile(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("tie-user-profile");
+        }
       }
 
       setLoading(false);

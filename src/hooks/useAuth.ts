@@ -46,8 +46,12 @@ export const useAuth = () => {
     } else {
       const profile = result.data?.profile;
 
-      if (profile?.role === 'admin') {
-        router.push('/admin-dashboard');
+      if (profile?.role === 'super_admin') {
+        router.push('/super-admin');
+      } else if (profile?.role === 'hr_admin') {
+        router.push('/hr-admin');
+      } else if (profile?.role === 'manager') {
+        router.push('/manager');
       } else {
         router.push('/dashboard');
       }
@@ -110,7 +114,7 @@ export const useAuth = () => {
     const result = await updateProfile({
       employee_id: emp_id,
       designation,
-      experiense_years: experience,
+      experience_years: experience,
       interests,
       role
     });

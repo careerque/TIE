@@ -21,6 +21,11 @@ export default function AssessmentWelcomePage() {
         return;
       }
 
+      if (profile?.role && profile.role !== "user") {
+        router.push("/dashboard");
+        return;
+      }
+
       // Fetch dynamic question count
       const fetchQuestions = async () => {
         try {

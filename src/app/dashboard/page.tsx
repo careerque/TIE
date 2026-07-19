@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, User, ClipboardList } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import { supabasedb } from "@/lib/supabaseClient";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -12,6 +13,10 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string>("User");
   const [takeTestHovered, setTakeTestHovered] = useState(false);
   const [viewProfileHovered, setViewProfileHovered] = useState(false);
+
+  // Tenant Slugs
+  const [companySlug, setCompanySlug] = useState<string>("");
+  const [teamSlug, setTeamSlug] = useState<string>("");
 
   useEffect(() => {
     if (!loading) {
@@ -27,6 +32,45 @@ export default function DashboardPage() {
         const formatted = namePart.charAt(0).toUpperCase() + namePart.slice(1);
         setUserName(formatted);
       }
+
+      // Fetch slugs for semantic routing (cached in sessionStorage for instant loading)
+      const fetchSlugs = async () => {
+        if (!profile) return;
+        
+        const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
+        const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+
+        if (cachedComp) setCompanySlug(cachedComp);
+        if (cachedTm) setTeamSlug(cachedTm);
+
+        if (cachedComp && (cachedTm || !profile.team_id)) {
+          return; // Skip queries if fully cached
+        }
+
+        const compPromise = profile.company_id && !cachedComp
+          ? supabasedb.from("companies").select("slug").eq("id", profile.company_id).maybeSingle()
+          : Promise.resolve({ data: null });
+
+        const tmPromise = profile.team_id && !cachedTm
+          ? supabasedb.from("teams").select("slug").eq("id", profile.team_id).maybeSingle()
+          : Promise.resolve({ data: null });
+
+        try {
+          const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
+          if (compRes.data) {
+            setCompanySlug(compRes.data.slug);
+            sessionStorage.setItem(`company-slug-${profile.company_id}`, compRes.data.slug);
+          }
+          if (tmRes.data) {
+            setTeamSlug(tmRes.data.slug);
+            sessionStorage.setItem(`team-slug-${profile.team_id}`, tmRes.data.slug);
+          }
+        } catch (err) {
+          console.error("Failed to fetch dashboard slugs in parallel:", err);
+        }
+      };
+
+      fetchSlugs();
     }
   }, [isLoggedIn, profile, loading, router]);
 
@@ -47,6 +91,9 @@ export default function DashboardPage() {
   if (!isLoggedIn) {
     return null; // Redirecting in useEffect
   }
+
+  const activeCompanySlug = companySlug || "none";
+  const activeTeamSlug = teamSlug || "none";
 
   return (
     <main className="tie-container">
@@ -77,22 +124,61 @@ export default function DashboardPage() {
         </div>
 
         {/* 2. Action Area Buttons */}
-        <div className="dashboard-action-block">
+        <div className="dashboard-action-block flex flex-col gap-3">
           
-          {/* Button 1: Take Test */}
-          <Link
-            href="/welcome"
-            onMouseEnter={() => setTakeTestHovered(true)}
-            onMouseLeave={() => setTakeTestHovered(false)}
-            className="tie-btn-primary"
-          >
-            <ClipboardList size={18} />
-            <span>Take Test</span>
-            <ArrowRight 
-              size={16} 
-              className="dashboard-btn-icon-right"
-            />
-          </Link>
+          {/* Role-based control panel shortcuts */}
+          {profile?.role === "super_admin" && (
+            <Link
+              href="/super-admin"
+              className="tie-btn-primary"
+              style={{ background: "#243B53" }}
+            >
+              <Sparkles size={18} />
+              <span>Go to Super Admin Panel</span>
+              <ArrowRight size={16} className="dashboard-btn-icon-right" />
+            </Link>
+          )}
+
+          {profile?.role === "hr_admin" && (
+            <Link
+              href={`/${activeCompanySlug}/hr_admin`}
+              className="tie-btn-primary"
+              style={{ background: "#5BA4A4" }}
+            >
+              <Sparkles size={18} />
+              <span>Go to HR Admin Portal</span>
+              <ArrowRight size={16} className="dashboard-btn-icon-right" />
+            </Link>
+          )}
+
+          {profile?.role === "manager" && (
+            <Link
+              href={`/${activeCompanySlug}/${activeTeamSlug}/manager`}
+              className="tie-btn-primary"
+              style={{ background: "#A3B18A" }}
+            >
+              <Sparkles size={18} />
+              <span>Go to Manager Dashboard</span>
+              <ArrowRight size={16} className="dashboard-btn-icon-right" />
+            </Link>
+          )}
+
+          {/* Button 1: Work preference assessment dashboard */}
+          {profile?.role === "user" && (
+            <Link
+              href={`/${activeCompanySlug}/${activeTeamSlug}/user`}
+              onMouseEnter={() => setTakeTestHovered(true)}
+              onMouseLeave={() => setTakeTestHovered(false)}
+              className="tie-btn-primary"
+            >
+              <ClipboardList size={18} />
+              <span>Workspace & Assessment</span>
+              <ArrowRight 
+                size={16} 
+                className="dashboard-btn-icon-right"
+              />
+            </Link>
+          )}
 
           {/* Button 2: View Profile Info */}
           <Link

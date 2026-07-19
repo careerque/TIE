@@ -159,7 +159,6 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-
           {/* ── Form ── */}
           <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeUp .5s .20s both' }}>
 
