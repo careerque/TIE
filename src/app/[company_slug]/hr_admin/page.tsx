@@ -262,7 +262,12 @@ export default function CorporateHrAdminPage() {
       setMgrFirstName("");
       setMgrLastName("");
       setMgrTeamName("");
-      setFormSuccess(`Invitation successfully generated for Manager ${mgrEmail}!`);
+      const inviteUrl = data.invite_url ? `${window.location.origin}${data.invite_url}` : null;
+      setFormSuccess(
+        inviteUrl 
+          ? `Invitation successfully generated! Copy Link: ${inviteUrl}` 
+          : `Invitation successfully generated for Manager ${mgrEmail}!`
+      );
       
       // Refresh Lists
       await fetchCompanyData();
