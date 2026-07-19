@@ -6,3 +6,4 @@ python-dotenv
 supabase
 groq
 openai
+email-validator
