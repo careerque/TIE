@@ -855,12 +855,69 @@ class CompleteActivationPayload(BaseModel):
     experience_years: int = 0
 
 def send_activation_email(to_email: str, invite_token: str, role: str, company_name: str):
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    invite_url = f"{frontend_url}/accept-invite?token={invite_token}"
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #243B53;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid rgba(36,59,83,0.1); border-radius: 12px;">
+          <h2 style="color: #243B53;">Welcome to TIE!</h2>
+          <p>You have been invited to join <strong>{company_name}</strong> as a <strong>{role}</strong>.</p>
+          <p>Please click the button below to set up your password, complete your profile, and activate your account:</p>
+          <div style="margin: 25px 0; text-align: center;">
+            <a href="{invite_url}" style="background-color: #5BA4A4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activate Account</a>
+          </div>
+          <p style="font-size: 0.8em; color: #9aa8b6;">If the button above does not work, copy and paste this URL into your browser:</p>
+          <p style="font-size: 0.8em; color: #5BA4A4; word-break: break-all;">{invite_url}</p>
+          <hr style="border: 0; border-top: 1px solid rgba(36,59,83,0.1); margin: 20px 0;" />
+          <p style="font-size: 0.75em; color: #9aa8b6;">This is an automated invitation link. Do not share it with others.</p>
+        </div>
+      </body>
+    </html>
+    """
+
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    if resend_api_key:
+        import requests
+        print(f"Attempting to dispatch email via Resend API to {to_email}...")
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {resend_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_from = os.getenv("SMTP_FROM", smtp_user)
+        from_address = smtp_from if smtp_from else "onboarding@resend.dev"
+        
+        payload = {
+            "from": from_address,
+            "to": to_email,
+            "subject": f"Activate your TIE Account - {company_name}",
+            "html": html
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            if response.status_code in [200, 201]:
+                print(f"[SUCCESS] Resend activation email sent to {to_email}")
+                return True, None
+            else:
+                try:
+                    err_detail = response.json().get("message", response.text)
+                except Exception:
+                    err_detail = response.text
+                print(f"[ERROR] Resend API error: {err_detail}")
+                return False, f"Resend API error: {err_detail}"
+        except Exception as e:
+            print(f"[ERROR] Failed to send via Resend API: {str(e)}")
+            return False, f"Resend API connection error: {str(e)}"
+
+    # Fallback to standard SMTP
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
-
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    invite_url = f"{frontend_url}/accept-invite?token={invite_token}"
 
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = os.getenv("SMTP_PORT")
@@ -882,28 +939,8 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
         msg["Subject"] = f"Activate your TIE Account - {company_name}"
         msg["From"] = smtp_from
         msg["To"] = to_email
-
-        html = f"""
-        <html>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #243B53;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid rgba(36,59,83,0.1); border-radius: 12px;">
-              <h2 style="color: #243B53;">Welcome to TIE!</h2>
-              <p>You have been invited to join <strong>{company_name}</strong> as a <strong>{role}</strong>.</p>
-              <p>Please click the button below to set up your password, complete your profile, and activate your account:</p>
-              <div style="margin: 25px 0; text-align: center;">
-                <a href="{invite_url}" style="background-color: #5BA4A4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activate Account</a>
-              </div>
-              <p style="font-size: 0.8em; color: #9aa8b6;">If the button above does not work, copy and paste this URL into your browser:</p>
-              <p style="font-size: 0.8em; color: #5BA4A4; word-break: break-all;">{invite_url}</p>
-              <hr style="border: 0; border-top: 1px solid rgba(36,59,83,0.1); margin: 20px 0;" />
-              <p style="font-size: 0.75em; color: #9aa8b6;">This is an automated invitation link. Do not share it with others.</p>
-            </div>
-          </body>
-        </html>
-        """
         msg.attach(MIMEText(html, "html"))
 
-        # Connect and send dynamically supporting port 465 (SSL) and other ports (TLS)
         port = int(smtp_port)
         if port == 465:
             server = smtplib.SMTP_SSL(smtp_host, port)
