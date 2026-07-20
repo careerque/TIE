@@ -4,14 +4,14 @@ import { ServiceResponse } from "@/types/serviceResponse";
 export const forgotPassword = async (email: string): Promise<ServiceResponse<null>> => {
     const supabase = supabasedb;
     try {
-        // Query your PUBLIC profiles table, not auth.users
-        const { data: profile, error: profileError } = await supabase
-            .from("profiles") 
-            .select("email")
-            .eq("email", email)
-            .maybeSingle();
-
-        if (profileError || !profile) {
+        // Query backend verify-email endpoint bypassing RLS constraints securely
+        const cleanApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const checkRes = await fetch(`${cleanApiUrl}/api/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
+        if (!checkRes.ok) {
+            return { success: false, data: null, error: { message: "Failed to verify user status." } };
+        }
+        const checkData = await checkRes.json();
+        if (!checkData.exists) {
             return { success: false, data: null, error: { message: "This email does not exist or account is unverified." } };
         }
 

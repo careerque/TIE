@@ -509,6 +509,16 @@ async def get_companies():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/auth/verify-email")
+async def verify_email(email: str):
+    try:
+        res = supabase.table("profiles").select("id").eq("email", email.strip().lower()).execute()
+        exists = len(res.data) > 0
+        return {"exists": exists}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/invitations/create")
 async def create_invitation(payload: InvitationCreate):
     try:
@@ -562,6 +572,20 @@ async def create_invitation(payload: InvitationCreate):
         invite_insert = supabase.table("invitations").insert(invite_data).execute()
         if not invite_insert.data or len(invite_insert.data) == 0:
             raise HTTPException(status_code=500, detail="Failed to save invitation record.")
+            
+        # Fetch company name for email template
+        comp_name = "Company"
+        comp_res = supabase.table("companies").select("name").eq("id", payload.company_id).execute()
+        if comp_res.data:
+            comp_name = comp_res.data[0]["name"]
+
+        # Send email activation
+        email_sent, email_err = send_activation_email(payload.email, token, payload.role, comp_name)
+        if not email_sent:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send activation email via SMTP: {email_err}"
+            )
             
         invite_link = f"/accept-invite?token={token}"
         return {
@@ -851,7 +875,7 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
               f"Link: {invite_url}\n"
               f"Role: {role}\n"
               f"To activate, set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD in .env.local\n")
-        return False
+        return True, "Mock mode: SMTP not configured"
 
     try:
         msg = MIMEMultipart("alternative")
@@ -879,17 +903,23 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
         """
         msg.attach(MIMEText(html, "html"))
 
-        # Connect and send
-        server = smtplib.SMTP(smtp_host, int(smtp_port))
-        server.starttls()
+        # Connect and send dynamically supporting port 465 (SSL) and other ports (TLS)
+        port = int(smtp_port)
+        if port == 465:
+            server = smtplib.SMTP_SSL(smtp_host, port)
+        else:
+            server = smtplib.SMTP(smtp_host, port)
+            server.starttls()
+            
         server.login(smtp_user, smtp_pass)
         server.sendmail(smtp_from, [to_email], msg.as_string())
         server.quit()
         print(f"[SUCCESS] Activation email sent to {to_email}")
-        return True
+        return True, None
     except Exception as e:
-        print(f"[ERROR] Failed to send activation email to {to_email}: {str(e)}")
-        return False
+        error_msg = str(e)
+        print(f"[ERROR] Failed to send activation email to {to_email}: {error_msg}")
+        return False, error_msg
 
 @enterprise_router.post("/invite-hr-admin")
 async def invite_hr_admin(payload: HRAdminInvitePayload):
@@ -931,7 +961,12 @@ async def invite_hr_admin(payload: HRAdminInvitePayload):
         }).execute()
         
         # Send email activation
-        send_activation_email(payload.email, secure_token, "HR Admin", payload.company_name)
+        email_sent, email_err = send_activation_email(payload.email, secure_token, "HR Admin", payload.company_name)
+        if not email_sent:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send activation email via SMTP: {email_err}"
+            )
         
         return {"status": "success", "invite_url": f"/accept-invite?token={secure_token}"}
     except Exception as err:
@@ -985,7 +1020,12 @@ async def invite_team_member(payload: TeamMemberInvitePayload):
             comp_name = comp_res.data[0]["name"]
             
         # Send email activation
-        send_activation_email(payload.email, secure_token, payload.role, comp_name)
+        email_sent, email_err = send_activation_email(payload.email, secure_token, payload.role, comp_name)
+        if not email_sent:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to send activation email via SMTP: {email_err}"
+            )
         
         return {"status": "success", "invite_url": f"/accept-invite?token={secure_token}"}
     except Exception as err:
