@@ -1112,12 +1112,26 @@ async def accept_and_activate(payload: CompleteActivationPayload):
         raise HTTPException(status_code=400, detail="Invalid or expired registration token parameters.")
     invite = inv_res.data[0]
     
-    # Create user profile directly inside Supabase Auth without temporary password states
+    # Create or update user profile directly inside Supabase Auth
     try:
-        auth_user = supabase_admin.auth.admin.create_user({
-            "email": invite["email"], "password": payload.password, "email_confirm": True
-        })
-        user_id = auth_user.user.id
+        user_id = None
+        try:
+            auth_user = supabase_admin.auth.admin.create_user({
+                "email": invite["email"], "password": payload.password, "email_confirm": True
+            })
+            user_id = auth_user.user.id
+        except Exception as create_err:
+            err_str = str(create_err).lower()
+            if "already" in err_str or "registered" in err_str or "exists" in err_str:
+                # Look up existing user in Supabase Auth to update password & reuse ID
+                users = supabase_admin.auth.admin.list_users()
+                for u in users:
+                    if u.email and u.email.strip().lower() == invite["email"].strip().lower():
+                        user_id = u.id
+                        supabase_admin.auth.admin.update_user_by_id(user_id, {"password": payload.password, "email_confirm": True})
+                        break
+            if not user_id:
+                raise create_err
         
         # Structure the baseline identity profile using upsert to overwrite any default profiles created by triggers
         supabase_admin.table("profiles").upsert({

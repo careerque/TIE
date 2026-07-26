@@ -526,6 +526,7 @@ export default function ReportViewer({
   const parsedSections =
     parseMarkdown(reportMarkdown);
 
+<<<<<<< HEAD
   const currentFrictionArea =
     getFrictionArea(primary_pattern);
 
@@ -631,10 +632,121 @@ export default function ReportViewer({
 
       const imgWidth = 210;
       const imgHeight = 297;
+=======
+    const element = reportRef.current;
+    
+    const clone = element.cloneNode(true) as HTMLDivElement;
+    clone.style.position = "absolute";
+    clone.style.left = "-9999px";
+    clone.style.top = "0";
+    clone.style.width = "1024px";
+    clone.style.padding = "40px";
+    clone.style.boxSizing = "border-box";
+    clone.style.background = "#ffffff";
+    document.body.appendChild(clone);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const canvas = await html2canvas(clone, {
+        scale: 1.8,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 1200,
+        onclone: (clonedDoc: Document) => {
+          // 1. Sanitize all <style> tags in cloned document
+          const styleTags = clonedDoc.querySelectorAll("style");
+          styleTags.forEach((tag) => {
+            if (tag.innerHTML && (tag.innerHTML.includes("oklab") || tag.innerHTML.includes("oklch"))) {
+              tag.innerHTML = tag.innerHTML
+                .replace(/oklab\([^)]+\)/gi, "rgb(36, 59, 83)")
+                .replace(/oklch\([^)]+\)/gi, "rgb(91, 164, 164)");
+            }
+          });
+
+          // 2. Remove any CSS rules containing oklab/oklch from clonedDoc.styleSheets
+          try {
+            Array.from(clonedDoc.styleSheets).forEach((sheet) => {
+              try {
+                const rules = Array.from(sheet.cssRules || []);
+                for (let i = rules.length - 1; i >= 0; i--) {
+                  const ruleText = rules[i]?.cssText || "";
+                  if (ruleText.includes("oklab") || ruleText.includes("oklch")) {
+                    sheet.deleteRule(i);
+                  }
+                }
+              } catch (e) {
+                // Cross-origin stylesheet rules ignore
+              }
+            });
+          } catch (e) {}
+
+          // 3. Override getComputedStyle in cloned window
+          const win = clonedDoc.defaultView || window;
+          const origGetComputedStyle = win.getComputedStyle;
+
+          win.getComputedStyle = function (el: Element, pseudoElt?: string | null) {
+            const style = origGetComputedStyle.call(win, el, pseudoElt);
+            return new Proxy(style, {
+              get(target, prop) {
+                if (prop === "getPropertyValue") {
+                  return function (propertyName: string) {
+                    const val = target.getPropertyValue(propertyName);
+                    if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                      if (propertyName.includes("background")) return "rgb(255, 255, 255)";
+                      if (propertyName.includes("border")) return "rgb(226, 232, 240)";
+                      return "rgb(36, 59, 83)";
+                    }
+                    return val;
+                  };
+                }
+                const val = (target as any)[prop];
+                if (typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                  if (String(prop).includes("background")) return "rgb(255, 255, 255)";
+                  if (String(prop).includes("border")) return "rgb(226, 232, 240)";
+                  return "rgb(36, 59, 83)";
+                }
+                if (typeof val === "function") {
+                  return val.bind(target);
+                }
+                return val;
+              }
+            });
+          };
+
+          // 4. Sanitize all DOM element inline styles
+          const elements = clonedDoc.querySelectorAll("*");
+          elements.forEach((node) => {
+            const el = node as HTMLElement;
+            if (el.style) {
+              ["color", "backgroundColor", "borderColor", "outlineColor", "boxShadow", "fill", "stroke"].forEach((key) => {
+                const val = (el.style as any)[key];
+                if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                  if (key === "backgroundColor") el.style.backgroundColor = "#ffffff";
+                  else if (key === "color") el.style.color = "#243B53";
+                  else if (key === "borderColor") el.style.borderColor = "#E2E8F0";
+                }
+              });
+            }
+          });
+        }
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.82);
+      const pdf = new jsPDF("p", "mm", "a4");
+      
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+>>>>>>> b14fc4cfda51e027794730babcdfbfd9eae8438a
 
       // Reduced rendering scale for smaller PDF size.
       const RENDER_SCALE = 1.5;
 
+<<<<<<< HEAD
       // Reduced JPEG quality for a much smaller PDF.
       const JPEG_QUALITY = 0.72;
 
@@ -1039,6 +1151,27 @@ export default function ReportViewer({
       setIsGeneratingPdf(false);
 
       setPdfProgressText("");
+=======
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = `TIE_Report_${(employeeName || "Employee").replace(/\s+/g, "_")}.pdf`;
+      pdf.save(fileName);
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3000);
+    } catch (error: any) {
+      console.error("Failed to generate PDF:", error);
+      alert("Failed to generate PDF: " + (error?.message || "Please try again."));
+    } finally {
+      if (clone && clone.parentNode) {
+        clone.parentNode.removeChild(clone);
+      }
+      setExporting(false);
+>>>>>>> b14fc4cfda51e027794730babcdfbfd9eae8438a
     }
   };
 

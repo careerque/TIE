@@ -303,7 +303,330 @@ export default function ProfileOutputPage() {
 
       resolveProfileAndFetch();
     }
+<<<<<<< HEAD
   }, [isLoggedIn, profile, loading, user, authLoading, fetchAIAnalysis, router]);
+=======
+  }, [profile, isLoggedIn, user, authLoading, router, fetchAIAnalysis]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [apiLoading]);
+
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    setPdfProgressText("Initializing PDF engine...");
+    
+<<<<<<< HEAD
+    try {
+=======
+    // Save original getComputedStyle
+    const originalGetComputedStyle = window.getComputedStyle;
+
+    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
+    window.getComputedStyle = function (el, pseudoElt) {
+      const style = originalGetComputedStyle(el, pseudoElt);
+      
+      const convertOklch = (val: any) => {
+        if (typeof val === "string" && val.includes("oklch")) {
+          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
+          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
+          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
+          return "rgb(240, 240, 240)";
+        }
+        return val;
+      };
+
+      return new Proxy(style, {
+        get(target, prop) {
+          if (prop === "getPropertyValue") {
+            return function(propertyName: string) {
+              const val = target.getPropertyValue(propertyName);
+              return convertOklch(val);
+            };
+          }
+          const val = target[prop as any];
+          if (typeof val === "function") {
+            return (val as any).bind(target);
+          }
+          return convertOklch(val);
+        }
+      });
+    };
+
+   try {
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+      const jsPDF = (await import("jspdf")).default;
+      const html2canvas = (await import("html2canvas")).default;
+
+      // Create PDF in A4 format with compression enabled
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+        compress: true, // enables jsPDF's internal stream/flate compression (safe, lossless for text/vector)
+      });
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = 297; // A4 height in mm
+
+<<<<<<< HEAD
+      const sanitizeClonedDocument = (clonedDoc: Document) => {
+        // 1. Sanitize all <style> tags in cloned document
+        const styleTags = clonedDoc.querySelectorAll("style");
+        styleTags.forEach((tag) => {
+          if (tag.innerHTML && (tag.innerHTML.includes("oklab") || tag.innerHTML.includes("oklch"))) {
+            tag.innerHTML = tag.innerHTML
+              .replace(/oklab\([^)]+\)/gi, "rgb(36, 59, 83)")
+              .replace(/oklch\([^)]+\)/gi, "rgb(91, 164, 164)");
+          }
+        });
+
+        // 2. Remove any CSS rules containing oklab/oklch from clonedDoc.styleSheets
+        try {
+          Array.from(clonedDoc.styleSheets).forEach((sheet) => {
+            try {
+              const rules = Array.from(sheet.cssRules || []);
+              for (let i = rules.length - 1; i >= 0; i--) {
+                const ruleText = rules[i]?.cssText || "";
+                if (ruleText.includes("oklab") || ruleText.includes("oklch")) {
+                  sheet.deleteRule(i);
+                }
+              }
+            } catch (e) {
+              // Cross-origin stylesheet rules ignore
+            }
+          });
+        } catch (e) {}
+
+        // 3. Override getComputedStyle in cloned window
+        const win = clonedDoc.defaultView || window;
+        const origGetComputedStyle = win.getComputedStyle;
+
+        win.getComputedStyle = function (el: Element, pseudoElt?: string | null) {
+          const style = origGetComputedStyle.call(win, el, pseudoElt);
+          return new Proxy(style, {
+            get(target, prop) {
+              if (prop === "getPropertyValue") {
+                return function (propertyName: string) {
+                  const val = target.getPropertyValue(propertyName);
+                  if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                    if (propertyName.includes("background")) return "rgb(255, 255, 255)";
+                    if (propertyName.includes("border")) return "rgb(226, 232, 240)";
+                    return "rgb(36, 59, 83)";
+                  }
+                  return val;
+                };
+              }
+              const val = (target as any)[prop];
+              if (typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                if (String(prop).includes("background")) return "rgb(255, 255, 255)";
+                if (String(prop).includes("border")) return "rgb(226, 232, 240)";
+                return "rgb(36, 59, 83)";
+              }
+              if (typeof val === "function") {
+                return val.bind(target);
+              }
+              return val;
+            }
+          });
+        };
+
+        // 4. Sanitize all DOM element inline styles
+        const elements = clonedDoc.querySelectorAll("*");
+        elements.forEach((node) => {
+          const el = node as HTMLElement;
+          if (el.style) {
+            ["color", "backgroundColor", "borderColor", "outlineColor", "boxShadow", "fill", "stroke"].forEach((key) => {
+              const val = (el.style as any)[key];
+              if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                if (key === "backgroundColor") el.style.backgroundColor = "#ffffff";
+                else if (key === "color") el.style.color = "#243B53";
+                else if (key === "borderColor") el.style.borderColor = "#E2E8F0";
+              }
+            });
+          }
+        });
+      };
+=======
+      // Shared render settings tuned for quality
+      const RENDER_SCALE = 2; // higher = sharper text/images, larger file size
+      const JPEG_QUALITY = 0.85; // used only for page 1 / header (photo-like content)
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+
+      // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
+      setPdfProgressText("Rendering Executive Summary...");
+      const page1Element = document.getElementById("tie-report-pdf-page-1");
+      if (page1Element) {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        const canvas1 = await html2canvas(page1Element, {
+<<<<<<< HEAD
+          scale: 1.8,
+=======
+          scale: RENDER_SCALE,
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          onclone: sanitizeClonedDocument
+        });
+<<<<<<< HEAD
+        const imgData1 = canvas1.toDataURL("image/jpeg", 0.82);
+=======
+        const imgData1 = canvas1.toDataURL("image/jpeg", JPEG_QUALITY);
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+        pdf.addImage(imgData1, "JPEG", 0, 0, imgWidth, imgHeight);
+      }
+
+      // --- PAGES 2+: Detailed Narrative (Section-by-Section with Dynamic Breaks) ---
+      setPdfProgressText("Preparing layout templates...");
+
+      // Capture the header template
+      const headerElement = document.getElementById("tie-report-pdf-header-template");
+      let headerImgData = "";
+      let headerHeightMm = 0;
+      if (headerElement) {
+        const headerCanvas = await html2canvas(headerElement, {
+<<<<<<< HEAD
+          scale: 1.8,
+=======
+          scale: RENDER_SCALE,
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          onclone: sanitizeClonedDocument
+        });
+<<<<<<< HEAD
+        headerImgData = headerCanvas.toDataURL("image/jpeg", 0.82);
+=======
+        headerImgData = headerCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+        headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
+      }
+
+      // Capture all dynamic sections individually — PNG for crisp text
+      const sectionElements = document.getElementsByClassName("pdf-narrative-section");
+      const sectionImgDataList = [];
+      for (let i = 0; i < sectionElements.length; i++) {
+        setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
+        const el = sectionElements[i] as HTMLElement;
+        const canvas = await html2canvas(el, {
+<<<<<<< HEAD
+          scale: 1.8,
+=======
+          scale: RENDER_SCALE,
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          onclone: sanitizeClonedDocument
+        });
+<<<<<<< HEAD
+        const imgData = canvas.toDataURL("image/jpeg", 0.82);
+=======
+        const imgData = canvas.toDataURL("image/png"); // PNG: sharper text edges, no chroma subsampling blur
+>>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+        const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
+        sectionImgDataList.push({ imgData, heightMm });
+      }
+
+      // Layout on PDF pages
+      setPdfProgressText("Assembling pages...");
+      let currentPageNum = 2;
+      let currentY = 15; // Top margin
+
+      // Start Page 2
+      pdf.addPage();
+
+      // Draw Header on Page 2
+      if (headerImgData) {
+        pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
+        currentY += headerHeightMm + 10; // Header + Gap
+      }
+
+      // Draw Main Title on Page 2
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(36, 59, 83); // #243B53
+      pdf.text("DETAILED BEHAVIORAL INSIGHTS & GUIDANCE", 15, currentY);
+      currentY += 12; // Title + Gap
+
+      const bottomLimit = 297 - 25; // 25mm bottom margin for footer
+
+      for (let i = 0; i < sectionImgDataList.length; i++) {
+        const section = sectionImgDataList[i];
+
+        // If it doesn't fit on the current page, add a new page
+        if (currentY + section.heightMm > bottomLimit) {
+          pdf.addPage();
+          currentPageNum++;
+          currentY = 15; // Reset top margin
+
+          // Draw header on new page
+          if (headerImgData) {
+            pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
+            currentY += headerHeightMm + 10;
+          }
+        }
+
+        // Draw the section
+        pdf.addImage(section.imgData, "JPEG", 15, currentY, 180, section.heightMm);
+        currentY += section.heightMm + 8; // Section + Gap (8mm)
+      }
+
+      // --- PAGINATION AND FOOTER RENDERING ---
+      setPdfProgressText("Applying page numbers...");
+      const totalPages = (pdf as any).internal.getNumberOfPages();
+
+      const drawFooter = (doc: any, pageNum: number, total: number) => {
+        doc.setPage(pageNum);
+        const pageSize = doc.internal.pageSize;
+        const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+
+        // Draw divider line
+        doc.setDrawColor(220, 225, 230);
+        doc.setLineWidth(0.2);
+        doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
+
+        // Confidential report note
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(143, 163, 184); // #8fa3b8
+        doc.text("TALENT INTELLIGENCE ENGINE (TIE)", 15, pageHeight - 15);
+
+        // Page number center-aligned
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(36, 59, 83); // #243B53
+        const pageText = `Page ${pageNum} of ${total}`;
+        const textWidth = doc.getTextWidth(pageText);
+        doc.text(pageText, (pageWidth - textWidth) / 2, pageHeight - 15);
+
+        // Generation date right-aligned
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(143, 163, 184);
+        const dateText = `Generated on ${new Date().toLocaleDateString()}`;
+        const dateWidth = doc.getTextWidth(dateText);
+        doc.text(dateText, pageWidth - 15 - dateWidth, pageHeight - 15);
+      };
+
+      for (let i = 1; i <= totalPages; i++) {
+        drawFooter(pdf, i, totalPages);
+      }
+
+      setPdfProgressText("Saving and downloading document...");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const cleanFileName = `TIE_Report_${(firstName || "Employee").replace(/\s+/g, "_")}_${(lastName || "").replace(/\s+/g, "_")}.pdf`;
+      pdf.save(cleanFileName);
+    } catch (error: any) {
+      console.error("PDF generation failed:", error);
+      alert("Failed to generate PDF: " + (error?.message || "Please try again."));
+    } finally {
+      setIsGeneratingPdf(false);
+      setPdfProgressText("");
+    }
+  };
+>>>>>>> b14fc4cfda51e027794730babcdfbfd9eae8438a
 
   if (authLoading) {
     return (
