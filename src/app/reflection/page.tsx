@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, Brain, RotateCw, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/context/AuthContext";
 import { projectService } from "@/services/projectService";
+import { supabasedb } from "@/lib/supabaseClient";
 
 export default function ReflectionPage() {
   const router = useRouter();
-  const { user } = useAuthContext();
+  const { user, profile, loading, isLoggedIn } = useAuthContext();
 
   // Form States
   const [accuracyRating, setAccuracyRating] = useState<number | null>(null);
@@ -22,6 +23,57 @@ export default function ReflectionPage() {
 
   // Hover states for rating buttons
   const [hoveredRating, setHoveredRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      if (!isLoggedIn) {
+        router.push("/login");
+        return;
+      }
+
+      const fetchSlugs = async () => {
+        if (!profile) return;
+
+        // If we have a company_id, we are a workspace user!
+        if (profile.company_id) {
+          const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
+          const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+
+          let resolvedComp = cachedComp || "none";
+          let resolvedTm = cachedTm || "none";
+
+          if (!cachedComp || (profile.team_id && !cachedTm)) {
+            try {
+              const compPromise = profile.company_id
+                ? supabasedb.from("companies").select("slug").eq("id", profile.company_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const tmPromise = profile.team_id
+                ? supabasedb.from("teams").select("slug").eq("id", profile.team_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
+              if (compRes.data?.slug) {
+                resolvedComp = compRes.data.slug;
+                sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedComp);
+              }
+              if (tmRes.data?.slug) {
+                resolvedTm = tmRes.data.slug;
+                sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTm);
+              }
+            } catch (err) {
+              console.error("Failed to fetch redirect slugs:", err);
+            }
+          }
+
+          // Redirect workspace users immediately to their inline workspace
+          router.push(`/${resolvedComp}/${resolvedTm}/user`);
+        }
+      };
+
+      fetchSlugs();
+    }
+  }, [isLoggedIn, profile, loading, router]);
 
   const focusOptions = [
     { id: "collab", label: "Collaboration", desc: "Team communication & trust" },

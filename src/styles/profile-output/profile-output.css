@@ -17,7 +17,7 @@
   border-radius: 20px;
   padding: 1.5rem 2rem;
   box-shadow: 0 4px 15px rgba(36, 59, 83, 0.02);
-  margin-bottom: 2rem;
+  margin-bottom: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.25rem 1.75rem;
@@ -162,7 +162,7 @@
   background: #ffffff;
   border: 1px solid rgba(36, 59, 83, 0.07);
   border-radius: 24px;
-  padding: 2.25rem 2.5rem;
+  padding: 2.5rem;
   box-shadow: 0 4px 20px rgba(36, 59, 83, 0.03);
   box-sizing: border-box;
   display: flex;
@@ -329,18 +329,24 @@
     gap: 1.25rem !important;
   }
   .profile-output-split-card {
-    padding: 1.5rem 1.25rem !important;
+    padding: 2rem !important;
     gap: 1.25rem !important;
     flex: 1 1 100%;
   }
   .profile-output-suggestions-container {
-    padding: 1.5rem 1.25rem !important;
+    padding: 2rem !important;
   }
 }
 
 @media (max-width: 600px) {
   .profile-output-container {
     padding: 1.25rem 1rem !important;
+  }
+  .profile-output-split-card {
+    padding: 1.5rem !important;
+  }
+  .profile-output-suggestions-container {
+    padding: 1.5rem !important;
   }
   .profile-output-archetype-card {
     flex-direction: column !important;

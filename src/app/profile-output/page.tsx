@@ -1,31 +1,21 @@
 "use client";
 
-// Version 2.0.0 - Clean Cache-Busting Rewrite
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  CheckCircle,
-  TrendingUp,
-  Users,
-  Zap,
   Sparkles,
   ArrowRight,
   RefreshCw,
-  ChevronRight,
-  BookOpen,
-  Download,
   Loader2,
   AlertCircle,
-  Shield,
-  HelpCircle,
   Brain,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useAuthContext } from "@/context/AuthContext";
 import { updateProfile } from "@/services/auth/ProfileServices";
 import { supabasedb } from "@/lib/supabaseClient";
+import ReportViewer from "@/components/ReportViewer";
 
 interface ScoringMetrics {
   raw_scores: Record<string, number>;
@@ -51,185 +41,9 @@ interface AnalysisResult {
   report_markdown: string;
 }
 
-const TAGLINES: Record<string, string> = {
-  "Structured Collaborator": "Process-Oriented & Team-Centric Professional",
-  "Steady Executor": "Methodical, Reliable & Result-Driven Builder",
-  "Independent Problem Solver": "Autonomous, Analytical & Adaptive Explorer",
-  "Adaptive Team Contributor": "Collaborative, Flexible & Initiative-Driven Contributor",
-  "Supportive Team Stabilizer": "Empathetic, Stable & Trust-Building Anchor",
-  "Practical Adapter": "Pragmatic, Flexible & Experiential Learner",
-  "Flexible Adapter": "Highly Versatile & Context-Aware Contributor"
-};
-
-const SUMMARIES: Record<string, string> = {
-  "Structured Collaborator": "You thrive in structured team environments with clear processes. You balance organization with active cooperation to drive projects forward.",
-  "Steady Executor": "You deliver consistent, high-quality results by sticking to proven processes and maintaining a stable pace. You are a reliable anchor for execution.",
-  "Independent Problem Solver": "You excel at solving complex challenges autonomously. You value independence and learn best by experimenting and digging deep into problems.",
-  "Adaptive Team Contributor": "You easily adjust to new team dynamics and shifting requirements. You bring energy to collaborative spaces and learn quickly by doing.",
-  "Supportive Team Stabilizer": "You focus on team harmony, steady pacing, and creating psychological safety. You support others and build trust in relationships.",
-  "Practical Adapter": "You tackle changing circumstances with pragmatism. You learn through hands-on experience and keep team objectives grounded.",
-  "Flexible Adapter": "You bring a balanced mix of adaptability and execution, adjusting your style to fit the specific needs of your team and current tasks."
-};
-
-function getFrictionArea(primaryPattern: string): string {
-  switch (primaryPattern) {
-    case "SCP":
-      return "May experience friction when guidelines are undefined, processes are missing, or goals shift rapidly without documentation.";
-    case "FIE":
-      return "May feel restricted by micromanagement, highly structured protocols, or limited autonomy in problem solving.";
-    case "CCD":
-      return "May feel isolated or disengaged in solo tasks without team interaction or during conflicts with no clear consensus.";
-    case "SPO":
-      return "May experience stress when faced with sudden shifts in workflow, rapid context switching, or intense pacing.";
-    default:
-      return "May experience friction when balancing personal pace with rapid team changes or navigating communication gaps.";
-  }
-}
-
-function getGrowthAreas(primaryPattern: string, secondaryPattern: string): string[] {
-  const list: string[] = [];
-  if (primaryPattern === "SCP" || secondaryPattern === "SCP") {
-    list.push("Practice decision-making under uncertainty without waiting for complete info");
-    list.push("Build tolerance for flexible, un-documented experiments");
-  }
-  if (primaryPattern === "FIE" || secondaryPattern === "FIE") {
-    list.push("Proactively share knowledge and updates before team check-ins");
-    list.push("Align independent tasks with overall group architecture");
-  }
-  if (primaryPattern === "CCD" || secondaryPattern === "CCD") {
-    list.push("Strengthen independent decision confidence and solo execution");
-    list.push("Establish personal focus blocks to avoid meeting fatigue");
-  }
-  if (primaryPattern === "SPO" || secondaryPattern === "SPO") {
-    list.push("Build comfort with iterative releases and rapid prototyping");
-    list.push("Take active leadership roles during team transitions");
-  }
-  
-  if (list.length < 3) {
-    list.push("Improve cross-functional communication clarity");
-  }
-  if (list.length < 3) {
-    list.push("Engage in peer-reviews to align problem-solving styles");
-  }
-  return list.slice(0, 3);
-}
-
-function getManagerSupport(signals: any): string[] {
-  if (!signals) return ["Provide context behind decisions", "Offer periodic feedback check-ins", "Encourage gradual ownership expansion"];
-  const list: string[] = [];
-
-  if (signals.s1_adaptability_dominant === "SCP") {
-    list.push("Provide context behind decisions and clear transition maps.");
-  } else if (signals.s1_adaptability_dominant === "FIE") {
-    list.push("Provide clear goal alignment but allow space to discover execution routes.");
-  } else if (signals.s1_adaptability_dominant === "CCD") {
-    list.push("Ensure regular communicative check-ins to support transitions.");
-  } else if (signals.s1_adaptability_dominant === "SPO") {
-    list.push("Offer predictability and gradual transition pacing.");
-  }
-
-  if (signals.s2_execution_dominant === "SCP") {
-    list.push("Specify exact scope, deliverables, and quality standards.");
-  } else if (signals.s2_execution_dominant === "FIE") {
-    list.push("Grant execution details autonomy while maintaining high-level alignment.");
-  } else if (signals.s2_execution_dominant === "CCD") {
-    list.push("Encourage collaborative pairing or cross-functional reviews.");
-  } else if (signals.s2_execution_dominant === "SPO") {
-    list.push("Provide stable workloads and respect focus timelines.");
-  }
-
-  if (list.length < 3) {
-    list.push("Offer periodic feedback check-ins to align expectations.");
-  }
-  return list.slice(0, 3);
-}
-
-interface ParsedSection {
-  title: string;
-  content: string;
-}
-
-function parseMarkdown(md: string): ParsedSection[] {
-  if (!md) return [];
-  const sections: ParsedSection[] = [];
-  const parts = md.split(/(?=^#\s+\d+\.\s+)/m);
-  
-  parts.forEach((part) => {
-    const lines = part.trim().split("\n");
-    if (lines.length > 0) {
-      let title = lines[0].replace(/^#\s+\d+\.\s+/, "").trim();
-      if (lines[0].startsWith("#")) {
-        title = lines[0].replace(/^#+\s+/, "").trim();
-      }
-      const content = lines.slice(1).join("\n").trim();
-      if (title || content) {
-        sections.push({ title, content });
-      }
-    }
-  });
-
-  return sections;
-}
-
-function formatInlineMarkdown(text: string): string {
-  let formatted = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-  formatted = formatted.replace(/\*(.*?)\*/g, "<em>$1</em>");
-  formatted = formatted.replace(/`(.*?)`/g, "<code style='background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.85em;'>$1</code>");
-  return formatted;
-}
-
-function MarkdownRenderer({ content, fontSize = "0.85rem", color = "#627D98" }: { content: string; fontSize?: string; color?: string }) {
-  if (!content) return null;
-
-  const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
-  let listItems: string[] = [];
-
-  const flushList = (key: string) => {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${key}`} style={{ paddingLeft: "1.25rem", margin: "0.5rem 0", listStyleType: "disc", display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-          {listItems.map((item, idx) => (
-            <li key={idx} style={{ fontSize, color, lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(item) }} />
-          ))}
-        </ul>
-      );
-      listItems = [];
-    }
-  };
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      listItems.push(trimmed.substring(2));
-    } else {
-      flushList(String(index));
-      if (trimmed) {
-        if (trimmed.startsWith("###")) {
-          elements.push(
-            <h4 key={index} style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", marginTop: "1rem", marginBottom: "0.5rem", textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed.replace(/^###\s+/, "")) }} />
-          );
-        } else if (trimmed.startsWith("##")) {
-          elements.push(
-            <h3 key={index} style={{ fontSize: "1rem", fontWeight: 800, color: "#243B53", marginTop: "1.25rem", marginBottom: "0.75rem", textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed.replace(/^##\s+/, "")) }} />
-          );
-        } else {
-          elements.push(
-            <p key={index} style={{ marginBottom: "0.75rem", fontSize, color, lineHeight: 1.5, textAlign: "left" }} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
-          );
-        }
-      }
-    }
-  });
-
-  flushList("final");
-
-  return <div>{elements}</div>;
-}
-
 export default function ProfileOutputPage() {
   const router = useRouter();
-  const { isLoggedIn, profile, user, loading: authLoading, refreshProfile, logout } = useAuthContext();
+  const { isLoggedIn, profile, user, loading: authLoading, refreshProfile } = useAuthContext();
   
   // API loading states
   const [apiLoading, setApiLoading] = useState(true);
@@ -237,11 +51,6 @@ export default function ProfileOutputPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState("Analyzing your assessment responses...");
   const [resolvedTargetUserId, setResolvedTargetUserId] = useState<string>("");
-
-  // PDF generation and hover states
-  const [pdfHovered, setPdfHovered] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfProgressText, setPdfProgressText] = useState("");
 
   useEffect(() => {
     if (apiLoading) {
@@ -298,49 +107,25 @@ export default function ProfileOutputPage() {
     }
 
     setIsSavingProfile(true);
-
     try {
-      const payload = {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        employee_id: employeeId.trim(),
-        designation: designation.trim(),
-        experience_years: expNum,
-        interests: interests
-      };
-
-      const res = await updateProfile(payload);
-      if (!res.success) {
-        if (res.error?.message?.includes("Unauthorized") || res.error?.message?.includes("session")) {
-          console.warn("Session expired on profile-output page. Redirecting to login...");
-          await logout();
-          router.push("/login");
-          return;
-        }
-        setFormValidationError(res.error?.message || "Failed to update profile.");
-        setIsSavingProfile(false);
-        return;
+      if (user) {
+        await updateProfile({
+          first_name: firstName,
+          last_name: lastName,
+          employee_id: employeeId,
+          designation,
+          experience_years: experience,
+          interests
+        });
+        await refreshProfile();
+        setProfileIncomplete(false);
+        fetchAIAnalysis(user.id);
       }
-
-      await refreshProfile();
     } catch (err: any) {
-      console.error("Profile save error:", err);
-      setFormValidationError("An unexpected error occurred while saving your profile.");
+      setFormValidationError(err.message || "Failed to update profile details.");
     } finally {
       setIsSavingProfile(false);
     }
-  };
-
-  const addInterestTag = () => {
-    const val = interestInput.trim();
-    if (val && !interests.includes(val)) {
-      setInterests([...interests, val]);
-      setInterestInput("");
-    }
-  };
-
-  const removeInterestTag = (tagToRemove: string) => {
-    setInterests(interests.filter((tag) => tag !== tagToRemove));
   };
 
   const handleInterestKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -350,53 +135,96 @@ export default function ProfileOutputPage() {
     }
   };
 
-  const fetchAIAnalysis = useCallback(async (targetUserId: string) => {
-    if (!user) return;
+  const addInterestTag = () => {
+    const val = interestInput.trim();
+    if (val && !interests.includes(val)) {
+      setInterests((prev) => [...prev, val]);
+      setInterestInput("");
+    }
+  };
+
+  const removeInterestTag = (tagToRemove: string) => {
+    setInterests((prev) => prev.filter((t) => t !== tagToRemove));
+  };
+
+  const fetchAIAnalysis = useCallback(async (userId: string) => {
+    setApiLoading(true);
+    setError(null);
+
     try {
-      setApiLoading(true);
-      setError(null);
+      const session = await supabasedb.auth.getSession();
+      const jwtToken = session.data.session?.access_token;
       
+      if (!jwtToken) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
       let apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       if (apiBaseUrl.endsWith("/")) {
         apiBaseUrl = apiBaseUrl.slice(0, -1);
       }
-      const response = await fetch(`${apiBaseUrl}/api/assessment/report/${targetUserId}?requester_id=${user.id}`);
+      const response = await fetch(`${apiBaseUrl}/api/assessment/report/${userId}`, {
+        headers: {
+          "Authorization": `Bearer ${jwtToken}`
+        }
+      });
       const result = await response.json();
 
       if (!response.ok) {
-        // If report does not exist and target is current user, trigger calculation
-        if (response.status === 404 && targetUserId === user.id) {
-          const genResponse = await fetch(`${apiBaseUrl}/api/assessment/analyze`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id: user.id }),
-          });
-          const genResult = await genResponse.json();
-          if (!genResponse.ok) {
-            throw new Error(genResult.detail || "Failed to process assessment metrics.");
-          }
-          setApiData(genResult);
-          return;
-        }
-        throw new Error(result.detail || "Failed to retrieve assessment report.");
+        throw new Error(result.detail || "Failed to generate report.");
       }
 
       setApiData(result);
     } catch (err: any) {
-      console.error("Analysis Fetch Error:", err);
       setError(err.message || "An unexpected error occurred while compiling your report.");
     } finally {
       setApiLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
       // Check authentication status
       if (!isLoggedIn || !user) {
         router.push("/login");
+        return;
+      }
+
+      if (profile?.company_id) {
+        const fetchSlugsAndRedirect = async () => {
+          const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
+          const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+
+          let resolvedComp = cachedComp || "none";
+          let resolvedTm = cachedTm || "none";
+
+          if (!cachedComp || (profile.team_id && !cachedTm)) {
+            try {
+              const compPromise = profile.company_id
+                ? supabasedb.from("companies").select("slug").eq("id", profile.company_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const tmPromise = profile.team_id
+                ? supabasedb.from("teams").select("slug").eq("id", profile.team_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
+              if (compRes.data?.slug) {
+                resolvedComp = compRes.data.slug;
+                sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedComp);
+              }
+              if (tmRes.data?.slug) {
+                resolvedTm = tmRes.data.slug;
+                sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTm);
+              }
+            } catch (err) {
+              console.error("Failed to fetch redirect slugs:", err);
+            }
+          }
+
+          router.push(`/${resolvedComp}/${resolvedTm}/user`);
+        };
+        fetchSlugsAndRedirect();
         return;
       }
 
@@ -438,267 +266,44 @@ export default function ProfileOutputPage() {
             const fName = profileToUse.first_name;
             const lName = profileToUse.last_name;
             const emailAddr = profileToUse.email;
-            const empId = profileToUse.employee_id;
-            const storedInterests = profileToUse.interests;
-            const desig = profileToUse.designation;
-            const exp = profileToUse.experience_years;
-
-            const hasInterests = Array.isArray(storedInterests) && storedInterests.length > 0;
-
-            if (
-              !fName || !fName.trim() ||
-              !lName || !lName.trim() ||
-              !emailAddr || !emailAddr.trim() ||
-              !empId || !empId.trim() ||
-              !hasInterests ||
-              !desig || !desig.trim() ||
-              (exp === undefined || exp === null || String(exp).trim() === "")
-            ) {
-              setFirstName(fName || "");
-              setLastName(lName || "");
-              setEmail(emailAddr || "");
-              setEmployeeId(empId || "");
-              setInterests(storedInterests || []);
-              setDesignation(desig || "");
-              setExperience(exp !== null && exp !== undefined ? String(exp) : "");
-
-              setProfileIncomplete(true);
-              setApiLoading(false);
-              return;
-            }
+            
+            const interestsList = Array.isArray(profileToUse.interests) ? profileToUse.interests : [];
+            const expYears = profileToUse.experience_years ? String(profileToUse.experience_years) : "";
 
             setFirstName(fName || "");
             setLastName(lName || "");
             setEmail(emailAddr || "");
-            setEmployeeId(empId || "");
-            setInterests(storedInterests || []);
-            setDesignation(desig || "");
-            setExperience(exp !== null && exp !== undefined ? String(exp) : "");
-            setProfileIncomplete(false);
-            
-            await fetchAIAnalysis(targetUserId);
+            setEmployeeId(profileToUse.employee_id || "");
+            setInterests(interestsList);
+            setDesignation(profileToUse.designation || "");
+            setExperience(expYears);
+
+            const hasName = fName && fName.trim();
+            const hasEmpId = profileToUse.employee_id && profileToUse.employee_id.trim();
+            const hasDesignation = profileToUse.designation && profileToUse.designation.trim();
+            const hasInterests = interestsList.length > 0;
+            const hasExperience = expYears && expYears.trim();
+
+            if (!hasName || !hasEmpId || !hasDesignation || !hasInterests || !hasExperience) {
+              setProfileIncomplete(true);
+              setApiLoading(false);
+            } else {
+              setProfileIncomplete(false);
+              fetchAIAnalysis(targetUserId);
+            }
           } else {
-            router.push("/profile?incomplete=true");
-            return;
+            setProfileIncomplete(true);
+            setApiLoading(false);
           }
         } catch (err: any) {
-          console.error("Error in resolveProfileAndFetch:", err);
-          setError(err.message || "Failed to load profile context.");
+          setError("Failed to resolve user profile details.");
           setApiLoading(false);
         }
       };
 
       resolveProfileAndFetch();
     }
-  }, [profile, isLoggedIn, user, authLoading, router, fetchAIAnalysis]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [apiLoading]);
-
-  const handleDownloadPdf = async () => {
-    setIsGeneratingPdf(true);
-    setPdfProgressText("Initializing PDF engine...");
-    
-    // Save original getComputedStyle
-    const originalGetComputedStyle = window.getComputedStyle;
-
-    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
-    window.getComputedStyle = function (el, pseudoElt) {
-      const style = originalGetComputedStyle(el, pseudoElt);
-      
-      const convertOklch = (val: any) => {
-        if (typeof val === "string" && val.includes("oklch")) {
-          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
-          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
-          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
-          return "rgb(240, 240, 240)";
-        }
-        return val;
-      };
-
-      return new Proxy(style, {
-        get(target, prop) {
-          if (prop === "getPropertyValue") {
-            return function(propertyName: string) {
-              const val = target.getPropertyValue(propertyName);
-              return convertOklch(val);
-            };
-          }
-          const val = target[prop as any];
-          if (typeof val === "function") {
-            return (val as any).bind(target);
-          }
-          return convertOklch(val);
-        }
-      });
-    };
-
-   try {
-      const jsPDF = (await import("jspdf")).default;
-      const html2canvas = (await import("html2canvas")).default;
-
-      // Create PDF in A4 format with compression enabled
-      const pdf = new jsPDF({
-        orientation: "p",
-        unit: "mm",
-        format: "a4",
-        compress: true, // enables jsPDF's internal stream/flate compression (safe, lossless for text/vector)
-      });
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = 297; // A4 height in mm
-
-      // Shared render settings tuned for quality
-      const RENDER_SCALE = 2; // higher = sharper text/images, larger file size
-      const JPEG_QUALITY = 0.85; // used only for page 1 / header (photo-like content)
-
-      // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
-      setPdfProgressText("Rendering Executive Summary...");
-      const page1Element = document.getElementById("tie-report-pdf-page-1");
-      if (page1Element) {
-        await new Promise((resolve) => setTimeout(resolve, 60));
-        const canvas1 = await html2canvas(page1Element, {
-          scale: RENDER_SCALE,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        });
-        const imgData1 = canvas1.toDataURL("image/jpeg", JPEG_QUALITY);
-        pdf.addImage(imgData1, "JPEG", 0, 0, imgWidth, imgHeight);
-      }
-
-      // --- PAGES 2+: Detailed Narrative (Section-by-Section with Dynamic Breaks) ---
-      setPdfProgressText("Preparing layout templates...");
-
-      // Capture the header template
-      const headerElement = document.getElementById("tie-report-pdf-header-template");
-      let headerImgData = "";
-      let headerHeightMm = 0;
-      if (headerElement) {
-        const headerCanvas = await html2canvas(headerElement, {
-          scale: RENDER_SCALE,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        });
-        headerImgData = headerCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
-        headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
-      }
-
-      // Capture all dynamic sections individually — PNG for crisp text
-      const sectionElements = document.getElementsByClassName("pdf-narrative-section");
-      const sectionImgDataList = [];
-      for (let i = 0; i < sectionElements.length; i++) {
-        setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
-        const el = sectionElements[i] as HTMLElement;
-        const canvas = await html2canvas(el, {
-          scale: RENDER_SCALE,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        });
-        const imgData = canvas.toDataURL("image/png"); // PNG: sharper text edges, no chroma subsampling blur
-        const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
-        sectionImgDataList.push({ imgData, heightMm });
-      }
-
-      // Layout on PDF pages
-      setPdfProgressText("Assembling pages...");
-      let currentPageNum = 2;
-      let currentY = 15; // Top margin
-
-      // Start Page 2
-      pdf.addPage();
-
-      // Draw Header on Page 2
-      if (headerImgData) {
-        pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
-        currentY += headerHeightMm + 10; // Header + Gap
-      }
-
-      // Draw Main Title on Page 2
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.setTextColor(36, 59, 83); // #243B53
-      pdf.text("DETAILED BEHAVIORAL INSIGHTS & GUIDANCE", 15, currentY);
-      currentY += 12; // Title + Gap
-
-      const bottomLimit = 297 - 25; // 25mm bottom margin for footer
-
-      for (let i = 0; i < sectionImgDataList.length; i++) {
-        const section = sectionImgDataList[i];
-
-        // If it doesn't fit on the current page, add a new page
-        if (currentY + section.heightMm > bottomLimit) {
-          pdf.addPage();
-          currentPageNum++;
-          currentY = 15; // Reset top margin
-
-          // Draw header on new page
-          if (headerImgData) {
-            pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
-            currentY += headerHeightMm + 10;
-          }
-        }
-
-        // Draw the section
-        pdf.addImage(section.imgData, "PNG", 15, currentY, 180, section.heightMm);
-        currentY += section.heightMm + 8; // Section + Gap (8mm)
-      }
-
-      // --- PAGINATION AND FOOTER RENDERING ---
-      setPdfProgressText("Applying page numbers...");
-      const totalPages = (pdf as any).internal.getNumberOfPages();
-
-      const drawFooter = (doc: any, pageNum: number, total: number) => {
-        doc.setPage(pageNum);
-        const pageSize = doc.internal.pageSize;
-        const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
-        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-
-        // Draw divider line
-        doc.setDrawColor(220, 225, 230);
-        doc.setLineWidth(0.2);
-        doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
-
-        // Confidential report note
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(143, 163, 184); // #8fa3b8
-        doc.text("TALENT INTELLIGENCE ENGINE (TIE)", 15, pageHeight - 15);
-
-        // Page number center-aligned
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(36, 59, 83); // #243B53
-        const pageText = `Page ${pageNum} of ${total}`;
-        const textWidth = doc.getTextWidth(pageText);
-        doc.text(pageText, (pageWidth - textWidth) / 2, pageHeight - 15);
-
-        // Generation date right-aligned
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(143, 163, 184);
-        const dateText = `Generated on ${new Date().toLocaleDateString()}`;
-        const dateWidth = doc.getTextWidth(dateText);
-        doc.text(dateText, pageWidth - 15 - dateWidth, pageHeight - 15);
-      };
-
-      for (let i = 1; i <= totalPages; i++) {
-        drawFooter(pdf, i, totalPages);
-      }
-
-      setPdfProgressText("Saving and downloading document...");
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      pdf.save(`TIE_Workforce_Insight_Report_${firstName}_${lastName}.pdf`);
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-    } finally {
-      // Restore original getComputedStyle
-      window.getComputedStyle = originalGetComputedStyle;
-      setIsGeneratingPdf(false);
-      setPdfProgressText("");
-    }
-  };
+  }, [isLoggedIn, profile, loading, user, authLoading, fetchAIAnalysis, router]);
 
   if (authLoading) {
     return (
@@ -1103,737 +708,25 @@ export default function ProfileOutputPage() {
   if (!isLoggedIn) {
     return null; // Redirecting in useEffect
   }
-
-  // Dynamic mapped profiles based on API result
-  const combinationProfile = apiData?.scoring_metrics?.combination_profile || "Flexible Adapter";
-  const tagline = TAGLINES[combinationProfile] || "Balanced & Context-Aware Work Style";
-  const summary = SUMMARIES[combinationProfile] || "You adapt your style dynamically to align with changing requirements and team environments.";
-
-  const rawScores = apiData?.scoring_metrics?.raw_scores || { SCP: 0, FIE: 0, CCD: 0, SPO: 0 };
-  const getPercentage = (score: number) => Math.round((score / 24) * 100);
-
-  const dimensions = [
-    {
-      title: "Structured Clarity (SCP)",
-      score: getPercentage(rawScores.SCP),
-      icon: <BookOpen className="h-5 w-5" style={{ color: "#243B53" }} />,
-      color: "#243B53",
-      details: "Process & Guidelines",
-      description: "Measures your value for structured workflows, documentation, clear expectations, and process integrity.",
-    },
-    {
-      title: "Focused Independence (FIE)",
-      score: getPercentage(rawScores.FIE),
-      icon: <Zap className="h-5 w-5" style={{ color: "#A3B18A" }} />,
-      color: "#A3B18A",
-      details: "Autonomy & Execution",
-      description: "Measures your drive for self-directed problem solving, hands-on experimentation, and execution freedom.",
-    },
-    {
-      title: "Cooperative Collaboration (CCD)",
-      score: getPercentage(rawScores.CCD),
-      icon: <Users className="h-5 w-5" style={{ color: "#5BA4A4" }} />,
-      color: "#5BA4A4",
-      details: "Team Alignment",
-      description: "Measures your preference for collective brainstorming, consensus building, and cross-functional team synergy.",
-    },
-    {
-      title: "Stable Pace Orientation (SPO)",
-      score: getPercentage(rawScores.SPO),
-      icon: <TrendingUp className="h-5 w-5" style={{ color: "#E07A5F" }} />,
-      color: "#E07A5F",
-      details: "Predictable Pacing",
-      description: "Measures your comfort with consistent workflows, sustainable project pacing, and supportive dynamics.",
-    }
-  ];
-
-  const parsedSections = parseMarkdown(apiData?.report_markdown || "");
-  const currentFrictionArea = getFrictionArea(apiData?.scoring_metrics?.primary_pattern || "");
-  const currentGrowthAreas = getGrowthAreas(apiData?.scoring_metrics?.primary_pattern || "", apiData?.scoring_metrics?.secondary_pattern || "");
-  const currentManagerSupport = getManagerSupport(apiData?.manager_signals);
+  if (!apiData) return null;
 
   return (
-    <div className="tie-container profile-output-container" style={{ justifyContent: "flex-start" }}>
+    <div className="tie-container profile-output-container" style={{ justifyContent: "flex-start", padding: "2rem 1.5rem" }}>
       {/* Background blobs */}
       <div aria-hidden style={{ position: "absolute", top: "-130px", right: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,164,164,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div aria-hidden style={{ position: "absolute", bottom: "-130px", left: "-130px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(163,177,138,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="insights"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="profile-output-dashboard"
-        >
-          {/* Header section */}
-          <div className="profile-output-header">
-            <div className="tie-badge">
-              <Sparkles className="h-3.5 w-3.5" style={{ color: "#5BA4A4", marginRight: "2px" }} />
-              <span>Assessment Output</span>
-            </div>
-            <h1 className="profile-output-title">
-              Your Talent Dynamics Insights
-            </h1>
-            <p className="tie-desc" style={{ textAlign: "center" }}>
-              A personalized breakdown of your collaboration habits, change adaptability, and growth vectors.
-            </p>
-          </div>
-
-          {/* Employee Details Profile Card on page */}
-          <div className="profile-output-details-card">
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Employee Name</span>
-              <span className="profile-output-detail-value">{firstName} {lastName}</span>
-            </div>
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Employee ID</span>
-              <span className="profile-output-detail-value">{employeeId}</span>
-            </div>
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Interests</span>
-              <span className="profile-output-detail-value">{interests.join(", ") || "None"}</span>
-            </div>
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Designation</span>
-              <span className="profile-output-detail-value">{designation}</span>
-            </div>
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Experience</span>
-              <span className="profile-output-detail-value">{experience} Years</span>
-            </div>
-            <div className="profile-output-detail-col">
-              <span className="profile-output-detail-label">Email Address</span>
-              <span className="profile-output-detail-value">{email}</span>
-            </div>
-          </div>
-
-          {/* Archetype Banner Card */}
-          <div className="profile-output-archetype-card">
-            {/* Graphic accents */}
-            <div className="profile-output-archetype-accent-glow" />
-
-            <div style={{ flex: 1, minWidth: "280px" }}>
-              <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#5BA4A4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem", textAlign: "left" }}>
-                Primary Profile Archetype
-              </p>
-              <h2 className="profile-output-archetype-title">
-                {combinationProfile}
-              </h2>
-              <p style={{ fontSize: "0.85rem", color: "#A3B18A", fontStyle: "italic", marginBottom: "1rem", fontWeight: 500, textAlign: "left" }}>
-                {tagline}
-              </p>
-              <p style={{ fontSize: "0.875rem", color: "#b0bec8", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                {summary}
-              </p>
-            </div>
-
-            <div className="profile-output-archetype-badge">
-              <span className="profile-output-archetype-badge-val">
-                {apiData?.scoring_metrics?.primary_strength_pct}%
-              </span>
-              <span className="profile-output-archetype-badge-label">
-                Primary Strength
-              </span>
-            </div>
-          </div>
-
-          {/* Dimensions Grid */}
-          <div className="profile-output-dimensions-grid">
-            {dimensions.map((dim) => (
-              <div
-                key={dim.title}
-                className="profile-output-dimension-card"
-              >
-                <div>
-                  {/* Header */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <div style={{ background: `${dim.color}12`, padding: "8px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {dim.icon}
-                      </div>
-                      <h3 style={{ fontSize: "0.875rem", fontWeight: 800, color: "#243B53", margin: 0 }}>
-                        {dim.title}
-                      </h3>
-                    </div>
-                    <span style={{ fontSize: "1.1rem", fontWeight: 800, color: dim.color }}>
-                      {dim.score}%
-                    </span>
-                  </div>
-
-                  <div style={{ marginBottom: "1rem", textAlign: "left" }}>
-                    <span style={{ fontSize: "9px", fontWeight: 700, border: `1px solid ${dim.color}30`, borderRadius: "99px", padding: "3px 10px", textTransform: "uppercase", color: dim.color, background: `${dim.color}05`, letterSpacing: "0.04em" }}>
-                      {dim.details}
-                    </span>
-                  </div>
-
-                  <p style={{ fontSize: "0.78rem", color: "#627D98", lineHeight: 1.6, margin: 0, textAlign: "left" }}>
-                    {dim.description}
-                  </p>
-                </div>
-
-                {/* Progress Line */}
-                <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f0f4f8" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", fontWeight: 700, color: "#9aa8b6", textTransform: "uppercase", marginBottom: "0.375rem" }}>
-                    <span>Dimensional Strength</span>
-                    <span>{dim.score}%</span>
-                  </div>
-                  <div style={{ height: "5px", width: "100%", background: "#F4F7FA", borderRadius: "99px", overflow: "hidden" }}>
-                    <div style={{ width: `${dim.score}%`, height: "100%", background: dim.color, borderRadius: "99px" }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Qualitative Snapshot and Friction/Growth Areas */}
-          <div className="profile-output-split-row">
-            {/* Card 1: Behavioral Dynamics Insights */}
-            <div className="profile-output-split-card">
-              <div className="profile-output-card-header">
-                <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
-                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                  Workplace Dynamics Insights
-                </h3>
-              </div>
-
-              {/* Snapshots from API data or Gemini parsed content */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <div>
-                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                    Workforce Style Snapshot
-                  </h4>
-                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("observed") || s.title.toLowerCase().includes("snapshot") || s.title.toLowerCase().includes("dominant"))?.content?.split("\n")[0] || 
-                     "A " + combinationProfile.toLowerCase() + " worker style with primary reliance on structured execution and supportive team dynamics."}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                    Growth & Adaptability Style
-                  </h4>
-                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("thrive") || s.title.toLowerCase().includes("growth") || s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
-                     "Prefers guided execution and responds well when transition parameters are documented."}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#8fa3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                    Collaboration Style
-                  </h4>
-                  <p style={{ fontSize: "0.875rem", color: "#627D98", lineHeight: 1.5, margin: 0, textAlign: "left" }}>
-                    {parsedSections.find(s => s.title.toLowerCase().includes("others") || s.title.toLowerCase().includes("implications") || s.title.toLowerCase().includes("collaboration"))?.content?.split("\n")[0] || 
-                     "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Development & Manager Support Plan */}
-            <div className="profile-output-split-card">
-              <div className="profile-output-card-header">
-                <BookOpen className="h-5 w-5" style={{ color: "#5BA4A4" }} />
-                <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                  Development & Support Plan
-                </h3>
-              </div>
-
-              {/* Sections */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                
-                {/* Friction Area */}
-                <div className="profile-output-friction-block">
-                  <h4 style={{ fontSize: "0.72rem", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem", textAlign: "left" }}>
-                    Potential Workplace Friction Areas
-                  </h4>
-                  <p style={{ fontSize: "0.85rem", color: "#c0392b", lineHeight: 1.4, margin: 0, textAlign: "left" }}>
-                    {currentFrictionArea}
-                  </p>
-                </div>
-
-                {/* Growth Areas */}
-                <div>
-                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
-                    Suggested Growth Areas
-                  </h4>
-                  <ul className="profile-output-bullet-list">
-                    {currentGrowthAreas.map((area, idx) => (
-                      <li key={idx}>{area}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Manager Support */}
-                <div style={{ borderTop: "1px solid #f0f4f8", paddingTop: "1rem" }}>
-                  <h4 style={{ fontSize: "0.75rem", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem", textAlign: "left" }}>
-                    Recommended Manager Support
-                  </h4>
-                  <ul className="profile-output-bullet-list">
-                    {currentManagerSupport.map((support, idx) => (
-                      <li key={idx}>{support}</li>
-                    ))}
-                  </ul>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          {/* AI Narrative Analysis Section (Gemini output divided into beautiful cards) */}
-          <div className="profile-output-suggestions-container">
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "2rem" }}>
-              <Sparkles className="h-5 w-5" style={{ color: "#5BA4A4" }} />
-              <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53", margin: 0, textAlign: "left" }}>
-                Detailed Workforce Personality Report
-              </h3>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-              {parsedSections.map((section, idx) => {
-                let sectionIcon = <Sparkles className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                const titleLower = section.title.toLowerCase();
-                
-                if (titleLower.includes("snapshot") || titleLower.includes("dominant") || titleLower.includes("observed")) {
-                  sectionIcon = <Brain className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                } else if (titleLower.includes("best work") || titleLower.includes("thrive") || titleLower.includes("value")) {
-                  sectionIcon = <Zap className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                } else if (titleLower.includes("change") || titleLower.includes("implications") || titleLower.includes("challenge")) {
-                  sectionIcon = <RefreshCw className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                } else if (titleLower.includes("responsibility") || titleLower.includes("manager") || titleLower.includes("what your manager")) {
-                  sectionIcon = <Shield className="h-4 w-4" style={{ color: "#243B53" }} />;
-                } else if (titleLower.includes("others") || titleLower.includes("experience")) {
-                  sectionIcon = <Users className="h-4 w-4" style={{ color: "#5BA4A4" }} />;
-                } else if (titleLower.includes("frustrate") || titleLower.includes("watch-out")) {
-                  sectionIcon = <AlertCircle className="h-4 w-4" style={{ color: "#c0392b" }} />;
-                } else if (titleLower.includes("growth") || titleLower.includes("suggestion")) {
-                  sectionIcon = <TrendingUp className="h-4 w-4" style={{ color: "#A3B18A" }} />;
-                } else if (titleLower.includes("reflection") || titleLower.includes("conclusion") || titleLower.includes("measure")) {
-                  sectionIcon = <HelpCircle className="h-4 w-4" style={{ color: "#E07A5F" }} />;
-                }
-
-                return (
-                  <div key={idx} className="profile-output-sug-item" style={{ borderBottom: idx === parsedSections.length - 1 ? "none" : "1px solid #f0f4f8", paddingBottom: "1.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                      <div style={{ background: "rgba(91,164,164,0.06)", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {sectionIcon}
-                      </div>
-                      <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0, textAlign: "left" }}>
-                        {section.title}
-                      </h4>
-                    </div>
-                    <div style={{ paddingLeft: "0.5rem" }}>
-                      <MarkdownRenderer content={section.content} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Footer buttons */}
-          <div className="profile-output-footer-actions">
-            <Link
-              href="/welcome"
-              className="profile-output-btn-retake"
-            >
-              <RefreshCw size={14} />
-              Retake Assessment
-            </Link>
-
-            {/* Download PDF Button */}
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isGeneratingPdf}
-              onMouseEnter={() => setPdfHovered(true)}
-              onMouseLeave={() => setPdfHovered(false)}
-              className="profile-output-btn-pdf"
-            >
-              {isGeneratingPdf ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Generating PDF...
-                </>
-              ) : (
-                <>
-                  <Download size={14} />
-                  Download PDF Report
-                </>
-              )}
-            </button>
-
-            <Link
-              href="/"
-              className="profile-output-btn-return"
-            >
-              Return to Dashboard
-            </Link>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Full-screen interactive overlay loader for PDF generation */}
-      {isGeneratingPdf && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(15, 23, 42, 0.75)", // Dark slate backdrop
-          backdropFilter: "blur(12px)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 999999, // On top of everything
-          fontFamily: "'Inter', sans-serif",
-          animation: "fadeIn 0.3s ease-out both"
-        }}>
-          <div style={{
-            background: "#ffffff",
-            borderRadius: "24px",
-            padding: "3rem 2.5rem",
-            width: "90%",
-            maxWidth: "400px",
-            textAlign: "center",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            border: "1px solid rgba(226, 232, 240, 0.8)",
-            boxSizing: "border-box",
-            animation: "scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both"
-          }}>
-            {/* Spinning Loader Icon */}
-            <div style={{
-              width: "64px",
-              height: "64px",
-              margin: "0 auto 1.5rem",
-              position: "relative"
-            }}>
-              <div style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                border: "4px solid #F1F5F9",
-                borderTopColor: "#243B53", // Corporate primary
-                animation: "spin 1s linear infinite"
-              }} />
-            </div>
-
-            <h3 style={{
-              fontSize: "1.25rem",
-              fontWeight: 800,
-              color: "#0F172A",
-              margin: "0 0 0.5rem"
-            }}>
-              Preparing Your Report
-            </h3>
-
-            <p style={{
-              fontSize: "0.9375rem",
-              color: "#64748B",
-              margin: "0 0 1.5rem",
-              lineHeight: 1.5
-            }}>
-              Please wait while we render a high-resolution, print-ready PDF document.
-            </p>
-
-            {/* Progress Text Badge */}
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0.5rem 1rem",
-              background: "#F8FAFC",
-              border: "1px solid #E2E8F0",
-              borderRadius: "99px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "#243B53"
-            }}>
-              {pdfProgressText || "Processing pages..."}
-            </div>
-          </div>
-          <style>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes scaleIn {
-              from { opacity: 0; transform: scale(0.95); }
-              to { opacity: 1; transform: scale(1); }
-            }
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-        </div>
-      )}
-
-      {/* Invisible wrapper for html2canvas PDF rendering */}
-      <div style={{ position: "absolute", left: "-9999px", top: "-9999px", zIndex: -100 }}>
-        {/* PAGE 1: Executive Summary & Metrics */}
-        <div
-          id="tie-report-pdf-page-1"
-          style={{
-            width: "794px",
-            height: "1123px",
-            padding: "45px 50px",
-            background: "#ffffff",
-            fontFamily: "'Inter', -apple-system, sans-serif",
-            boxSizing: "border-box",
-            color: "#1F2933",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            {/* PDF Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-              <img
-                src="/logo.png"
-                alt="TIE Logo"
-                style={{
-                  height: "52px",
-                  width: "auto",
-                  display: "block",
-                }}
-              />
-              <div style={{ textAlign: "right" }}>
-                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
-                  Talent Intelligence Engine
-                </h2>
-                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
-                  Workforce Style Insights Report
-                </p>
-              </div>
-            </div>
-
-            {/* Teal Divider */}
-            <div style={{ height: "4px", width: "100%", background: "#5BA4A4", marginBottom: "20px" }} />
-
-            {/* Title Area */}
-            <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 16px", textTransform: "uppercase", textAlign: "left" }}>
-              Employee Workforce Assessment Profile
-            </h1>
-
-            {/* Employee Details flex layout */}
-            <div
-              style={{
-                background: "#F4F7FA",
-                border: "1px solid rgba(36, 59, 83, 0.08)",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                marginBottom: "20px",
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px 0px",
-              }}
-            >
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee Name:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{firstName} {lastName}</span>
-              </div>
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Employee ID:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{employeeId}</span>
-              </div>
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Interests:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{interests.join(", ") || "None"}</span>
-              </div>
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Designation:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{designation}</span>
-              </div>
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Experience:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{experience} Years</span>
-              </div>
-              <div style={{ display: "flex", width: "50%", fontSize: "12px", boxSizing: "border-box" }}>
-                <span style={{ fontWeight: 700, color: "#8fa3b8", width: "115px", textTransform: "uppercase", fontSize: "9px", letterSpacing: "0.03em" }}>Email Address:</span>
-                <span style={{ fontWeight: 700, color: "#243B53" }}>{email}</span>
-              </div>
-            </div>
-
-            {/* Archetype Banner */}
-            <div
-              style={{
-                background: "linear-gradient(135deg, #243B53 0%, #1a2d40 100%)",
-                borderRadius: "16px",
-                padding: "20px 24px",
-                color: "#ffffff",
-                marginBottom: "20px",
-                boxSizing: "border-box",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ textAlign: "left" }}>
-                  <span style={{ fontSize: "9px", fontWeight: 700, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                    Primary Profile Archetype
-                  </span>
-                  <h3 style={{ fontSize: "20px", fontWeight: 800, margin: "4px 0", letterSpacing: "-0.01em", color: "#ffffff" }}>
-                    {combinationProfile}
-                  </h3>
-                  <p style={{ fontSize: "11px", color: "#A3B18A", fontStyle: "italic", margin: 0, fontWeight: 500 }}>
-                    {tagline}
-                  </p>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 16px", borderRadius: "12px", textAlign: "center" }}>
-                  <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#5BA4A4", lineHeight: 1 }}>
-                    {apiData?.scoring_metrics?.primary_strength_pct}%
-                  </span>
-                  <span style={{ display: "block", fontSize: "7px", color: "#b0bec8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "2px" }}>
-                    Strength
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Dynamic Insights Section */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", boxSizing: "border-box" }}>
-              {/* Workforce Style Snapshot */}
-              <div style={{ borderLeft: "4px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                  Workforce Style Snapshot
-                </h4>
-                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                  {parsedSections.find(s => s.title.toLowerCase().includes("observed") || s.title.toLowerCase().includes("snapshot") || s.title.toLowerCase().includes("dominant"))?.content?.split("\n")[0] || 
-                   "A " + combinationProfile.toLowerCase() + " worker style with reliance on structured execution and supportive team dynamics."}
-                </p>
-              </div>
-
-              {/* Growth & Adaptability Style */}
-              <div style={{ borderLeft: "4px solid #243B53", paddingLeft: "14px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                  Growth & Adaptability Style
-                </h4>
-                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                  {parsedSections.find(s => s.title.toLowerCase().includes("thrive") || s.title.toLowerCase().includes("growth") || s.title.toLowerCase().includes("change"))?.content?.split("\n")[0] || 
-                   "Prefers guided execution and responds well when transition parameters are documented."}
-                </p>
-              </div>
-
-              {/* Collaboration Style */}
-              <div style={{ borderLeft: "4px solid #A3B18A", paddingLeft: "14px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>
-                  Collaboration Style
-                </h4>
-                <p style={{ fontSize: "11px", color: "#627D98", lineHeight: 1.5, margin: 0 }}>
-                  {parsedSections.find(s => s.title.toLowerCase().includes("others") || s.title.toLowerCase().includes("implications") || s.title.toLowerCase().includes("collaboration"))?.content?.split("\n")[0] || 
-                   "Values team alignment, clear ownership boundaries, and empathetic cross-functional feedback."}
-                </p>
-              </div>
-            </div>
-
-            {/* Friction & Growth Columns */}
-            <div style={{ display: "flex", gap: "24px", boxSizing: "border-box" }}>
-              {/* Left Column */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
-                {/* Workplace Friction Areas */}
-                <div style={{ background: "rgba(220, 53, 69, 0.03)", border: "1px solid rgba(220, 53, 69, 0.15)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
-                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#c0392b", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
-                    Potential Workplace Friction Areas
-                  </h4>
-                  <p style={{ fontSize: "10.5px", color: "#c0392b", lineHeight: 1.4, margin: 0 }}>
-                    {currentFrictionArea}
-                  </p>
-                </div>
-
-                {/* Suggested Growth Areas */}
-                <div style={{ background: "#FDFDFD", border: "1px solid rgba(36, 59, 83, 0.06)", borderRadius: "12px", padding: "12px 16px", textAlign: "left" }}>
-                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                    Suggested Growth Areas
-                  </h4>
-                  <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {currentGrowthAreas.map((area, idx) => (
-                      <li key={idx}>{area}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div style={{ flex: 1, boxSizing: "border-box" }}>
-                {/* Recommended Manager Support */}
-                <div style={{ height: "100%", background: "#F4F9F9", border: "1px solid rgba(91, 164, 164, 0.15)", borderRadius: "12px", padding: "12px 16px", boxSizing: "border-box", textAlign: "left" }}>
-                  <h4 style={{ fontSize: "10px", fontWeight: 800, color: "#5BA4A4", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                    Recommended Manager Support
-                  </h4>
-                  <ul style={{ paddingLeft: "14px", margin: 0, fontSize: "10.5px", color: "#627D98", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {currentManagerSupport.map((support, idx) => (
-                      <li key={idx}>{support}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Spacer to preserve layout structure instead of visible footer */}
-          <div style={{ height: "25px" }} />
-        </div>
-
-        {/* PAGES 2+: Detailed Narrative (rendered dynamically in a single tall container) */}
-        <div
-          id="tie-report-pdf-narrative"
-          style={{
-            width: "794px",
-            padding: "45px 50px",
-            background: "#ffffff",
-            fontFamily: "'Inter', -apple-system, sans-serif",
-            boxSizing: "border-box",
-            color: "#1F2933",
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-          }}
-        >
-          {/* Header Template */}
-          <div id="tie-report-pdf-header-template" style={{ display: "flex", flexDirection: "column", gap: "15px", width: "100%" }}>
-            {/* PDF Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <img
-                src="/logo.png"
-                alt="TIE Logo"
-                style={{
-                  height: "52px",
-                  width: "auto",
-                  display: "block",
-                }}
-              />
-              <div style={{ textAlign: "right" }}>
-                <h2 style={{ fontSize: "15px", fontWeight: 800, color: "#243B53", letterSpacing: "0.05em", margin: 0, textTransform: "uppercase" }}>
-                  Talent Intelligence Engine
-                </h2>
-                <p style={{ fontSize: "10px", color: "#627D98", margin: "2px 0 0" }}>
-                  Workforce Style Insights Report
-                </p>
-              </div>
-            </div>
-
-            {/* Teal Divider */}
-            <div style={{ height: "4px", width: "100%", background: "#5BA4A4" }} />
-          </div>
-
-          {/* Title Area */}
-          <h1 style={{ fontSize: "18px", fontWeight: 800, color: "#243B53", letterSpacing: "-0.02em", margin: "0 0 10px", textTransform: "uppercase", textAlign: "left" }}>
-            Detailed Behavioral Insights & Guidance
-          </h1>
-
-          {/* Narrative Sections */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            {parsedSections.map((section, idx) => (
-              <div key={idx} className="pdf-narrative-section" style={{ borderLeft: "3px solid #5BA4A4", paddingLeft: "14px", textAlign: "left" }}>
-                <h4 style={{ fontSize: "11px", fontWeight: 800, color: "#243B53", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                  {section.title}
-                </h4>
-                <div style={{ paddingLeft: "4px" }}>
-                  <MarkdownRenderer content={section.content} fontSize="10.5px" color="#486581" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ReportViewer
+        reportMarkdown={apiData.report_markdown}
+        scoringMetrics={apiData.scoring_metrics}
+        employeeName={`${firstName} ${lastName}`}
+        designation={designation}
+        experienceYears={experience}
+        department="Corporate"
+        interests={interests}
+        email={email}
+        showActions={true}
+      />
     </div>
   );
 }

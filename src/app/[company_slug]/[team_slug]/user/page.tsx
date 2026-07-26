@@ -43,6 +43,13 @@ interface SavedReport {
   manager_signals: any;
 }
 
+// ---- Shared layout constants so every screen shares identical outer spacing ----
+const PAGE_PADDING = "2rem 1.5rem"; // top/bottom 2rem, left/right 1.5rem on all breakpoints
+const PAGE_MAX_WIDTH_NARROW = "600px";
+const PAGE_MAX_WIDTH_WIDE = "800px";
+const CARD_PADDING = "2rem";
+const CARD_PADDING_SM = "1.25rem 1.75rem";
+
 export default function EmployeeWorkspacePage() {
   const router = useRouter();
   const { company_slug, team_slug } = useParams();
@@ -106,7 +113,7 @@ export default function EmployeeWorkspacePage() {
         // Retrieve profile details for headers
         const { data: memberProfile } = await supabasedb
           .from("profiles")
-          .select("first_name, last_name, designation, experience_years")
+          .select("first_name, last_name, designation, experience_years, interests, email, employee_id")
           .eq("id", targetUserId)
           .single();
 
@@ -144,6 +151,38 @@ export default function EmployeeWorkspacePage() {
 
       if (cachedReport) {
         setReportData(cachedReport as SavedReport);
+        setReportTargetProfile(profile);
+        setWorkflowState("viewing_report");
+        return;
+      }
+
+      // Check if they completed reflection but the report hasn't generated (self-healing report generation)
+      const { data: feedbackRow } = await supabasedb
+        .from("assessment_feedback")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (feedbackRow) {
+        // Automatically compile report inline!
+        setWorkflowState("generating_report");
+        const res = await fetch(`${cleanApiUrl}/api/assessment/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Self-healing report generation failed.");
+        }
+
+        setReportData({
+          user_id: user.id,
+          report_markdown: data.report_markdown,
+          scoring_metrics: data.scoring_metrics,
+          manager_signals: data.manager_signals
+        });
         setReportTargetProfile(profile);
         setWorkflowState("viewing_report");
         return;
@@ -347,9 +386,23 @@ export default function EmployeeWorkspacePage() {
   // Render Loading
   if (workflowState === "loading") {
     return (
-      <main className="tie-container bg-mesh">
+      <main
+        className="tie-container bg-mesh"
+        style={{ padding: PAGE_PADDING, boxSizing: "border-box" }}
+      >
         <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "350px" }}>
+        <div
+          className="tie-card"
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "350px",
+            padding: CARD_PADDING,
+            maxWidth: PAGE_MAX_WIDTH_NARROW,
+            margin: "0 auto",
+            boxSizing: "border-box"
+          }}
+        >
           <div className="tie-card-top-bar" />
           <Loader2 className="animate-spin text-[#5BA4A4] mb-3" size={36} />
           <span className="text-sm font-semibold text-slate-500">Resolving workspace state...</span>
@@ -361,11 +414,22 @@ export default function EmployeeWorkspacePage() {
   // Render Error
   if (workflowState === "error" || error) {
     return (
-      <main className="tie-container bg-mesh">
+      <main
+        className="tie-container bg-mesh"
+        style={{ padding: PAGE_PADDING, boxSizing: "border-box" }}
+      >
         <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ maxWidth: "480px", margin: "0 auto" }}>
+        <div
+          className="tie-card"
+          style={{
+            maxWidth: PAGE_MAX_WIDTH_NARROW,
+            margin: "0 auto",
+            padding: CARD_PADDING,
+            boxSizing: "border-box"
+          }}
+        >
           <div className="tie-card-top-bar" style={{ background: "#c0392b" }} />
-          <div className="tie-header" style={{ alignItems: "center", textAlign: "center" }}>
+          <div style={{ padding: CARD_PADDING, alignItems: "center", textAlign: "center", boxSizing: "border-box" }} className="tie-header">
             <div className="logo-ring" style={{ color: "#c0392b", border: "1.5px solid rgba(192, 57, 43, 0.2)", background: "rgba(192, 57, 43, 0.05)", marginBottom: "1rem" }}>
               <AlertCircle size={28} />
             </div>
@@ -389,9 +453,21 @@ export default function EmployeeWorkspacePage() {
   // Render Report Generation Loading screen
   if (workflowState === "generating_report") {
     return (
-      <main className="tie-container bg-mesh">
+      <main
+        className="tie-container bg-mesh"
+        style={{ padding: PAGE_PADDING, boxSizing: "border-box" }}
+      >
         <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ maxWidth: "480px", textAlign: "center", padding: "3rem", margin: "0 auto" }}>
+        <div
+          className="tie-card"
+          style={{
+            maxWidth: PAGE_MAX_WIDTH_NARROW,
+            textAlign: "center",
+            padding: "3rem 2rem",
+            margin: "0 auto",
+            boxSizing: "border-box"
+          }}
+        >
           <div className="tie-card-top-bar" />
           <motion.div
             animate={{ scale: [1, 1.05, 1], rotate: [0, 6, -6, 0] }}
@@ -420,12 +496,23 @@ export default function EmployeeWorkspacePage() {
   // Render 24 Scenario List (Single Page Layout)
   if (workflowState === "taking_test") {
     return (
-      <main style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem', boxSizing: 'border-box' }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          padding: PAGE_PADDING,
+          maxWidth: PAGE_MAX_WIDTH_WIDE,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Background decoration */}
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
         {/* Header Panel */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: CARD_PADDING, boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: '#243B53' }} />
           
           <div style={{ textAlign: 'left' }}>
@@ -439,7 +526,26 @@ export default function EmployeeWorkspacePage() {
         </div>
 
         {/* Sticky/Fixed Progress Bar */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '20px', padding: '1.25rem 1.75rem', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap', position: 'sticky', top: '10px', zIndex: 10, backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.95)' }}>
+        <div
+          style={{
+            background: 'rgba(255,255,255,0.95)',
+            border: '1px solid rgba(36,59,83,0.08)',
+            borderRadius: '20px',
+            padding: CARD_PADDING_SM,
+            boxShadow: 'var(--shadow-card)',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+            position: 'sticky',
+            top: '1rem',
+            zIndex: 10,
+            backdropFilter: 'blur(8px)',
+            boxSizing: 'border-box'
+          }}
+        >
           <div style={{ textAlign: 'left' }}>
             <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#9aa8b6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overall Progress</span>
             <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#243B53', marginTop: '2px' }}>
@@ -483,7 +589,7 @@ export default function EmployeeWorkspacePage() {
         </div>
 
         {/* 24 Question List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {questions.map((q, qIdx) => {
             const answerIndex = answers[q.question_id];
             return (
@@ -493,11 +599,12 @@ export default function EmployeeWorkspacePage() {
                   background: '#ffffff', 
                   border: '1px solid rgba(36,59,83,0.08)', 
                   borderRadius: '24px', 
-                  padding: '2rem', 
+                  padding: CARD_PADDING, 
                   boxShadow: 'var(--shadow-card)', 
                   textAlign: 'left', 
                   position: 'relative', 
                   overflow: 'hidden',
+                  boxSizing: 'border-box',
                   transition: 'border-color 0.2s'
                 }}
               >
@@ -540,6 +647,7 @@ export default function EmployeeWorkspacePage() {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '12px',
+                          boxSizing: 'border-box',
                           transition: 'all 0.15s'
                         }}
                         onMouseEnter={e => {
@@ -581,7 +689,20 @@ export default function EmployeeWorkspacePage() {
         </div>
 
         {/* Bottom Submit Section */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid rgba(36,59,83,0.08)',
+            borderRadius: '24px',
+            padding: CARD_PADDING,
+            boxShadow: 'var(--shadow-card)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+            boxSizing: 'border-box'
+          }}
+        >
           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#243B53', margin: 0 }}>Ready to Submit?</h3>
           <p style={{ fontSize: '0.8125rem', color: '#627D98', margin: 0, textAlign: 'center', maxWidth: '400px' }}>
             Please make sure you have answered all 24 scenarios. Your answers are auto-saved automatically.
@@ -631,12 +752,23 @@ export default function EmployeeWorkspacePage() {
     ];
 
     return (
-      <main style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem', boxSizing: 'border-box' }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          padding: PAGE_PADDING,
+          maxWidth: PAGE_MAX_WIDTH_NARROW,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Background decoration */}
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
         {/* Header Panel */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: CARD_PADDING, boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: '#243B53' }} />
           
           <div style={{ textAlign: 'left' }}>
@@ -654,7 +786,7 @@ export default function EmployeeWorkspacePage() {
         </div>
 
         {/* Reflection Card */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-card)', textAlign: 'left' }}>
+        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: CARD_PADDING, boxShadow: 'var(--shadow-card)', textAlign: 'left', boxSizing: 'border-box' }}>
           <form onSubmit={handleSubmitReflection} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {/* Q1: Accuracy */}
@@ -742,6 +874,7 @@ export default function EmployeeWorkspacePage() {
                         justifyContent: 'space-between',
                         gap: '12px',
                         position: 'relative',
+                        boxSizing: 'border-box',
                         transition: 'all 0.15s'
                       }}
                       onMouseEnter={e => {
@@ -825,6 +958,7 @@ export default function EmployeeWorkspacePage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
+                boxSizing: 'border-box',
                 transition: 'all 0.2s',
                 boxShadow: (!accuracyRating || !focusArea) ? 'none' : '0 4px 6px -1px rgba(91,164,164,0.2)'
               }}
@@ -842,20 +976,35 @@ export default function EmployeeWorkspacePage() {
 
   // Render Report Viewer (Extraction Portal)
   if (workflowState === "viewing_report" && reportData) {
+    const displayInterests = Array.isArray(reportTargetProfile?.interests)
+      ? reportTargetProfile.interests.join(", ")
+      : reportTargetProfile?.interests;
+
     return (
-      <main className="min-h-screen w-full px-4 sm:px-6 lg:px-8 py-8 max-w-[1500px] mx-auto flex flex-col gap-8">
+      <main
+        className="min-h-screen w-full mx-auto flex flex-col gap-6 bg-[#F4F7FA]"
+        style={{
+          padding: PAGE_PADDING,
+          maxWidth: "100%",
+          boxSizing: "border-box"
+        }}
+      >
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
         {/* Dashboard Navigation headers if viewing other members' reports */}
         {targetUserId && targetUserId !== user?.id && (
-          <div className="flex items-center gap-2 mb-2 bg-[#243B53] text-white px-4 py-2.5 rounded-xl border border-[#1a2d40] text-xs font-semibold justify-between shadow-sm">
+          <div
+            className="flex items-center gap-2 bg-[#243B53] text-white rounded-xl border border-[#1a2d40] text-xs font-semibold justify-between shadow-sm"
+            style={{ padding: "0.65rem 1rem", boxSizing: "border-box" }}
+          >
             <span className="flex items-center gap-1">
               <FileText size={14} />
               Reviewing Workspace Member: {reportTargetProfile?.first_name} {reportTargetProfile?.last_name}
             </span>
-            <button 
-              onClick={() => router.back()}
-              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded font-bold"
+            <button
+              onClick={() => router.push(`/${company_slug}/${team_slug}/dashboard`)}
+              className="bg-white/10 hover:bg-white/20 text-white rounded font-bold"
+              style={{ padding: "0.35rem 0.65rem" }}
             >
               Back to Dashboard
             </button>
@@ -866,9 +1015,12 @@ export default function EmployeeWorkspacePage() {
           reportMarkdown={reportData.report_markdown}
           scoringMetrics={reportData.scoring_metrics}
           employeeName={`${reportTargetProfile?.first_name || ""} ${reportTargetProfile?.last_name || ""}`.trim() || "Employee"}
-          designation={reportTargetProfile?.designation}
-          experienceYears={String(reportTargetProfile?.experience_years || 0)}
+          employeeId={reportTargetProfile?.employee_id || targetUserId || user?.id || "—"}
+          designation={reportTargetProfile?.designation || "—"}
+          experienceYears={String(reportTargetProfile?.experience_years ?? 0)}
           department={(team_slug as string) === "none" ? "Corporate" : (team_slug as string)}
+          interests={displayInterests || "—"}
+          email={reportTargetProfile?.email || "—"}
         />
       </main>
     );

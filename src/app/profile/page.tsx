@@ -7,11 +7,13 @@ import { Sparkles, ArrowRight, User, Edit3, Check, X } from "lucide-react";
 import { updateProfile } from "@/services/auth/ProfileServices";
 import { useAuthContext } from "@/context/AuthContext";
 import { fetchUserSavedProgress } from "@/services/assessmentService";
+import { supabasedb } from "@/lib/supabaseClient";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { isLoggedIn, profile, user, loading, refreshProfile, logout } = useAuthContext();
   const [updating, setUpdating] = useState(false);
+  const [workspaceUrl, setWorkspaceUrl] = useState<string>("");
 
   const handleAutofillProfile = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -75,6 +77,43 @@ export default function ProfilePage() {
         setDesignation(profile.designation || "");
         setExperience(profile.experience_years || "");
         setInterests(profile.interests || []);
+
+        if (profile.company_id) {
+          const fetchSlugs = async () => {
+            const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
+            const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+
+            let resolvedComp = cachedComp || "none";
+            let resolvedTm = cachedTm || "none";
+
+            if (!cachedComp || (profile.team_id && !cachedTm)) {
+              try {
+                const compPromise = profile.company_id
+                  ? supabasedb.from("companies").select("slug").eq("id", profile.company_id).maybeSingle()
+                  : Promise.resolve({ data: null });
+
+                const tmPromise = profile.team_id
+                  ? supabasedb.from("teams").select("slug").eq("id", profile.team_id).maybeSingle()
+                  : Promise.resolve({ data: null });
+
+                const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
+                if (compRes.data?.slug) {
+                  resolvedComp = compRes.data.slug;
+                  sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedComp);
+                }
+                if (tmRes.data?.slug) {
+                  resolvedTm = tmRes.data.slug;
+                  sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTm);
+                }
+              } catch (err) {
+                console.error("Failed to fetch redirect slugs:", err);
+              }
+            }
+
+            setWorkspaceUrl(`/${resolvedComp}/${resolvedTm}/user`);
+          };
+          fetchSlugs();
+        }
       }
 
       // Check if assessment completed by querying the DB count of saved answers
@@ -439,7 +478,7 @@ export default function ProfilePage() {
 
               <div style={{ display: "flex", gap: "1rem", width: "100%", flexWrap: "wrap", boxSizing: "border-box" }}>
                 <Link
-                  href={assessmentCompleted ? "/profile-output" : "/welcome"}
+                  href={profile?.company_id ? workspaceUrl : (assessmentCompleted ? "/profile-output" : "/welcome")}
                   onMouseEnter={() => setCtaHovered(true)}
                   onMouseLeave={() => setCtaHovered(false)}
                   className="tie-btn-primary"

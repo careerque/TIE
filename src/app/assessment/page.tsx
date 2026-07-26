@@ -57,6 +57,44 @@ export default function AssessmentPage() {
         return;
       }
 
+      if (profile?.company_id) {
+        const fetchSlugsAndRedirect = async () => {
+          const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
+          const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+
+          let resolvedComp = cachedComp || "none";
+          let resolvedTm = cachedTm || "none";
+
+          if (!cachedComp || (profile.team_id && !cachedTm)) {
+            try {
+              const compPromise = profile.company_id
+                ? supabasedb.from("companies").select("slug").eq("id", profile.company_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const tmPromise = profile.team_id
+                ? supabasedb.from("teams").select("slug").eq("id", profile.team_id).maybeSingle()
+                : Promise.resolve({ data: null });
+
+              const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
+              if (compRes.data?.slug) {
+                resolvedComp = compRes.data.slug;
+                sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedComp);
+              }
+              if (tmRes.data?.slug) {
+                resolvedTm = tmRes.data.slug;
+                sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTm);
+              }
+            } catch (err) {
+              console.error("Failed to fetch redirect slugs:", err);
+            }
+          }
+
+          router.push(`/${resolvedComp}/${resolvedTm}/user`);
+        };
+        fetchSlugsAndRedirect();
+        return;
+      }
+
       if (profile?.role && profile.role !== "user") {
         router.push("/dashboard");
         return;
