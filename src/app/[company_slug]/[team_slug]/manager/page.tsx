@@ -111,7 +111,10 @@ export default function TeamLeadManagerPage() {
   }, [isLoggedIn, profile, authLoading, router]);
 
   const fetchTeamData = async () => {
-    if (!profile?.team_id) return;
+    if (!profile?.team_id) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
 
@@ -440,6 +443,13 @@ export default function TeamLeadManagerPage() {
           </div>
         </div>
       </div>
+
+      {!profile?.team_id && (
+        <div style={{ background: '#FFF3CD', border: '1px solid #FFEBA5', borderRadius: '16px', padding: '1.25rem', color: '#856404', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertCircle size={18} style={{ color: '#856404', flexShrink: 0 }} />
+          <span>You have not been assigned to a team yet. Please contact your HR Administrator to assign you to a team.</span>
+        </div>
+      )}
 
       {/* Main Grid: Left Side stats/forms, Right side roster/CSV */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full items-start">

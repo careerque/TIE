@@ -3,3 +3,4 @@ export interface ServiceResponse<T> {
   data?: T | null;
   error?: { message: string } | null;
 }
+
