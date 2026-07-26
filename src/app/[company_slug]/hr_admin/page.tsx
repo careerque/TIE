@@ -91,7 +91,7 @@ export default function CorporateHrAdminPage() {
   const [teamError, setTeamError] = useState<string | null>(null);
   const [teamSuccess, setTeamSuccess] = useState<string | null>(null);
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   const cleanApiUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
   // Modal Report Preview State
@@ -1182,10 +1182,10 @@ export default function CorporateHrAdminPage() {
                 </div>
               ) : selectedReport ? (
                 <div 
-                  className="w-full max-w-4xl mx-auto"
+                  className="w-full max-w-[1500px] mx-auto"
                   style={{
                     width: '100%',
-                    maxWidth: '896px',
+                    maxWidth: '1500px',
                     margin: '0 auto'
                   }}
                 >

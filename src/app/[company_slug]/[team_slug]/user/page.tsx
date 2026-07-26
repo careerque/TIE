@@ -70,7 +70,7 @@ export default function EmployeeWorkspacePage() {
   const [reportData, setReportData] = useState<SavedReport | null>(null);
   const [reportTargetProfile, setReportTargetProfile] = useState<any>(null);
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   const cleanApiUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
   useEffect(() => {
@@ -843,7 +843,7 @@ export default function EmployeeWorkspacePage() {
   // Render Report Viewer (Extraction Portal)
   if (workflowState === "viewing_report" && reportData) {
     return (
-      <main className="min-h-screen w-full px-4 py-8 md:px-8 max-w-5xl mx-auto flex flex-col gap-6">
+      <main className="min-h-screen w-full px-4 sm:px-6 lg:px-8 py-8 max-w-[1500px] mx-auto flex flex-col gap-8">
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
         {/* Dashboard Navigation headers if viewing other members' reports */}

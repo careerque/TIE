@@ -5,7 +5,7 @@ export const forgotPassword = async (email: string): Promise<ServiceResponse<nul
     const supabase = supabasedb;
     try {
         // Query backend verify-email endpoint bypassing RLS constraints securely
-        const cleanApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const cleanApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         const checkRes = await fetch(`${cleanApiUrl}/api/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
         if (!checkRes.ok) {
             return { success: false, data: null, error: { message: "Failed to verify user status." } };

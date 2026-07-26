@@ -23,7 +23,11 @@ import {
   Ruler, 
   Activity,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  Calendar,
+  Layers,
+  Info
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -47,27 +51,27 @@ interface ReportViewerProps {
   isModal?: boolean;
 }
 
-// Map section index or text to Lucide icon
+// Map section title or index to Lucide icon
 const getSectionIcon = (title: string, index: number) => {
   const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes("pattern") || index === 0) return <Award size={20} className="text-[#5BA4A4]" />;
-  if (lowerTitle.includes("observed") || index === 1) return <Eye size={20} className="text-[#5BA4A4]" />;
-  if (lowerTitle.includes("value") || index === 2) return <TrendingUp size={20} className="text-[#5BA4A4]" />;
-  if (lowerTitle.includes("implication") || index === 3) return <Zap size={20} className="text-amber-500" />;
-  if (lowerTitle.includes("support") && lowerTitle.includes("need") || index === 4) return <HeartHandshake size={20} className="text-rose-500" />;
-  if (lowerTitle.includes("growth block") || index === 5) return <ShieldAlert size={20} className="text-rose-600" />;
-  if (lowerTitle.includes("risk") || index === 6) return <AlertTriangle size={20} className="text-amber-600" />;
-  if (lowerTitle.includes("business") || index === 7) return <Briefcase size={20} className="text-[#243B53]" />;
-  if (lowerTitle.includes("thrive") || index === 8) return <Sparkles size={20} className="text-emerald-500" />;
-  if (lowerTitle.includes("challenge") || index === 9) return <Target size={20} className="text-orange-500" />;
-  if (lowerTitle.includes("watch-out") || index === 10) return <ShieldCheck size={20} className="text-yellow-600" />;
-  if (lowerTitle.includes("experience you") || index === 11) return <Users size={20} className="text-[#5BA4A4]" />;
-  if (lowerTitle.includes("manager should know") || index === 12) return <MessageSquare size={20} className="text-[#243B53]" />;
-  if (lowerTitle.includes("manager support") || index === 13) return <Compass size={20} className="text-[#243B53]" />;
-  if (lowerTitle.includes("growth suggestion") || index === 14) return <ArrowUpRight size={20} className="text-emerald-600" />;
-  if (lowerTitle.includes("conclusion") || index === 15) return <HelpCircle size={20} className="text-[#5BA4A4]" />;
-  if (lowerTitle.includes("measure") && !lowerTitle.includes("not") || index === 16) return <Ruler size={20} className="text-[#5BA4A4]" />;
-  return <Activity size={20} className="text-[#5BA4A4]" />;
+  if (lowerTitle.includes("pattern") || index === 0) return <Award size={16} />;
+  if (lowerTitle.includes("observed") || index === 1) return <Eye size={16} />;
+  if (lowerTitle.includes("value") || index === 2) return <TrendingUp size={16} />;
+  if (lowerTitle.includes("implication") || index === 3) return <Zap size={16} />;
+  if ((lowerTitle.includes("support") && lowerTitle.includes("need")) || index === 4) return <HeartHandshake size={16} />;
+  if (lowerTitle.includes("growth block") || index === 5) return <ShieldAlert size={16} />;
+  if (lowerTitle.includes("risk") || index === 6) return <AlertTriangle size={16} />;
+  if (lowerTitle.includes("business") || index === 7) return <Briefcase size={16} />;
+  if (lowerTitle.includes("thrive") || index === 8) return <Sparkles size={16} />;
+  if (lowerTitle.includes("challenge") || index === 9) return <Target size={16} />;
+  if (lowerTitle.includes("watch-out") || index === 10) return <ShieldCheck size={16} />;
+  if (lowerTitle.includes("experience you") || index === 11) return <Users size={16} />;
+  if (lowerTitle.includes("manager should know") || index === 12) return <MessageSquare size={16} />;
+  if (lowerTitle.includes("manager support") || index === 13) return <Compass size={16} />;
+  if (lowerTitle.includes("growth suggestion") || index === 14) return <ArrowUpRight size={16} />;
+  if (lowerTitle.includes("conclusion") || index === 15) return <HelpCircle size={16} />;
+  if (lowerTitle.includes("measure") && !lowerTitle.includes("not") || index === 16) return <Ruler size={16} />;
+  return <Activity size={16} />;
 };
 
 const parseMarkdownSections = (markdown: string) => {
@@ -92,6 +96,53 @@ const parseMarkdownSections = (markdown: string) => {
     sections.push({ ...currentSection });
   }
   return sections;
+};
+
+// Helper to render markdown text with bolding and bullet list support
+const renderFormattedParagraphs = (content: string) => {
+  const rawParagraphs = content.split("\n\n").filter((p) => p.trim().length > 0);
+
+  return rawParagraphs.map((para, pIdx) => {
+    const lines = para.split("\n").filter((l) => l.trim().length > 0);
+
+    return (
+      <div key={pIdx} className="flex flex-col gap-2.5 min-w-0 w-full">
+        {lines.map((line, lIdx) => {
+          const isBullet = line.trim().startsWith("* ") || line.trim().startsWith("- ") || line.trim().startsWith("• ");
+          const cleanLine = line.replace(/^[\*\-\•]\s*/, "").trim();
+
+          const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+          const lineElements = parts.map((part, partIdx) => {
+            if (part.startsWith("**") && part.endsWith("**")) {
+              return (
+                <strong key={partIdx} className="font-semibold text-slate-800">
+                  {part.slice(2, -2)}
+                </strong>
+              );
+            }
+            return part;
+          });
+
+          if (isBullet) {
+            return (
+              <div key={lIdx} className="flex items-start gap-2 my-0.5 min-w-0 w-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2A6B6B] mt-2 flex-shrink-0" />
+                <span className="text-sm text-slate-600 leading-normal font-normal min-w-0 w-full break-words overflow-wrap-break-word">
+                  {lineElements}
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <p key={lIdx} className="text-sm text-slate-600 leading-normal font-normal min-w-0 w-full break-words overflow-wrap-break-word">
+              {lineElements}
+            </p>
+          );
+        })}
+      </div>
+    );
+  });
 };
 
 export default function ReportViewer({
@@ -124,24 +175,28 @@ export default function ReportViewer({
     SPO: "Prefers stable workflows, consistent processes, and predictable day-to-day operations."
   };
 
+  const cardAccents = [
+    { border: "border-l-4 border-l-[#2A6B6B]", bg: "bg-[#FAFBFB]", iconBg: "bg-[#2A6B6B]/10 text-[#2A6B6B]" },
+    { border: "border-l-4 border-l-[#3B5A75]", bg: "bg-[#F7F9FA]", iconBg: "bg-[#3B5A75]/10 text-[#3B5A75]" },
+    { border: "border-l-4 border-l-[#3D8B7A]", bg: "bg-[#F8FAF9]", iconBg: "bg-[#3D8B7A]/10 text-[#3D8B7A]" },
+    { border: "border-l-4 border-l-[#4A5D96]", bg: "bg-[#F9FAFC]", iconBg: "bg-[#4A5D96]/10 text-[#4A5D96]" },
+  ];
+
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
     setExporting(true);
     setExportSuccess(false);
 
-    // Save original getComputedStyle
     const originalGetComputedStyle = window.getComputedStyle;
 
-    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
     window.getComputedStyle = function (el, pseudoElt) {
       const style = originalGetComputedStyle(el, pseudoElt);
       
       const convertOklch = (val: any) => {
         if (typeof val === "string" && val.includes("oklch")) {
-          // Fallback replacements for Tailwind oklch defaults to avoid html2canvas parser crash
-          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
-          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
-          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
+          if (val.includes("0.96")) return "rgb(241, 245, 249)";
+          if (val.includes("0.6") || val.includes("0.7")) return "rgb(42, 107, 107)";
+          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)";
           return "rgb(240, 240, 240)";
         }
         return val;
@@ -166,7 +221,6 @@ export default function ReportViewer({
 
     const element = reportRef.current;
     
-    // Create an off-screen clone container styled for high-fidelity desktop A4 width
     const clone = element.cloneNode(true) as HTMLDivElement;
     clone.style.position = "absolute";
     clone.style.left = "-9999px";
@@ -178,9 +232,8 @@ export default function ReportViewer({
     document.body.appendChild(clone);
 
     try {
-      // Use html2canvas to capture the off-screen clone element
       const canvas = await html2canvas(clone, {
-        scale: 2.2, // higher resolution
+        scale: 2.2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -190,7 +243,7 @@ export default function ReportViewer({
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF("p", "mm", "a4");
       
-      const imgWidth = 210; // A4 dimensions
+      const imgWidth = 210;
       const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
@@ -214,165 +267,220 @@ export default function ReportViewer({
     } catch (error) {
       console.error("Failed to generate PDF:", error);
     } finally {
-      // Clean up off-screen clone element
       if (clone && clone.parentNode) {
         clone.parentNode.removeChild(clone);
       }
-      // Restore original getComputedStyle
       window.getComputedStyle = originalGetComputedStyle;
       setExporting(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Action Header */}
-      <div className={`flex items-center justify-between p-4 rounded-2xl border border-slate-100 shadow-sm z-40 ${
+    <div className="w-full max-w-[1500px] mx-auto flex flex-col gap-8 box-border min-w-0">
+      {/* 1. TOP REPORT HEADER BAR */}
+      <div className={`w-full flex items-center justify-between p-4 px-6 rounded-xl border border-slate-200/50 shadow-sm z-30 transition-all box-border ${
         isModal 
           ? "bg-white mb-2" 
-          : "bg-white/70 backdrop-blur-md sticky top-20"
+          : "bg-white/80 backdrop-blur-md sticky top-[72px] md:top-[80px]"
       }`}>
-        <div className="flex items-center gap-2">
-          <FileText size={18} className="text-[#5BA4A4]" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-            Work Preference Analysis Report
-          </span>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-lg bg-[#2A6B6B]/10 text-[#2A6B6B] border border-[#2A6B6B]/20 flex items-center justify-center flex-shrink-0">
+            <FileText size={16} />
+          </div>
+          <div className="min-w-0 flex flex-col justify-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-800 tracking-tight truncate">
+                Work Preference Analysis Report
+              </span>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#2A6B6B] flex-shrink-0 animate-pulse" />
+            </div>
+            <span className="text-xs text-slate-500 font-medium hidden sm:inline-block">
+              Talent Intelligence Engine • Executive Summary
+            </span>
+          </div>
         </div>
 
         <button
           onClick={handleExportPDF}
           disabled={exporting}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#243B53] hover:bg-[#1a2d40] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-75"
+          className="flex-shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-4 py-2 bg-[#2A6B6B] hover:bg-[#1f5252] active:bg-[#1a4444] text-white text-xs font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-75 cursor-pointer"
         >
           {exporting ? (
             <>
-              <Loader2 className="animate-spin" size={14} />
+              <Loader2 className="animate-spin flex-shrink-0" size={14} />
               <span>Generating PDF...</span>
             </>
           ) : exportSuccess ? (
             <>
-              <CheckCircle2 size={14} className="text-emerald-400" />
+              <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />
               <span>Downloaded!</span>
             </>
           ) : (
             <>
-              <Download size={14} />
+              <Download size={14} className="flex-shrink-0" />
               <span>Export as PDF</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Printable Area Wrapper */}
+      {/* 2. ONE CONSISTENT MAIN REPORT CONTAINER */}
       <div 
         ref={reportRef} 
         id="report-printable-area" 
-        className="bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-lg flex flex-col gap-8 text-slate-800 w-full box-border overflow-hidden"
+        className="w-full max-w-full bg-white p-6 sm:p-10 md:p-14 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-10 text-slate-800 box-border overflow-hidden min-w-0"
         style={{
           width: '100%',
+          maxWidth: '100%',
           boxSizing: 'border-box',
           background: '#ffffff',
           borderRadius: '24px',
-          padding: '2.5rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '2rem',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
+          gap: '2.5rem',
+          boxShadow: '0 10px 30px -5px rgba(36, 59, 83, 0.08)',
+          overflow: 'hidden'
         }}
       >
         
-        {/* Print Header Branding */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-6 gap-4">
-          <div>
-            <span 
-              className="text-[10px] font-black text-[#5BA4A4] uppercase tracking-widest bg-teal-50"
-              style={{
-                padding: '5px 12px',
-                borderRadius: '8px',
-                display: 'inline-block',
-                lineHeight: '1.2',
-                backgroundColor: '#f0fdfa',
-                color: '#5BA4A4'
-              }}
-            >
+        {/* 3. PROFILE SECTION */}
+        <div className="w-full flex flex-col md:flex-row md:items-start justify-between border-b border-slate-200/80 pb-8 gap-6 min-w-0 box-border">
+          <div className="flex-1 min-w-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5BA4A4]/10 text-[#5BA4A4] text-[11px] font-black uppercase tracking-widest border border-[#5BA4A4]/20">
+              <Sparkles size={12} className="text-[#5BA4A4]" />
               Talent Intelligence Engine (TIE)
             </span>
-            <h1 className="text-2xl md:text-3xl font-black text-[#243B53] mt-3">
+            
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#243B53] tracking-tight mt-3 mb-3 truncate">
               {employeeName}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs mt-1.5 font-medium">
-              <span>{designation}</span>
-              <span>•</span>
-              <span>{department} Department</span>
-              <span>•</span>
-              <span>{experienceYears} Years Experience</span>
+            
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100/90 text-slate-700 text-xs font-semibold border border-slate-200/60">
+                <Briefcase size={13} className="text-slate-400 flex-shrink-0" />
+                {designation}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100/90 text-slate-700 text-xs font-semibold border border-slate-200/60">
+                <Building2 size={13} className="text-slate-400 flex-shrink-0" />
+                {department} Department
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100/90 text-slate-700 text-xs font-semibold border border-slate-200/60">
+                <Calendar size={13} className="text-slate-400 flex-shrink-0" />
+                {experienceYears} Years Experience
+              </span>
             </div>
           </div>
           
-          <div className="text-left md:text-right bg-slate-50 p-4 rounded-2xl border border-slate-100 min-w-[200px]">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Combination Profile</span>
-            <span className="text-sm font-extrabold text-[#243B53] mt-1 block">
-              {combination_profile}
-            </span>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {flags.map((flag, idx) => (
-                <span key={idx} className="text-[9px] font-bold px-1.5 py-0.5 bg-teal-50 text-[#5BA4A4] rounded border border-teal-100/50">
-                  {flag}
-                </span>
-              ))}
+          <div className="bg-gradient-to-br from-slate-50 to-teal-50/40 p-6 rounded-2xl border border-slate-200/80 w-full md:w-auto min-w-[260px] max-w-full flex flex-col justify-between shadow-xs flex-shrink-0 box-border self-start">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Combination Profile</span>
+                <Layers size={15} className="text-[#5BA4A4]" />
+              </div>
+              <span className="text-base sm:text-lg font-black text-[#243B53] block leading-snug">
+                {combination_profile}
+              </span>
             </div>
+
+            {flags && flags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-slate-200/60">
+                {flags.map((flag, idx) => (
+                  <span key={idx} className="text-[10px] font-bold px-2.5 py-0.5 bg-white text-[#5BA4A4] rounded-md border border-[#5BA4A4]/30 shadow-2xs">
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Scoring Matrix Panel */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Main archetypes */}
-          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Dominant Preference Layout</h2>
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-sm font-bold text-slate-700">Primary: {patternFullNames[primary_pattern]} ({primary_pattern})</span>
-                  <span className="text-sm font-extrabold text-[#5BA4A4]">{primary_strength_pct}%</span>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#5BA4A4] h-2 rounded-full" style={{ width: `${primary_strength_pct}%` }} />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1 italic">{patternDescriptions[primary_pattern]}</p>
+        {/* 4. DOMINANT PREFERENCE + OPERATIONAL STYLE SECTION (REUSABLE TWO-COLUMN GRID) */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch min-w-0 box-border">
+          {/* Dominant Preference Layout Card */}
+          <div 
+            className="w-full min-w-0 max-w-full bg-[#FAFBFB] rounded-xl border border-slate-100 flex flex-col justify-between shadow-xs h-full box-border overflow-hidden"
+            style={{ padding: '2rem', boxSizing: 'border-box' }}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-slate-100">
+                <Award size={15} className="text-[#2A6B6B] flex-shrink-0" />
+                <h2 className="text-xs font-semibold text-slate-800 uppercase tracking-wider truncate">Dominant Preference Layout</h2>
               </div>
-
-              {secondary_pattern && (
-                <div>
-                  <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-sm font-bold text-slate-700">Secondary: {patternFullNames[secondary_pattern]} ({secondary_pattern})</span>
-                    <span className="text-sm font-extrabold text-slate-500">{secondary_strength_pct}%</span>
+              
+              <div className="flex flex-col gap-6 min-w-0">
+                {/* Primary Pattern */}
+                <div className="min-w-0">
+                  <div className="flex justify-between items-center mb-1.5 min-w-0">
+                    <span className="text-sm font-medium text-slate-800 truncate pr-2">
+                      Primary: {patternFullNames[primary_pattern] || primary_pattern} ({primary_pattern})
+                    </span>
+                    <span className="text-xs font-semibold text-[#2A6B6B] bg-[#2A6B6B]/10 px-2 py-0.5 rounded border border-[#2A6B6B]/20 flex-shrink-0">
+                      {primary_strength_pct}%
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div className="bg-slate-400 h-2 rounded-full" style={{ width: `${secondary_strength_pct}%` }} />
+                  <div className="w-full bg-slate-200/50 h-2 rounded-full overflow-hidden p-0">
+                    <div className="bg-gradient-to-r from-[#2A6B6B] to-[#3B8282] h-full rounded-full transition-all duration-500" style={{ width: `${primary_strength_pct}%` }} />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 italic">{patternDescriptions[secondary_pattern]}</p>
+                  <p className="text-xs text-slate-500 mt-2 italic bg-white/80 p-3 rounded-lg border border-slate-100 leading-normal font-normal break-words">
+                    {patternDescriptions[primary_pattern]}
+                  </p>
                 </div>
-              )}
+
+                {/* Secondary Pattern */}
+                {secondary_pattern && (
+                  <div className="min-w-0">
+                    <div className="flex justify-between items-center mb-1.5 min-w-0">
+                      <span className="text-sm font-medium text-slate-700 truncate pr-2">
+                        Secondary: {patternFullNames[secondary_pattern] || secondary_pattern} ({secondary_pattern})
+                      </span>
+                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex-shrink-0">
+                        {secondary_strength_pct}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200/50 h-2 rounded-full overflow-hidden p-0">
+                      <div className="bg-gradient-to-r from-slate-500 to-slate-400 h-full rounded-full transition-all duration-500" style={{ width: `${secondary_strength_pct}%` }} />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2 italic bg-white/80 p-3 rounded-lg border border-slate-100 leading-normal font-normal break-words">
+                      {patternDescriptions[secondary_pattern]}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* All 4 Raw Scores Distribution */}
-          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 flex flex-col justify-between">
-            <div>
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Operational Style Distribution</h2>
-              <div className="grid grid-cols-2 gap-4">
+          {/* Operational Style Distribution Card */}
+          <div 
+            className="w-full min-w-0 max-w-full bg-[#FAFBFB] rounded-xl border border-slate-100 flex flex-col justify-between shadow-xs h-full box-border overflow-hidden"
+            style={{ padding: '2rem', boxSizing: 'border-box' }}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-slate-100">
+                <Activity size={15} className="text-[#2A6B6B] flex-shrink-0" />
+                <h2 className="text-xs font-semibold text-slate-800 uppercase tracking-wider truncate">Operational Style Distribution</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
                 {Object.entries(raw_scores).map(([pat, score]) => {
                   const pct = Math.round((score / 24) * 100);
+                  const isPrimary = pat === primary_pattern;
+                  const isSecondary = pat === secondary_pattern;
+
                   return (
-                    <div key={pat} className="flex flex-col">
-                      <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
-                        <span>{pat} Style</span>
-                        <span>{score}/24 ({pct}%)</span>
+                    <div key={pat} className="bg-white p-3 rounded-lg border border-slate-100 flex flex-col justify-between min-w-0">
+                      <div className="flex justify-between items-center text-xs font-medium text-slate-700 mb-2 min-w-0">
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPrimary ? "bg-[#2A6B6B]" : isSecondary ? "bg-slate-500" : "bg-slate-300"}`} />
+                          {pat} Style
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-600 flex-shrink-0">
+                          {score}/24 ({pct}%)
+                        </span>
                       </div>
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden p-0">
                         <div 
-                          className={`h-1.5 rounded-full ${
-                            pat === primary_pattern ? "bg-[#5BA4A4]" : pat === secondary_pattern ? "bg-slate-400" : "bg-slate-300"
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isPrimary ? "bg-[#2A6B6B]" : isSecondary ? "bg-slate-500" : "bg-slate-300"
                           }`}
                           style={{ width: `${pct}%` }}
                         />
@@ -382,81 +490,49 @@ export default function ReportViewer({
                 })}
               </div>
             </div>
-            <div className="border-t border-slate-200/50 pt-3 mt-4 text-[10px] text-slate-400 italic">
-              * The raw scores are computed based on choice selections mapping to the SCP, FIE, CCD, and SPO behavioral archetypes.
+
+            <div className="bg-white p-3 rounded-lg border border-slate-100 text-[11px] text-slate-500 italic mt-6 flex items-start gap-2 font-medium min-w-0">
+              <Info size={13} className="text-slate-400 mt-0.5 flex-shrink-0" />
+              <span className="break-words leading-normal">The raw scores are computed based on choice selections mapping to the SCP, FIE, CCD, and SPO behavioral archetypes.</span>
             </div>
           </div>
         </div>
 
-        {/* Narrative sections display */}
-        <div className="flex flex-col gap-6">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Detailed Narrative Report</h2>
-          <div className="flex flex-col md:flex-row gap-6 w-full">
-            {/* Column 1 */}
-            <div className="flex-grow flex-1 flex flex-col gap-6 min-w-0">
-              {sections.filter((_, idx) => idx % 2 === 0).map((sec, idx) => {
-                const icon = getSectionIcon(sec.title, idx * 2);
-                const paragraphs = sec.content.split("\n\n").filter(p => p.trim());
+        {/* 5. DETAILED NARRATIVE REPORT SECTION (EXACT SAME TWO-COLUMN GRID BOUNDARIES) */}
+        <div className="w-full flex flex-col gap-6 min-w-0 box-border">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3 min-w-0">
+            <FileText size={16} className="text-[#2A6B6B] flex-shrink-0" />
+            <h2 className="text-xs font-semibold text-slate-800 uppercase tracking-wider">Detailed Narrative Report</h2>
+          </div>
 
-                return (
-                  <div 
-                    key={idx} 
-                    className="p-6 rounded-2xl border border-slate-100 bg-white hover:border-[#5BA4A4]/20 transition-all flex flex-col shadow-sm"
-                    style={{ pageBreakInside: "avoid" }}
-                  >
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-slate-50 rounded-lg text-[#5BA4A4] border border-slate-100/50">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch min-w-0 box-border">
+            {sections.map((sec, idx) => {
+              const icon = getSectionIcon(sec.title, idx);
+              const accent = cardAccents[idx % cardAccents.length];
+
+              return (
+                <div 
+                  key={idx} 
+                  className={`w-full min-w-0 max-w-full rounded-xl border border-slate-100 shadow-xs flex flex-col justify-between h-full box-border overflow-hidden transition-all duration-200 hover:shadow-sm ${accent.border} ${accent.bg}`}
+                  style={{ pageBreakInside: "avoid", boxSizing: "border-box", padding: "2rem" }}
+                >
+                  <div className="min-w-0 w-full">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200/30 mb-6 min-w-0">
+                      <div className={`p-1.5 rounded-md flex items-center justify-center flex-shrink-0 ${accent.iconBg}`}>
                         {icon}
                       </div>
-                      <h3 className="text-sm font-extrabold text-slate-700">
+                      <h3 className="text-sm font-semibold text-slate-800 tracking-tight truncate">
                         {sec.title}
                       </h3>
                     </div>
 
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      {paragraphs.map((p, pIdx) => (
-                        <p key={pIdx} className="text-xs text-slate-500 leading-relaxed font-medium">
-                          {p.replace(/^\*\s*/, "• ").trim()}
-                        </p>
-                      ))}
+                    <div className="flex-1 flex flex-col gap-3 min-w-0 w-full break-words">
+                      {renderFormattedParagraphs(sec.content)}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Column 2 */}
-            <div className="flex-grow flex-1 flex flex-col gap-6 min-w-0">
-              {sections.filter((_, idx) => idx % 2 !== 0).map((sec, idx) => {
-                const icon = getSectionIcon(sec.title, idx * 2 + 1);
-                const paragraphs = sec.content.split("\n\n").filter(p => p.trim());
-
-                return (
-                  <div 
-                    key={idx} 
-                    className="p-6 rounded-2xl border border-slate-100 bg-white hover:border-[#5BA4A4]/20 transition-all flex flex-col shadow-sm"
-                    style={{ pageBreakInside: "avoid" }}
-                  >
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <div className="p-1.5 bg-slate-50 rounded-lg text-[#5BA4A4] border border-slate-100/50">
-                        {icon}
-                      </div>
-                      <h3 className="text-sm font-extrabold text-slate-700">
-                        {sec.title}
-                      </h3>
-                    </div>
-
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      {paragraphs.map((p, pIdx) => (
-                        <p key={pIdx} className="text-xs text-slate-500 leading-relaxed font-medium">
-                          {p.replace(/^\*\s*/, "• ").trim()}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

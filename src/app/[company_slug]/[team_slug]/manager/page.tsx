@@ -78,7 +78,7 @@ export default function TeamLeadManagerPage() {
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
   const cleanApiUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
   // Invite Member Form State
@@ -1000,10 +1000,10 @@ export default function TeamLeadManagerPage() {
                 </div>
               ) : selectedReport ? (
                 <div 
-                  className="w-full max-w-4xl mx-auto"
+                  className="w-full max-w-[1500px] mx-auto"
                   style={{
                     width: '100%',
-                    maxWidth: '896px',
+                    maxWidth: '1500px',
                     margin: '0 auto'
                   }}
                 >
