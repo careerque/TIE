@@ -303,9 +303,6 @@ export default function ProfileOutputPage() {
 
       resolveProfileAndFetch();
     }
-<<<<<<< HEAD
-  }, [isLoggedIn, profile, loading, user, authLoading, fetchAIAnalysis, router]);
-=======
   }, [profile, isLoggedIn, user, authLoading, router, fetchAIAnalysis]);
 
   useEffect(() => {
@@ -316,45 +313,7 @@ export default function ProfileOutputPage() {
     setIsGeneratingPdf(true);
     setPdfProgressText("Initializing PDF engine...");
     
-<<<<<<< HEAD
     try {
-=======
-    // Save original getComputedStyle
-    const originalGetComputedStyle = window.getComputedStyle;
-
-    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
-    window.getComputedStyle = function (el, pseudoElt) {
-      const style = originalGetComputedStyle(el, pseudoElt);
-      
-      const convertOklch = (val: any) => {
-        if (typeof val === "string" && val.includes("oklch")) {
-          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
-          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
-          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
-          return "rgb(240, 240, 240)";
-        }
-        return val;
-      };
-
-      return new Proxy(style, {
-        get(target, prop) {
-          if (prop === "getPropertyValue") {
-            return function(propertyName: string) {
-              const val = target.getPropertyValue(propertyName);
-              return convertOklch(val);
-            };
-          }
-          const val = target[prop as any];
-          if (typeof val === "function") {
-            return (val as any).bind(target);
-          }
-          return convertOklch(val);
-        }
-      });
-    };
-
-   try {
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
 
@@ -368,7 +327,6 @@ export default function ProfileOutputPage() {
       const imgWidth = 210; // A4 width in mm
       const imgHeight = 297; // A4 height in mm
 
-<<<<<<< HEAD
       const sanitizeClonedDocument = (clonedDoc: Document) => {
         // 1. Sanitize all <style> tags in cloned document
         const styleTags = clonedDoc.querySelectorAll("style");
@@ -446,11 +404,10 @@ export default function ProfileOutputPage() {
           }
         });
       };
-=======
-      // Shared render settings tuned for quality
-      const RENDER_SCALE = 2; // higher = sharper text/images, larger file size
-      const JPEG_QUALITY = 0.85; // used only for page 1 / header (photo-like content)
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+
+      // Shared render settings tuned for quality & file size
+      const RENDER_SCALE = 1.8;
+      const JPEG_QUALITY = 0.82;
 
       // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
       setPdfProgressText("Rendering Executive Summary...");
@@ -458,21 +415,13 @@ export default function ProfileOutputPage() {
       if (page1Element) {
         await new Promise((resolve) => setTimeout(resolve, 80));
         const canvas1 = await html2canvas(page1Element, {
-<<<<<<< HEAD
-          scale: 1.8,
-=======
           scale: RENDER_SCALE,
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
           onclone: sanitizeClonedDocument
         });
-<<<<<<< HEAD
-        const imgData1 = canvas1.toDataURL("image/jpeg", 0.82);
-=======
         const imgData1 = canvas1.toDataURL("image/jpeg", JPEG_QUALITY);
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
         pdf.addImage(imgData1, "JPEG", 0, 0, imgWidth, imgHeight);
       }
 
@@ -485,21 +434,13 @@ export default function ProfileOutputPage() {
       let headerHeightMm = 0;
       if (headerElement) {
         const headerCanvas = await html2canvas(headerElement, {
-<<<<<<< HEAD
-          scale: 1.8,
-=======
           scale: RENDER_SCALE,
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
           onclone: sanitizeClonedDocument
         });
-<<<<<<< HEAD
-        headerImgData = headerCanvas.toDataURL("image/jpeg", 0.82);
-=======
         headerImgData = headerCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
         headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
       }
 
@@ -510,21 +451,13 @@ export default function ProfileOutputPage() {
         setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
         const el = sectionElements[i] as HTMLElement;
         const canvas = await html2canvas(el, {
-<<<<<<< HEAD
-          scale: 1.8,
-=======
           scale: RENDER_SCALE,
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
           onclone: sanitizeClonedDocument
         });
-<<<<<<< HEAD
-        const imgData = canvas.toDataURL("image/jpeg", 0.82);
-=======
-        const imgData = canvas.toDataURL("image/png"); // PNG: sharper text edges, no chroma subsampling blur
->>>>>>> 01623d260fd53f5c45fb2db9d8bbff9a71d14f4e
+        const imgData = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
         const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
         sectionImgDataList.push({ imgData, heightMm });
       }
@@ -626,7 +559,6 @@ export default function ProfileOutputPage() {
       setPdfProgressText("");
     }
   };
->>>>>>> b14fc4cfda51e027794730babcdfbfd9eae8438a
 
   if (authLoading) {
     return (
