@@ -534,14 +534,23 @@ export default function ProfileOutputPage() {
       });
     };
 
-    try {
+   try {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
 
-      // Create PDF in A4 format
-      const pdf = new jsPDF("p", "mm", "a4");
+      // Create PDF in A4 format with compression enabled
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+        compress: true, // enables jsPDF's internal stream/flate compression (safe, lossless for text/vector)
+      });
       const imgWidth = 210; // A4 width in mm
       const imgHeight = 297; // A4 height in mm
+
+      // Shared render settings tuned for quality
+      const RENDER_SCALE = 2; // higher = sharper text/images, larger file size
+      const JPEG_QUALITY = 0.85; // used only for page 1 / header (photo-like content)
 
       // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
       setPdfProgressText("Rendering Executive Summary...");
@@ -549,46 +558,46 @@ export default function ProfileOutputPage() {
       if (page1Element) {
         await new Promise((resolve) => setTimeout(resolve, 60));
         const canvas1 = await html2canvas(page1Element, {
-          scale: 2,
+          scale: RENDER_SCALE,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
         });
-        const imgData1 = canvas1.toDataURL("image/png");
-        pdf.addImage(imgData1, "PNG", 0, 0, imgWidth, imgHeight);
+        const imgData1 = canvas1.toDataURL("image/jpeg", JPEG_QUALITY);
+        pdf.addImage(imgData1, "JPEG", 0, 0, imgWidth, imgHeight);
       }
 
       // --- PAGES 2+: Detailed Narrative (Section-by-Section with Dynamic Breaks) ---
       setPdfProgressText("Preparing layout templates...");
-      
+
       // Capture the header template
       const headerElement = document.getElementById("tie-report-pdf-header-template");
       let headerImgData = "";
       let headerHeightMm = 0;
       if (headerElement) {
         const headerCanvas = await html2canvas(headerElement, {
-          scale: 2,
+          scale: RENDER_SCALE,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
         });
-        headerImgData = headerCanvas.toDataURL("image/png");
+        headerImgData = headerCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
         headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
       }
 
-      // Capture all dynamic sections individually
+      // Capture all dynamic sections individually — PNG for crisp text
       const sectionElements = document.getElementsByClassName("pdf-narrative-section");
       const sectionImgDataList = [];
       for (let i = 0; i < sectionElements.length; i++) {
         setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
         const el = sectionElements[i] as HTMLElement;
         const canvas = await html2canvas(el, {
-          scale: 2,
+          scale: RENDER_SCALE,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
         });
-        const imgData = canvas.toDataURL("image/png");
+        const imgData = canvas.toDataURL("image/png"); // PNG: sharper text edges, no chroma subsampling blur
         const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
         sectionImgDataList.push({ imgData, heightMm });
       }
@@ -600,10 +609,10 @@ export default function ProfileOutputPage() {
 
       // Start Page 2
       pdf.addPage();
-      
+
       // Draw Header on Page 2
       if (headerImgData) {
-        pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+        pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
         currentY += headerHeightMm + 10; // Header + Gap
       }
 
@@ -618,20 +627,20 @@ export default function ProfileOutputPage() {
 
       for (let i = 0; i < sectionImgDataList.length; i++) {
         const section = sectionImgDataList[i];
-        
+
         // If it doesn't fit on the current page, add a new page
         if (currentY + section.heightMm > bottomLimit) {
           pdf.addPage();
           currentPageNum++;
           currentY = 15; // Reset top margin
-          
+
           // Draw header on new page
           if (headerImgData) {
-            pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+            pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
             currentY += headerHeightMm + 10;
           }
         }
-        
+
         // Draw the section
         pdf.addImage(section.imgData, "PNG", 15, currentY, 180, section.heightMm);
         currentY += section.heightMm + 8; // Section + Gap (8mm)
@@ -640,31 +649,31 @@ export default function ProfileOutputPage() {
       // --- PAGINATION AND FOOTER RENDERING ---
       setPdfProgressText("Applying page numbers...");
       const totalPages = (pdf as any).internal.getNumberOfPages();
-      
+
       const drawFooter = (doc: any, pageNum: number, total: number) => {
         doc.setPage(pageNum);
         const pageSize = doc.internal.pageSize;
         const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-        
+
         // Draw divider line
         doc.setDrawColor(220, 225, 230);
         doc.setLineWidth(0.2);
         doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
-        
+
         // Confidential report note
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(143, 163, 184); // #8fa3b8
         doc.text("TALENT INTELLIGENCE ENGINE (TIE)", 15, pageHeight - 15);
-        
+
         // Page number center-aligned
         doc.setFont("helvetica", "bold");
         doc.setTextColor(36, 59, 83); // #243B53
         const pageText = `Page ${pageNum} of ${total}`;
         const textWidth = doc.getTextWidth(pageText);
         doc.text(pageText, (pageWidth - textWidth) / 2, pageHeight - 15);
-        
+
         // Generation date right-aligned
         doc.setFont("helvetica", "normal");
         doc.setTextColor(143, 163, 184);
