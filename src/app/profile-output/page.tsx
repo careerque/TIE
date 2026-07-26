@@ -500,40 +500,6 @@ export default function ProfileOutputPage() {
     setIsGeneratingPdf(true);
     setPdfProgressText("Initializing PDF engine...");
     
-    // Save original getComputedStyle
-    const originalGetComputedStyle = window.getComputedStyle;
-
-    // Temporary override to convert oklch colors (Tailwind CSS v4) to standard web safe formats
-    window.getComputedStyle = function (el, pseudoElt) {
-      const style = originalGetComputedStyle(el, pseudoElt);
-      
-      const convertOklch = (val: any) => {
-        if (typeof val === "string" && val.includes("oklch")) {
-          if (val.includes("0.96")) return "rgb(241, 245, 249)"; // Light gray backgrounds
-          if (val.includes("0.6") || val.includes("0.7")) return "rgb(91, 164, 164)"; // Teal focus colors
-          if (val.includes("0.1") || val.includes("0.2")) return "rgb(36, 59, 83)"; // Dark slate headings
-          return "rgb(240, 240, 240)";
-        }
-        return val;
-      };
-
-      return new Proxy(style, {
-        get(target, prop) {
-          if (prop === "getPropertyValue") {
-            return function(propertyName: string) {
-              const val = target.getPropertyValue(propertyName);
-              return convertOklch(val);
-            };
-          }
-          const val = target[prop as any];
-          if (typeof val === "function") {
-            return (val as any).bind(target);
-          }
-          return convertOklch(val);
-        }
-      });
-    };
-
     try {
       const jsPDF = (await import("jspdf")).default;
       const html2canvas = (await import("html2canvas")).default;
@@ -543,19 +509,98 @@ export default function ProfileOutputPage() {
       const imgWidth = 210; // A4 width in mm
       const imgHeight = 297; // A4 height in mm
 
+      const sanitizeClonedDocument = (clonedDoc: Document) => {
+        // 1. Sanitize all <style> tags in cloned document
+        const styleTags = clonedDoc.querySelectorAll("style");
+        styleTags.forEach((tag) => {
+          if (tag.innerHTML && (tag.innerHTML.includes("oklab") || tag.innerHTML.includes("oklch"))) {
+            tag.innerHTML = tag.innerHTML
+              .replace(/oklab\([^)]+\)/gi, "rgb(36, 59, 83)")
+              .replace(/oklch\([^)]+\)/gi, "rgb(91, 164, 164)");
+          }
+        });
+
+        // 2. Remove any CSS rules containing oklab/oklch from clonedDoc.styleSheets
+        try {
+          Array.from(clonedDoc.styleSheets).forEach((sheet) => {
+            try {
+              const rules = Array.from(sheet.cssRules || []);
+              for (let i = rules.length - 1; i >= 0; i--) {
+                const ruleText = rules[i]?.cssText || "";
+                if (ruleText.includes("oklab") || ruleText.includes("oklch")) {
+                  sheet.deleteRule(i);
+                }
+              }
+            } catch (e) {
+              // Cross-origin stylesheet rules ignore
+            }
+          });
+        } catch (e) {}
+
+        // 3. Override getComputedStyle in cloned window
+        const win = clonedDoc.defaultView || window;
+        const origGetComputedStyle = win.getComputedStyle;
+
+        win.getComputedStyle = function (el: Element, pseudoElt?: string | null) {
+          const style = origGetComputedStyle.call(win, el, pseudoElt);
+          return new Proxy(style, {
+            get(target, prop) {
+              if (prop === "getPropertyValue") {
+                return function (propertyName: string) {
+                  const val = target.getPropertyValue(propertyName);
+                  if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                    if (propertyName.includes("background")) return "rgb(255, 255, 255)";
+                    if (propertyName.includes("border")) return "rgb(226, 232, 240)";
+                    return "rgb(36, 59, 83)";
+                  }
+                  return val;
+                };
+              }
+              const val = (target as any)[prop];
+              if (typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                if (String(prop).includes("background")) return "rgb(255, 255, 255)";
+                if (String(prop).includes("border")) return "rgb(226, 232, 240)";
+                return "rgb(36, 59, 83)";
+              }
+              if (typeof val === "function") {
+                return val.bind(target);
+              }
+              return val;
+            }
+          });
+        };
+
+        // 4. Sanitize all DOM element inline styles
+        const elements = clonedDoc.querySelectorAll("*");
+        elements.forEach((node) => {
+          const el = node as HTMLElement;
+          if (el.style) {
+            ["color", "backgroundColor", "borderColor", "outlineColor", "boxShadow", "fill", "stroke"].forEach((key) => {
+              const val = (el.style as any)[key];
+              if (val && typeof val === "string" && (val.includes("oklab") || val.includes("oklch"))) {
+                if (key === "backgroundColor") el.style.backgroundColor = "#ffffff";
+                else if (key === "color") el.style.color = "#243B53";
+                else if (key === "borderColor") el.style.borderColor = "#E2E8F0";
+              }
+            });
+          }
+        });
+      };
+
       // --- PAGE 1: Executive Summary & Metrics (Fixed A4 aspect ratio) ---
       setPdfProgressText("Rendering Executive Summary...");
       const page1Element = document.getElementById("tie-report-pdf-page-1");
       if (page1Element) {
-        await new Promise((resolve) => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 80));
         const canvas1 = await html2canvas(page1Element, {
-          scale: 2,
+          scale: 1.8,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
+          onclone: sanitizeClonedDocument
         });
-        const imgData1 = canvas1.toDataURL("image/png");
-        pdf.addImage(imgData1, "PNG", 0, 0, imgWidth, imgHeight);
+        const imgData1 = canvas1.toDataURL("image/jpeg", 0.82);
+        pdf.addImage(imgData1, "JPEG", 0, 0, imgWidth, imgHeight);
       }
 
       // --- PAGES 2+: Detailed Narrative (Section-by-Section with Dynamic Breaks) ---
@@ -567,12 +612,13 @@ export default function ProfileOutputPage() {
       let headerHeightMm = 0;
       if (headerElement) {
         const headerCanvas = await html2canvas(headerElement, {
-          scale: 2,
+          scale: 1.8,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
+          onclone: sanitizeClonedDocument
         });
-        headerImgData = headerCanvas.toDataURL("image/png");
+        headerImgData = headerCanvas.toDataURL("image/jpeg", 0.82);
         headerHeightMm = (headerCanvas.height * 180) / headerCanvas.width; // 180mm content width (210 - 30 margin)
       }
 
@@ -583,12 +629,13 @@ export default function ProfileOutputPage() {
         setPdfProgressText(`Rendering section ${i + 1} of ${sectionElements.length}...`);
         const el = sectionElements[i] as HTMLElement;
         const canvas = await html2canvas(el, {
-          scale: 2,
+          scale: 1.8,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
+          onclone: sanitizeClonedDocument
         });
-        const imgData = canvas.toDataURL("image/png");
+        const imgData = canvas.toDataURL("image/jpeg", 0.82);
         const heightMm = (canvas.height * 180) / canvas.width; // 180mm content width
         sectionImgDataList.push({ imgData, heightMm });
       }
@@ -603,7 +650,7 @@ export default function ProfileOutputPage() {
       
       // Draw Header on Page 2
       if (headerImgData) {
-        pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+        pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
         currentY += headerHeightMm + 10; // Header + Gap
       }
 
@@ -627,13 +674,13 @@ export default function ProfileOutputPage() {
           
           // Draw header on new page
           if (headerImgData) {
-            pdf.addImage(headerImgData, "PNG", 15, currentY, 180, headerHeightMm);
+            pdf.addImage(headerImgData, "JPEG", 15, currentY, 180, headerHeightMm);
             currentY += headerHeightMm + 10;
           }
         }
         
         // Draw the section
-        pdf.addImage(section.imgData, "PNG", 15, currentY, 180, section.heightMm);
+        pdf.addImage(section.imgData, "JPEG", 15, currentY, 180, section.heightMm);
         currentY += section.heightMm + 8; // Section + Gap (8mm)
       }
 
@@ -680,12 +727,12 @@ export default function ProfileOutputPage() {
       setPdfProgressText("Saving and downloading document...");
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      pdf.save(`TIE_Workforce_Insight_Report_${firstName}_${lastName}.pdf`);
-    } catch (error) {
+      const cleanFileName = `TIE_Report_${(firstName || "Employee").replace(/\s+/g, "_")}_${(lastName || "").replace(/\s+/g, "_")}.pdf`;
+      pdf.save(cleanFileName);
+    } catch (error: any) {
       console.error("PDF generation failed:", error);
+      alert("Failed to generate PDF: " + (error?.message || "Please try again."));
     } finally {
-      // Restore original getComputedStyle
-      window.getComputedStyle = originalGetComputedStyle;
       setIsGeneratingPdf(false);
       setPdfProgressText("");
     }
