@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ReportViewer from "@/components/ReportViewer";
+import { useTenantGuard } from "@/hooks/useTenantGuard";
 
 interface Member {
   id: string;
@@ -58,6 +59,7 @@ export default function CorporateHrAdminPage() {
   const router = useRouter();
   const { company_slug } = useParams();
   const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
+  const { loading: guardLoading, tenantMeta } = useTenantGuard(["hr_admin", "super_admin"]);
 
   // API Data
   const [members, setMembers] = useState<Member[]>([]);

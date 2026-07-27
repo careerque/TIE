@@ -290,20 +290,7 @@ export default function LoginPage() {
           </div>
 
 
-          {/* ── Register CTA ── */}
-          <div style={{ borderTop:'1px solid rgba(36,59,83,0.08)', paddingTop:'1.375rem', textAlign:'center', animation:'fadeUp .5s .44s both' }}>
-            <p style={{ fontSize:'0.875rem', color:'#627D98' }}>
-              New user?{' '}
-              <Link
-                href="/register"
-                style={{ color:'#5BA4A4', fontWeight:700, textDecoration:'none' }}
-                onMouseEnter={e => (e.currentTarget.style.textDecoration='underline')}
-                onMouseLeave={e => (e.currentTarget.style.textDecoration='none')}
-              >
-                Create an account →
-              </Link>
-            </p>
-          </div>
+
 
         </div>
       </div>

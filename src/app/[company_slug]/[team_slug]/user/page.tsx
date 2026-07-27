@@ -29,6 +29,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import ReportViewer from "@/components/ReportViewer";
 
+import { useTenantGuard } from "@/hooks/useTenantGuard";
+import { AssessmentHeader } from "@/components/AssessmentHeader";
+
 interface SeededQuestion extends CleanQuestion {
   shuffledOptions: {
     text: string;
@@ -57,6 +60,8 @@ export default function EmployeeWorkspacePage() {
   const targetUserId = searchParams.get("viewReportFor");
 
   const { isLoggedIn, profile, user, loading: authLoading } = useAuthContext();
+  const { loading: guardLoading, tenantMeta, error: guardError } = useTenantGuard(["user", "manager", "hr_admin", "super_admin"]);
+
 
   // Unified Workflow State: 'loading' | 'viewing_report' | 'taking_test' | 'taking_reflection' | 'generating_report'
   const [workflowState, setWorkflowState] = useState<string>("loading");
@@ -511,82 +516,19 @@ export default function EmployeeWorkspacePage() {
         {/* Background decoration */}
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
-        {/* Header Panel */}
-        <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: CARD_PADDING, boxShadow: 'var(--shadow-card)', position: 'relative', overflow: 'hidden', boxSizing: 'border-box' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: '#243B53' }} />
-          
-          <div style={{ textAlign: 'left' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#243B53', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
-              Work Style Preferences Assessment
-            </h1>
-            <p style={{ fontSize: '0.875rem', color: '#627D98', marginTop: '0.5rem', fontWeight: 500 }}>
-              Select the response that best describes your typical behavior for each workplace scenario. All choices are securely auto-saved instantly.
-            </p>
-          </div>
-        </div>
-
-        {/* Sticky/Fixed Progress Bar */}
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.95)',
-            border: '1px solid rgba(36,59,83,0.08)',
-            borderRadius: '20px',
-            padding: CARD_PADDING_SM,
-            boxShadow: 'var(--shadow-card)',
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1.5rem',
-            flexWrap: 'wrap',
-            position: 'sticky',
-            top: '1rem',
-            zIndex: 10,
-            backdropFilter: 'blur(8px)',
-            boxSizing: 'border-box'
-          }}
-        >
-          <div style={{ textAlign: 'left' }}>
-            <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#9aa8b6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overall Progress</span>
-            <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#243B53', marginTop: '2px' }}>
-              {totalAnsweredCount} <span style={{ color: '#9aa8b6', fontSize: '0.875rem', fontWeight: 500 }}>/ 24 Answered</span>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, maxHeight: '8px', backgroundColor: '#F4F7FA', height: '8px', borderRadius: '99px', overflow: 'hidden', minWidth: '150px' }}>
-            <div style={{ backgroundColor: '#5BA4A4', height: '100%', borderRadius: '99px', width: `${Math.round((totalAnsweredCount / 24) * 100)}%`, transition: 'width 0.4s ease' }} />
-          </div>
-
-          {isAllCompleted ? (
-            <button
-              onClick={handleCompleteTest}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '0.65rem 1.25rem',
-                background: '#5BA4A4',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 4px 6px -1px rgba(91,164,164,0.2)'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#4a9393'}
-              onMouseLeave={e => e.currentTarget.style.background = '#5BA4A4'}
-            >
-              <span>Continue to Reflection</span>
-              <Send size={13} />
-            </button>
-          ) : (
-            <span style={{ fontSize: '0.75rem', color: '#c0392b', fontWeight: 700 }}>
-              ⚠️ Answer {24 - totalAnsweredCount} more to submit
-            </span>
-          )}
-        </div>
+        {/* Executive Assessment Header (Displays Company Name, Manager Name, Team Name, Candidate User Name & Progress) */}
+        <AssessmentHeader
+          companyName={tenantMeta.companyName}
+          teamName={tenantMeta.teamName}
+          managerName={tenantMeta.managerName}
+          userName={tenantMeta.userName}
+          userDesignation={tenantMeta.userDesignation}
+          userEmployeeId={tenantMeta.userEmployeeId}
+          totalAnsweredCount={totalAnsweredCount}
+          totalQuestions={24}
+          isAllCompleted={isAllCompleted}
+          onCompleteTest={handleCompleteTest}
+        />
 
         {/* 24 Question List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

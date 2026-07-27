@@ -51,6 +51,8 @@ export default function ProfileOutputPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState("Analyzing your assessment responses...");
   const [resolvedTargetUserId, setResolvedTargetUserId] = useState<string>("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgressText, setPdfProgressText] = useState("");
 
   useEffect(() => {
     if (apiLoading) {
@@ -114,7 +116,7 @@ export default function ProfileOutputPage() {
           last_name: lastName,
           employee_id: employeeId,
           designation,
-          experience_years: experience,
+          experience_years: expNum,
           interests
         });
         await refreshProfile();

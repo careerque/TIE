@@ -106,11 +106,8 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="tie-navbar-links-group">
-              <Link href="/login" className="tie-navbar-btn-signin">
+              <Link href="/login" className="tie-navbar-btn-cta">
                 Sign In
-              </Link>
-              <Link href="/register" className="tie-navbar-btn-register">
-                Get Started
               </Link>
             </div>
           )}
@@ -212,18 +209,10 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="tie-navbar-btn-signin"
+                  className="tie-navbar-btn-cta"
                   style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
                 >
                   Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="tie-navbar-btn-register"
-                  style={{ width: "100%", textAlign: "center", justifyContent: "center", display: "inline-flex" }}
-                >
-                  Get Started
                 </Link>
               </div>
             )}

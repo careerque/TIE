@@ -319,8 +319,8 @@ export default function WelcomePage() {
                 </Link>
               )
             ) : (
-              <Link href="/register" className="home-btn-primary">
-                Get Started
+              <Link href="/login" className="home-btn-primary">
+                Sign In to Workspace
                 <ArrowRight size={16} />
               </Link>
             )}
@@ -645,33 +645,10 @@ export default function WelcomePage() {
                 </>
               )
             ) : (
-              <>
-                <Link href="/register" className="home-btn-primary">
-                  Get Started Free
-                  <ArrowRight size={16} />
-                </Link>
-                <Link
-                  href="/login"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "0.875rem 1.75rem",
-                    background: "rgba(255,255,255,0.08)",
-                    color: "rgba(255,255,255,0.80)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    borderRadius: "12px",
-                    fontSize: "0.9375rem",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  Sign In
-                </Link>
-              </>
+              <Link href="/login" className="home-btn-primary">
+                Sign In to Workspace
+                <ArrowRight size={16} />
+              </Link>
             )}
           </div>
         </div>
