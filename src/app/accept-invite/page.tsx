@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 import { Sparkles, KeyRound, User, CheckCircle2, ShieldAlert, Loader2, Briefcase, Award } from "lucide-react";
 
 function AcceptInviteContent() {
@@ -36,8 +37,11 @@ function AcceptInviteContent() {
     const initializePage = async () => {
       try {
         await supabasedb.auth.signOut();
-        localStorage.clear();
-        sessionStorage.clear();
+        CookieUtils.clearAll();
+        if (typeof window !== "undefined") {
+          localStorage.clear();
+          sessionStorage.clear();
+        }
       } catch (err) {
         console.warn("Error signing out previous sessions:", err);
       }

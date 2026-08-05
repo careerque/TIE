@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useAuthContext } from "@/context/AuthContext";
 import { projectService } from "@/services/projectService";
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 
 export default function ReflectionPage() {
   const router = useRouter();
@@ -36,8 +37,8 @@ export default function ReflectionPage() {
 
         // If we have a company_id, we are a workspace user!
         if (profile.company_id) {
-          const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
-          const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+          const cachedComp = CookieUtils.get(`company-slug-${profile.company_id}`);
+          const cachedTm = profile.team_id ? CookieUtils.get(`team-slug-${profile.team_id}`) : null;
 
           let resolvedComp = cachedComp || "none";
           let resolvedTm = cachedTm || "none";
@@ -55,11 +56,11 @@ export default function ReflectionPage() {
               const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
               if (compRes.data?.slug) {
                 resolvedComp = compRes.data.slug;
-                sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedComp);
+                CookieUtils.set(`company-slug-${profile.company_id}`, resolvedComp);
               }
               if (tmRes.data?.slug) {
                 resolvedTm = tmRes.data.slug;
-                sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTm);
+                CookieUtils.set(`team-slug-${profile.team_id}`, resolvedTm);
               }
             } catch (err) {
               console.error("Failed to fetch redirect slugs:", err);

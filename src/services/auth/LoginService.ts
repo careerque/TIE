@@ -1,4 +1,5 @@
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 import { ServiceResponse } from "@/types/serviceResponse";
 import { logoutUser } from "./LogoutService";
 
@@ -67,7 +68,7 @@ export const loginUser = async (email: string, psw: string): Promise<ServiceResp
               ? profileData.experience_years 
               : 0;
 
-            localStorage.setItem("tie-user-profile", JSON.stringify({
+            CookieUtils.set("tie-user-profile", JSON.stringify({
               first_name: profileData.first_name || "",
               last_name: profileData.last_name || "",
               email: userData.user.email || "",

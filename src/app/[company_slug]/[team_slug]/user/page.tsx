@@ -24,13 +24,17 @@ import {
   Brain,
   ArrowRight,
   Check,
-  FileText
+  FileText,
+  Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReportViewer from "@/components/ReportViewer";
+import { ActionPlanView } from "@/components/wbil/ActionPlanView";
+import { ActionPlanJSON } from "@/types/wbil";
 
 import { useTenantGuard } from "@/hooks/useTenantGuard";
 import { AssessmentHeader } from "@/components/AssessmentHeader";
+
 
 interface SeededQuestion extends CleanQuestion {
   shuffledOptions: {
@@ -82,7 +86,13 @@ export default function EmployeeWorkspacePage() {
   const [reportData, setReportData] = useState<SavedReport | null>(null);
   const [reportTargetProfile, setReportTargetProfile] = useState<any>(null);
 
+  // Workspace Tab & Action Plan State
+  const [activeTab, setActiveTab] = useState<'report' | 'action_plan'>('report');
+  const [actionPlanData, setActionPlanData] = useState<ActionPlanJSON | null>(null);
+  const [actionPlanId, setActionPlanId] = useState<string | undefined>(undefined);
+
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
   const cleanApiUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
   useEffect(() => {
@@ -142,6 +152,21 @@ export default function EmployeeWorkspacePage() {
           scoring_metrics: data.scoring_metrics,
           manager_signals: data.manager_signals
         });
+
+        // Also fetch action plan if available
+        try {
+          const apRes = await fetch(`${cleanApiUrl}/api/v1/action-plans/user/${targetUserId}`);
+          if (apRes.ok) {
+            const apJson = await apRes.json();
+            if (apJson.status === "SUCCESS" && apJson.data) {
+              setActionPlanData(apJson.data);
+              setActionPlanId(apJson.action_plan_id);
+            }
+          }
+        } catch (e) {
+          console.log("No action plan found:", e);
+        }
+
         setWorkflowState("viewing_report");
         return;
       }
@@ -157,9 +182,25 @@ export default function EmployeeWorkspacePage() {
       if (cachedReport) {
         setReportData(cachedReport as SavedReport);
         setReportTargetProfile(profile);
+
+        // Fetch action plan if available
+        try {
+          const apRes = await fetch(`${cleanApiUrl}/api/v1/action-plans/user/${user.id}`);
+          if (apRes.ok) {
+            const apJson = await apRes.json();
+            if (apJson.status === "SUCCESS" && apJson.data) {
+              setActionPlanData(apJson.data);
+              setActionPlanId(apJson.action_plan_id);
+            }
+          }
+        } catch (e) {
+          console.log("No action plan found:", e);
+        }
+
         setWorkflowState("viewing_report");
         return;
       }
+
 
       // Check if they completed reflection but the report hasn't generated (self-healing report generation)
       const { data: feedbackRow } = await supabasedb
@@ -953,20 +994,94 @@ export default function EmployeeWorkspacePage() {
           </div>
         )}
 
-        <ReportViewer
-          reportMarkdown={reportData.report_markdown}
-          scoringMetrics={reportData.scoring_metrics}
-          employeeName={`${reportTargetProfile?.first_name || ""} ${reportTargetProfile?.last_name || ""}`.trim() || "Employee"}
-          employeeId={reportTargetProfile?.employee_id || targetUserId || user?.id || "—"}
-          designation={reportTargetProfile?.designation || "—"}
-          experienceYears={String(reportTargetProfile?.experience_years ?? 0)}
-          department={(team_slug as string) === "none" ? "Corporate" : (team_slug as string)}
-          interests={displayInterests || "—"}
-          email={reportTargetProfile?.email || "—"}
-        />
+        {/* Workspace Tab Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ffffff', padding: '6px', borderRadius: '16px', border: '1px solid rgba(36,59,83,0.1)', maxWidth: '440px' }}>
+          <button
+            onClick={() => setActiveTab('report')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              borderRadius: '12px',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'report' ? '#5BA4A4' : 'transparent',
+              color: activeTab === 'report' ? '#ffffff' : '#627D98',
+              transition: 'all 0.2s'
+            }}
+          >
+            <FileText size={14} />
+            <span>TIE Behavioral Report</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('action_plan')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              borderRadius: '12px',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'action_plan' ? '#5BA4A4' : 'transparent',
+              color: activeTab === 'action_plan' ? '#ffffff' : '#627D98',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Target size={14} />
+            <span>30-Day Action Plan</span>
+            {actionPlanData && (
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34D399', display: 'inline-block' }} />
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'report' ? (
+          <ReportViewer
+            reportMarkdown={reportData.report_markdown}
+            scoringMetrics={reportData.scoring_metrics}
+            employeeName={`${reportTargetProfile?.first_name || ""} ${reportTargetProfile?.last_name || ""}`.trim() || "Employee"}
+            employeeId={reportTargetProfile?.employee_id || targetUserId || user?.id || "—"}
+            designation={reportTargetProfile?.designation || "—"}
+            experienceYears={String(reportTargetProfile?.experience_years ?? 0)}
+            department={(team_slug as string) === "none" ? "Corporate" : (team_slug as string)}
+            interests={displayInterests || "—"}
+            email={reportTargetProfile?.email || "—"}
+          />
+        ) : (
+          <div>
+            {actionPlanData ? (
+              <ActionPlanView
+                actionPlanId={actionPlanId}
+                employeeName={`${reportTargetProfile?.first_name || ""} ${reportTargetProfile?.last_name || ""}`.trim() || "Employee"}
+                actionPlanData={actionPlanData}
+              />
+            ) : (
+              <div style={{ padding: '2.5rem 1.5rem', background: '#ffffff', borderRadius: '24px', border: '1px solid rgba(36,59,83,0.1)', textAlign: 'center', maxWidth: '600px', margin: '2rem auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <div style={{ width: '48px', height: '48px', background: 'rgba(91,164,164,0.1)', color: '#5BA4A4', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                  <Target size={24} />
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#243B53', margin: '0 0 0.5rem 0' }}>No 30-Day Action Plan Created Yet</h3>
+                <p style={{ fontSize: '0.8125rem', color: '#627D98', lineHeight: 1.6, margin: 0 }}>
+                  Your manager will collaborate with you during your 1-on-1 coaching sync to generate a personalized 30-Day Action Plan based on your TIE Report insights.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     );
   }
+
 
   return null;
 }

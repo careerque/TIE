@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, User, ClipboardList } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -33,12 +34,12 @@ export default function DashboardPage() {
         setUserName(formatted);
       }
 
-      // Fetch slugs for semantic routing (cached in sessionStorage for instant loading)
+      // Fetch slugs for semantic routing (cached in cookies for instant loading)
       const fetchSlugs = async () => {
         if (!profile) return;
         
-        const cachedComp = sessionStorage.getItem(`company-slug-${profile.company_id}`);
-        const cachedTm = profile.team_id ? sessionStorage.getItem(`team-slug-${profile.team_id}`) : null;
+        const cachedComp = CookieUtils.get(`company-slug-${profile.company_id}`);
+        const cachedTm = profile.team_id ? CookieUtils.get(`team-slug-${profile.team_id}`) : null;
 
         if (cachedComp) setCompanySlug(cachedComp);
         if (cachedTm) setTeamSlug(cachedTm);
@@ -59,11 +60,11 @@ export default function DashboardPage() {
           const [compRes, tmRes] = await Promise.all([compPromise, tmPromise]);
           if (compRes.data) {
             setCompanySlug(compRes.data.slug);
-            sessionStorage.setItem(`company-slug-${profile.company_id}`, compRes.data.slug);
+            CookieUtils.set(`company-slug-${profile.company_id}`, compRes.data.slug);
           }
           if (tmRes.data) {
             setTeamSlug(tmRes.data.slug);
-            sessionStorage.setItem(`team-slug-${profile.team_id}`, tmRes.data.slug);
+            CookieUtils.set(`team-slug-${profile.team_id}`, tmRes.data.slug);
           }
         } catch (err) {
           console.error("Failed to fetch dashboard slugs in parallel:", err);

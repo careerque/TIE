@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabasedb } from '@/lib/supabaseClient';
+import { CookieUtils } from '@/lib/cookieUtils';
 
 /* ─── Icons ─────────────────────────────────────────────── */
 const ShieldCheck = () => (
@@ -104,11 +105,9 @@ export default function EmailConfirmationPage() {
         }
 
         if (session) {
-          // Success! Write states to localStorage
-          localStorage.setItem('isLoggedIn', 'true');
-          localStorage.setItem('userEmail', session.user.email || '');
-
-
+          // Success! Write states to cookies
+          CookieUtils.set('isLoggedIn', 'true');
+          CookieUtils.set('userEmail', session.user.email || '');
 
           // Dispatch event to update global header
           window.dispatchEvent(new Event('auth-change'));
@@ -125,7 +124,7 @@ export default function EmailConfirmationPage() {
             setErrorMessage(decodeURIComponent(errorMsg).replace(/\+/g, ' '));
           } else {
             // Check if user is already logged in as a fallback
-            const logged = localStorage.getItem('isLoggedIn') === 'true';
+            const logged = CookieUtils.get('isLoggedIn') === 'true';
             if (logged) {
               setStatus('success');
             } else {

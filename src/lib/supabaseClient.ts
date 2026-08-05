@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseCookieStorage } from './cookieUtils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-set-your-supabase-url.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -13,4 +14,11 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
   }
 }
 
-export const supabasedb = createClient(supabaseUrl, supabaseAnonKey);
+export const supabasedb = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: supabaseCookieStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});

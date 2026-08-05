@@ -522,19 +522,35 @@ async def verify_email(email: str):
 @app.post("/api/invitations/create")
 async def create_invitation(payload: InvitationCreate):
     try:
-        # Check if user already has an active profile
-        profile_query = supabase.table("profiles").select("id").eq("email", payload.email).execute()
+        clean_email = payload.email.strip().lower()
+
+        # 1. Check if user already has an active profile (case-insensitive)
+        profile_query = supabase.table("profiles").select("id").ilike("email", clean_email).execute()
         if profile_query.data and len(profile_query.data) > 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"User with email {payload.email} already has an active account."
+                detail=f"An active account with email '{clean_email}' already exists in the organization."
             )
         
-        # Check if there is an active pending invite for this email
-        invite_query = supabase.table("invitations").select("*").eq("email", payload.email).eq("status", "pending").execute()
+        # 2. Check if user already exists in Supabase Auth
+        try:
+            auth_users = supabase.auth.admin.list_users()
+            for u in auth_users:
+                if u.email and u.email.strip().lower() == clean_email:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"An active account with email '{clean_email}' already exists in Auth."
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+        # 3. Check if there is an active pending invite for this email
+        invite_query = supabase.table("invitations").select("*").ilike("email", clean_email).eq("status", "pending").execute()
         if invite_query.data and len(invite_query.data) > 0:
             # Delete the old pending invitation first to prevent conflicts
-            supabase.table("invitations").delete().eq("email", payload.email).eq("status", "pending").execute()
+            supabase.table("invitations").delete().ilike("email", clean_email).eq("status", "pending").execute()
 
         # Resolve/Provision Team
         team_id = None
@@ -558,9 +574,9 @@ async def create_invitation(payload: InvitationCreate):
         # Generate secure random token
         token = secrets.token_urlsafe(32)
         
-        # Insert Invitation record
+        # Insert Invitation record ONLY (no profile or auth user created yet)
         invite_data = {
-            "email": payload.email,
+            "email": clean_email,
             "role": payload.role,
             "company_id": payload.company_id,
             "team_id": team_id,
@@ -580,7 +596,7 @@ async def create_invitation(payload: InvitationCreate):
             comp_name = comp_res.data[0]["name"]
 
         # Send email activation
-        email_sent, email_err = send_activation_email(payload.email, token, payload.role, comp_name)
+        email_sent, email_err = send_activation_email(clean_email, token, payload.role, comp_name)
         if not email_sent:
             raise HTTPException(
                 status_code=500,
@@ -598,6 +614,7 @@ async def create_invitation(payload: InvitationCreate):
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/invitations")
 async def get_invitations(company_id: Optional[str] = None):
@@ -882,10 +899,10 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
     </html>
     """
 
-    use_smtp_override = os.getenv("USE_SMTP", "").lower() in ["true", "1"] or os.getenv("EMAIL_PROVIDER", "").lower() == "smtp"
+    force_smtp = os.getenv("EMAIL_PROVIDER", "").lower() == "smtp"
     resend_api_key = os.getenv("RESEND_API_KEY")
     
-    if resend_api_key and not use_smtp_override:
+    if resend_api_key and not force_smtp:
         import requests
         print(f"Attempting to dispatch email via Resend API to {to_email}...")
         url = "https://api.resend.com/emails"
@@ -894,12 +911,10 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
             "Content-Type": "application/json"
         }
         
-        smtp_user = os.getenv("SMTP_USER")
-        smtp_from = os.getenv("SMTP_FROM", smtp_user)
-        from_address = smtp_from if smtp_from else "onboarding@resend.dev"
+        resend_from = os.getenv("RESEND_FROM_EMAIL") or os.getenv("SMTP_FROM") or os.getenv("SMTP_USER") or "onboarding@careerque.in"
         
         payload = {
-            "from": from_address,
+            "from": resend_from,
             "to": to_email,
             "subject": f"Activate your TIE Account - {company_name}",
             "html": html
@@ -915,13 +930,15 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
                     err_detail = response.json().get("message", response.text)
                 except Exception:
                     err_detail = response.text
-                print(f"[ERROR] Resend API error: {err_detail}")
-                return False, f"Resend API error: {err_detail}"
+                print(f"[ERROR] Resend API error ({response.status_code}): {err_detail}")
+                if not os.getenv("SMTP_HOST"):
+                    return False, f"Resend API error: {err_detail}"
         except Exception as e:
             print(f"[ERROR] Failed to send via Resend API: {str(e)}")
-            return False, f"Resend API connection error: {str(e)}"
+            if not os.getenv("SMTP_HOST"):
+                return False, f"Resend API connection error: {str(e)}"
 
-    # Fallback to standard SMTP
+    # Fallback to standard SMTP if configured
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
@@ -933,13 +950,13 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
     smtp_from = os.getenv("SMTP_FROM", smtp_user)
 
     if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
-        print(f"\n[WARNING] SMTP email dispatch is not configured. MOCK EMAIL log:\n"
+        print(f"\n[WARNING] Neither Resend nor SMTP email dispatch is configured. MOCK EMAIL log:\n"
               f"To: {to_email}\n"
               f"Subject: Activate your TIE Account for {company_name}\n"
               f"Link: {invite_url}\n"
               f"Role: {role}\n"
-              f"To activate, set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD in .env.local\n")
-        return True, "Mock mode: SMTP not configured"
+              f"To activate, set RESEND_API_KEY in environment variables\n")
+        return True, "Mock mode: Email service not configured"
 
     try:
         msg = MIMEMultipart("alternative")
@@ -968,13 +985,29 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
 @enterprise_router.post("/invite-hr-admin")
 async def invite_hr_admin(payload: HRAdminInvitePayload):
     try:
-        # Ensure user with this email doesn't already have an active profile
-        profile_query = supabase_admin.table("profiles").select("id").eq("email", payload.email).execute()
+        clean_email = payload.email.strip().lower()
+
+        # 1. Ensure user with this email doesn't already have an active profile (case-insensitive)
+        profile_query = supabase_admin.table("profiles").select("id").ilike("email", clean_email).execute()
         if profile_query.data and len(profile_query.data) > 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"An active account with email {payload.email} already exists."
+                detail=f"An active account with email '{clean_email}' already exists in the organization."
             )
+
+        # 2. Check if user already exists in Supabase Auth
+        try:
+            auth_users = supabase_admin.auth.admin.list_users()
+            for u in auth_users:
+                if u.email and u.email.strip().lower() == clean_email:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"An active account with email '{clean_email}' already exists in Auth."
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
 
         # Calculate unique semantic path slug
         company_slug = payload.company_name.lower().strip().replace(" ", "-")
@@ -995,17 +1028,17 @@ async def invite_hr_admin(payload: HRAdminInvitePayload):
         secure_token = secrets.token_urlsafe(32)
         
         # Check if active pending invitation already exists for this email
-        invite_query = supabase_admin.table("invitations").select("*").eq("email", payload.email).eq("status", "pending").execute()
+        invite_query = supabase_admin.table("invitations").select("*").ilike("email", clean_email).eq("status", "pending").execute()
         if invite_query.data:
-            supabase_admin.table("invitations").delete().eq("email", payload.email).eq("status", "pending").execute()
+            supabase_admin.table("invitations").delete().ilike("email", clean_email).eq("status", "pending").execute()
 
-        # Track the active validation state
+        # Track the active validation state ONLY (no profile or auth user created yet)
         supabase_admin.table("invitations").insert({
-            "email": payload.email, "role": "hr_admin", "company_id": company_id, "token": secure_token
+            "email": clean_email, "role": "hr_admin", "company_id": company_id, "token": secure_token
         }).execute()
         
         # Send email activation
-        email_sent, email_err = send_activation_email(payload.email, secure_token, "HR Admin", payload.company_name)
+        email_sent, email_err = send_activation_email(clean_email, secure_token, "HR Admin", payload.company_name)
         if not email_sent:
             raise HTTPException(
                 status_code=500,
@@ -1013,19 +1046,37 @@ async def invite_hr_admin(payload: HRAdminInvitePayload):
             )
         
         return {"status": "success", "invite_url": f"/accept-invite?token={secure_token}"}
+    except HTTPException as he:
+        raise he
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
 
 @enterprise_router.post("/invite-team-member")
 async def invite_team_member(payload: TeamMemberInvitePayload):
     try:
-        # Ensure user with this email doesn't already have an active profile
-        profile_query = supabase_admin.table("profiles").select("id").eq("email", payload.email).execute()
+        clean_email = payload.email.strip().lower()
+
+        # 1. Ensure user with this email doesn't already have an active profile (case-insensitive)
+        profile_query = supabase_admin.table("profiles").select("id").ilike("email", clean_email).execute()
         if profile_query.data and len(profile_query.data) > 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"An active account with email {payload.email} already exists."
+                detail=f"An active account with email '{clean_email}' already exists in the organization."
             )
+
+        # 2. Check if user already exists in Supabase Auth
+        try:
+            auth_users = supabase_admin.auth.admin.list_users()
+            for u in auth_users:
+                if u.email and u.email.strip().lower() == clean_email:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"An active account with email '{clean_email}' already exists in Auth."
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
 
         # Fetch invoking HR admin's infrastructure environment metrics
         hr_profile = supabase_admin.table("profiles").select("*").eq("id", payload.hr_user_id).execute()
@@ -1050,10 +1101,11 @@ async def invite_team_member(payload: TeamMemberInvitePayload):
         secure_token = secrets.token_urlsafe(32)
         
         # Clean up existing pending invite if any
-        supabase_admin.table("invitations").delete().eq("email", payload.email).eq("status", "pending").execute()
+        supabase_admin.table("invitations").delete().ilike("email", clean_email).eq("status", "pending").execute()
 
+        # Insert invitation record ONLY (no profile or auth user created yet)
         supabase_admin.table("invitations").insert({
-            "email": payload.email, "role": payload.role, "company_id": company_id,
+            "email": clean_email, "role": payload.role, "company_id": company_id,
             "team_id": team_id, "invited_by": payload.hr_user_id, "token": secure_token
         }).execute()
         
@@ -1064,7 +1116,7 @@ async def invite_team_member(payload: TeamMemberInvitePayload):
             comp_name = comp_res.data[0]["name"]
             
         # Send email activation
-        email_sent, email_err = send_activation_email(payload.email, secure_token, payload.role, comp_name)
+        email_sent, email_err = send_activation_email(clean_email, secure_token, payload.role, comp_name)
         if not email_sent:
             raise HTTPException(
                 status_code=500,
@@ -1072,8 +1124,11 @@ async def invite_team_member(payload: TeamMemberInvitePayload):
             )
         
         return {"status": "success", "invite_url": f"/accept-invite?token={secure_token}"}
+    except HTTPException as he:
+        raise he
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
+
 
 @enterprise_router.get("/verify-invite")
 async def verify_invite(token: str):
@@ -1192,4 +1247,122 @@ async def get_user_report(target_user_id: str, current_user_jwt: str = Depends(v
         
     return response.data[0]
 
-app.include_router(enterprise_router)
+app.include_router(enterprise_router)
+
+# ====================================================================
+# PHASE 2: WBIL & EMPLOYEE REPORT GENERATION ENDPOINTS
+# ====================================================================
+from wbil_models import IncompleteDataException
+from wbil_report_service import generate_employee_report
+
+class ReportGenerateRequest(BaseModel):
+    assessment_id: str
+    force_regenerate: Optional[bool] = False
+
+@app.exception_handler(IncompleteDataException)
+async def incomplete_data_exception_handler(request, exc: IncompleteDataException):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Validation Error",
+            "message": f"Assessment data is incomplete. Cannot generate report without calculated metrics. ({str(exc)})"
+        }
+    )
+
+@app.post("/api/v1/reports/generate")
+async def generate_report_endpoint(payload: ReportGenerateRequest):
+    try:
+        result = generate_employee_report(
+            assessment_id=payload.assessment_id,
+            force_regenerate=payload.force_regenerate or False
+        )
+        return result
+    except IncompleteDataException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "Validation Error",
+                "message": f"Assessment data is incomplete. Cannot generate report without calculated metrics. ({str(exc)})"
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)
+        )
+
+# ====================================================================
+# PHASE 3: WBIL 30-DAY ACTION PLAN GENERATION ENDPOINTS
+# ====================================================================
+from wbil_action_plan_service import generate_action_plan
+
+class ActionPlanGenerateRequest(BaseModel):
+    report_id: str
+    manager_priority: Optional[str] = None
+    workplace_context: Optional[str] = None
+
+@app.post("/api/v1/action-plans/generate")
+async def generate_action_plan_endpoint(payload: ActionPlanGenerateRequest):
+    try:
+        result = generate_action_plan(
+            report_id=payload.report_id,
+            manager_priority=payload.manager_priority,
+            workplace_context=payload.workplace_context
+        )
+        return result
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)
+        )
+
+@app.get("/api/v1/action-plans/user/{user_id}")
+async def get_user_action_plan_endpoint(user_id: str):
+    try:
+        res = supabase.table("action_plans").select("*").eq("employee_id", user_id).order("created_at", desc=True).limit(1).execute()
+        if res.data and len(res.data) > 0:
+            plan = res.data[0]
+            return {
+                "status": "SUCCESS",
+                "action_plan_id": plan["id"],
+                "report_id": plan.get("report_id"),
+                "data": plan.get("action_plan_json")
+            }
+        return {"status": "NOT_FOUND", "message": "No active action plan found for this user."}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)
+        )
+
+@app.get("/api/v1/action-plans/report/{report_id}")
+async def get_report_action_plan_endpoint(report_id: str):
+    try:
+        res = supabase.table("action_plans").select("*").eq("report_id", report_id).order("created_at", desc=True).limit(1).execute()
+        if res.data and len(res.data) > 0:
+            plan = res.data[0]
+            return {
+                "status": "SUCCESS",
+                "action_plan_id": plan["id"],
+                "report_id": plan.get("report_id"),
+                "data": plan.get("action_plan_json")
+            }
+        return {"status": "NOT_FOUND", "message": "No active action plan found for this report."}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)
+        )
+
+
+

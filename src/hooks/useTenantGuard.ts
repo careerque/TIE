@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuthContext } from "@/context/AuthContext";
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 
 export interface TenantMetadata {
   companyName: string;
@@ -18,7 +19,9 @@ export interface TenantMetadata {
   isTenantValid: boolean;
 }
 
-export function useTenantGuard(allowedRoles: string[] = ["user", "manager", "hr_admin", "super_admin"]) {
+const DEFAULT_ALLOWED_ROLES = ["user", "manager", "hr_admin", "super_admin"];
+
+export function useTenantGuard(allowedRoles: string[] = DEFAULT_ALLOWED_ROLES) {
   const router = useRouter();
   const params = useParams();
   const routeCompanySlug = (params?.company_slug as string) || "";
@@ -83,8 +86,8 @@ export function useTenantGuard(allowedRoles: string[] = ["user", "manager", "hr_
       let resolvedCompName = "";
       let resolvedCompSlug = "";
 
-      const cachedCompSlug = sessionStorage.getItem(`company-slug-${profile.company_id}`);
-      const cachedCompName = sessionStorage.getItem(`company-name-${profile.company_id}`);
+      const cachedCompSlug = CookieUtils.get(`company-slug-${profile.company_id}`);
+      const cachedCompName = CookieUtils.get(`company-name-${profile.company_id}`);
 
       if (cachedCompSlug && cachedCompName) {
         resolvedCompSlug = cachedCompSlug;
@@ -102,8 +105,8 @@ export function useTenantGuard(allowedRoles: string[] = ["user", "manager", "hr_
 
         resolvedCompSlug = compData.slug;
         resolvedCompName = compData.name;
-        sessionStorage.setItem(`company-slug-${profile.company_id}`, resolvedCompSlug);
-        sessionStorage.setItem(`company-name-${profile.company_id}`, resolvedCompName);
+        CookieUtils.set(`company-slug-${profile.company_id}`, resolvedCompSlug);
+        CookieUtils.set(`company-name-${profile.company_id}`, resolvedCompName);
       }
 
       // 3. Multi-Tenant Cross-Company Access Insulation Guard
@@ -133,8 +136,8 @@ export function useTenantGuard(allowedRoles: string[] = ["user", "manager", "hr_
       let resolvedManagerName = "Reporting Manager";
 
       if (profile.team_id) {
-        const cachedTeamSlug = sessionStorage.getItem(`team-slug-${profile.team_id}`);
-        const cachedTeamName = sessionStorage.getItem(`team-name-${profile.team_id}`);
+        const cachedTeamSlug = CookieUtils.get(`team-slug-${profile.team_id}`);
+        const cachedTeamName = CookieUtils.get(`team-name-${profile.team_id}`);
 
         if (cachedTeamSlug && cachedTeamName) {
           resolvedTeamSlug = cachedTeamSlug;
@@ -149,8 +152,8 @@ export function useTenantGuard(allowedRoles: string[] = ["user", "manager", "hr_
           if (tmData) {
             resolvedTeamSlug = tmData.slug || "none";
             resolvedTeamName = tmData.name || "Team";
-            sessionStorage.setItem(`team-slug-${profile.team_id}`, resolvedTeamSlug);
-            sessionStorage.setItem(`team-name-${profile.team_id}`, resolvedTeamName);
+            CookieUtils.set(`team-slug-${profile.team_id}`, resolvedTeamSlug);
+            CookieUtils.set(`team-name-${profile.team_id}`, resolvedTeamName);
 
             // Fetch team manager name if assigned
             if (tmData.manager_id) {

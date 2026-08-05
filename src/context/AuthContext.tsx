@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { supabasedb } from "@/lib/supabaseClient";
+import { CookieUtils } from "@/lib/cookieUtils";
 
 interface Profile {
   first_name: string;
@@ -89,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             setProfile(profileData);
             if (typeof window !== "undefined") {
-              localStorage.setItem("tie-user-profile", JSON.stringify(profileData));
+              CookieUtils.set("tie-user-profile", JSON.stringify(profileData));
             }
             return;
           } else {
@@ -118,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setProfile(profileData);
         if (typeof window !== "undefined") {
-          localStorage.setItem("tie-user-profile", JSON.stringify(profileData));
+          CookieUtils.set("tie-user-profile", JSON.stringify(profileData));
         }
       }
     } catch (err) {
@@ -136,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("tie-user-profile");
+        CookieUtils.remove("tie-user-profile");
       }
       await supabasedb.auth.signOut();
       setUser(null);
@@ -149,19 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Check if there is any Supabase session in localStorage
+    // Check if there is any Supabase session in cookies
     if (typeof window !== "undefined") {
-      let hasSession = false;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes("-auth-token")) {
-          hasSession = true;
-          break;
-        }
-      }
+      const hasSession = document.cookie ? document.cookie.includes("-auth-token") : false;
       
       // Load cached profile if it exists
-      const cached = localStorage.getItem("tie-user-profile");
+      const cached = CookieUtils.get("tie-user-profile");
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -181,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Only set loading back to true for initial loads or explicit sign-ins to avoid background token refresh flashes
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
         // Only trigger loading block if we don't have a cached profile to avoid layout redraw flashes
-        if (!localStorage.getItem("tie-user-profile")) {
+        if (!CookieUtils.get("tie-user-profile")) {
           setLoading(true);
         }
       }
@@ -193,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setProfile(null);
         if (typeof window !== "undefined") {
-          localStorage.removeItem("tie-user-profile");
+          CookieUtils.remove("tie-user-profile");
         }
       }
 
