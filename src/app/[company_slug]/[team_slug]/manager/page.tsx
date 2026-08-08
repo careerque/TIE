@@ -27,11 +27,16 @@ import {
   Database,
   FileSpreadsheet,
   UserPlus,
-  AlertCircle
+  AlertCircle,
+  Target
 } from "lucide-react";
 import Link from "next/link";
 import ReportViewer from "@/components/ReportViewer";
 import { useTenantGuard } from "@/hooks/useTenantGuard";
+import { ActionPlanGeneratorModal } from "@/components/wbil/ActionPlanGeneratorModal";
+import { ActionPlanView } from "@/components/wbil/ActionPlanView";
+import { ActionPlanJSON, DevelopmentPriority } from "@/types/wbil";
+
 
 interface MemberProfile {
   id: string;
@@ -80,7 +85,16 @@ export default function TeamLeadManagerPage() {
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Action Plans Map & Modal States
+  const [actionPlans, setActionPlans] = useState<Record<string, any>>({});
+  const [isGeneratorModalOpen, setIsGeneratorModalOpen] = useState(false);
+  const [generatorMember, setGeneratorMember] = useState<MemberProfile | null>(null);
+  const [generatorReportId, setGeneratorReportId] = useState<string>("");
+  const [generatorPriorities, setGeneratorPriorities] = useState<DevelopmentPriority[]>([]);
+  const [viewingActionPlan, setViewingActionPlan] = useState<{ member: MemberProfile; plan: any } | null>(null);
+
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
   const cleanApiUrl = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
   // Invite Member Form State
@@ -156,12 +170,68 @@ export default function TeamLeadManagerPage() {
         calculateTeamMetrics(filteredReports);
       }
 
+      // Fetch Action Plans for team members
+      const memberIds = filteredMembers.map(m => m.id);
+      if (memberIds.length > 0) {
+        const { data: plansData } = await supabasedb
+          .from("action_plans")
+          .select("*")
+          .in("employee_id", memberIds);
+        
+        if (plansData) {
+          const plansMap: Record<string, any> = {};
+          plansData.forEach((p: any) => {
+            plansMap[p.employee_id] = p;
+          });
+          setActionPlans(plansMap);
+        }
+      }
+
     } catch (err) {
       console.error("Error fetching team stats:", err);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleOpenActionPlanGenerator = async (member: MemberProfile) => {
+    setGeneratorMember(member);
+    setGeneratorReportId(member.id);
+    setGeneratorPriorities([]);
+    
+    // Fetch priorities from backend report service
+    try {
+      const res = await fetch(`${cleanApiUrl}/api/v1/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assessment_id: member.id })
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.status === 'SUCCESS' && result.data) {
+          setGeneratorReportId(result.report_id || member.id);
+          if (result.data.development_priorities && result.data.development_priorities.length > 0) {
+            setGeneratorPriorities(result.data.development_priorities);
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Notice fetching report priorities:", e);
+    }
+    
+    setIsGeneratorModalOpen(true);
+  };
+
+  const handleOpenActionPlanView = (member: MemberProfile) => {
+    const planRecord = actionPlans[member.id];
+    if (planRecord) {
+      setViewingActionPlan({
+        member,
+        plan: planRecord
+      });
+    }
+  };
+
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -876,29 +946,80 @@ export default function TeamLeadManagerPage() {
                         </span>
 
                         {report ? (
-                          <button
-                            onClick={() => handleOpenReportModal(member)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '8px 14px',
-                              background: '#243B53',
-                              color: '#ffffff',
-                              border: 'none',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#1a2d40'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#243B53'}
-                          >
-                            <FileText size={12} />
-                            <span>Review Report</span>
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              onClick={() => handleOpenReportModal(member)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 14px',
+                                background: '#243B53',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#1a2d40'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#243B53'}
+                            >
+                              <FileText size={12} />
+                              <span>Review Report</span>
+                            </button>
+
+                            {actionPlans[member.id] ? (
+                              <button
+                                onClick={() => handleOpenActionPlanView(member)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '8px 14px',
+                                  background: '#047857',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#065f46'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#047857'}
+                              >
+                                <Target size={12} />
+                                <span>View 30-Day Plan</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenActionPlanGenerator(member)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '8px 14px',
+                                  background: '#4F46E5',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#4F46E5'}
+                              >
+                                <Sparkles size={12} />
+                                <span>Generate 30-Day Plan</span>
+                              </button>
+                            )}
+                          </div>
                         ) : (
+
                           <span style={{ fontSize: '11px', color: '#9aa8b6', fontWeight: 500, fontStyle: 'italic' }}>Awaiting assessment</span>
                         )}
                       </div>
@@ -959,7 +1080,7 @@ export default function TeamLeadManagerPage() {
                 borderBottom: '1px solid #f1f5f9',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'between'
+                justifyContent: 'space-between'
               }}
             >
               <div style={{ textAlign: 'left' }}>
@@ -968,20 +1089,73 @@ export default function TeamLeadManagerPage() {
                 </h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5" style={{ margin: '4px 0 0 0' }}>Enforcing Database-level insulation metrics (RLS)</p>
               </div>
-              <button 
-                onClick={() => setSelectedMember(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-                style={{
-                  padding: '6px',
-                  color: '#94a3b8',
-                  borderRadius: '12px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <X size={20} />
-              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {actionPlans[selectedMember.id] ? (
+                  <button
+                    onClick={() => {
+                      const mem = selectedMember;
+                      setSelectedMember(null);
+                      handleOpenActionPlanView(mem);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      background: '#047857',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Target size={14} />
+                    <span>View 30-Day Plan</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const mem = selectedMember;
+                      setSelectedMember(null);
+                      handleOpenActionPlanGenerator(mem);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      background: '#4F46E5',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>Generate 30-Day Plan</span>
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => setSelectedMember(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                  style={{
+                    padding: '6px',
+                    color: '#94a3b8',
+                    borderRadius: '12px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -1028,6 +1202,74 @@ export default function TeamLeadManagerPage() {
           </div>
         </div>
       )}
+
+      {/* Action Plan Generator Modal */}
+      {isGeneratorModalOpen && generatorMember && (
+        <ActionPlanGeneratorModal
+          isOpen={isGeneratorModalOpen}
+          onClose={() => setIsGeneratorModalOpen(false)}
+          reportId={generatorReportId}
+          developmentPriorities={generatorPriorities.length > 0 ? generatorPriorities : [
+            { priority_number: 1, behaviour_id: 'WB-001', title: 'Accountability & Milestone Ownership', description: 'Enhance proactive milestone delivery and project tracking.', rationale: 'Key sprint deliverable target.' },
+            { priority_number: 2, behaviour_id: 'WB-009', title: 'Adaptive Workplace Collaboration', description: 'Improve cross-functional communication during sprint cycles.', rationale: 'Team alignment requirement.' },
+            { priority_number: 3, behaviour_id: 'WB-015', title: 'Strategic Output Execution', description: 'Ensure predictable high-quality technical outputs.', rationale: 'Performance excellence objective.' }
+          ]}
+          onActionPlanGenerated={(planData, planId) => {
+            const mem = generatorMember;
+            setActionPlans(prev => ({
+              ...prev,
+              [mem.id]: {
+                id: planId,
+                report_id: generatorReportId,
+                employee_id: mem.id,
+                action_plan_json: planData
+              }
+            }));
+            setIsGeneratorModalOpen(false);
+            setViewingActionPlan({
+              member: mem,
+              plan: {
+                id: planId,
+                report_id: generatorReportId,
+                employee_id: mem.id,
+                action_plan_json: planData
+              }
+            });
+          }}
+        />
+      )}
+
+      {/* View 30-Day Action Plan Modal */}
+      {viewingActionPlan && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8 z-50 overflow-y-auto" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', zIndex: 99999, overflowY: 'auto' }}>
+          <div className="bg-white w-full max-w-6xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative" style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '1240px', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
+            <div className="bg-white p-4 border-b border-slate-100 flex items-center justify-between" style={{ backgroundColor: '#ffffff', padding: '1.25rem 1.75rem', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ textAlign: 'left' }}>
+                <h3 className="text-base font-black text-slate-800 uppercase tracking-wider" style={{ margin: 0, color: '#243B53' }}>
+                  30-Day Action Plan: {viewingActionPlan.member.first_name} {viewingActionPlan.member.last_name}
+                </h3>
+                <p className="text-[11px] text-slate-400 font-bold uppercase mt-0.5" style={{ margin: '4px 0 0 0', color: '#627D98' }}>Tailored Executive Transition & Coaching Plan</p>
+              </div>
+              <button 
+                onClick={() => setViewingActionPlan(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl"
+                style={{ padding: '8px', color: '#94a3b8', borderRadius: '12px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 md:p-6 overflow-y-auto flex-1 w-full box-border" style={{ padding: '1.75rem', overflowY: 'auto', flex: '1 1 0%', width: '100%', boxSizing: 'border-box', backgroundColor: '#ffffff' }}>
+              <ActionPlanView
+                actionPlanId={viewingActionPlan.plan.id}
+                employeeName={`${viewingActionPlan.member.first_name} ${viewingActionPlan.member.last_name}`}
+                actionPlanData={viewingActionPlan.plan.action_plan_json || viewingActionPlan.plan}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
+

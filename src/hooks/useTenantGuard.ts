@@ -205,7 +205,19 @@ export function useTenantGuard(allowedRoles: string[] = DEFAULT_ALLOWED_ROLES) {
     } finally {
       setLoading(false);
     }
-  }, [user, profile, routeCompanySlug, routeTeamSlug, allowedRoles, router]);
+  }, [
+    user?.id, 
+    profile?.email, 
+    profile?.role, 
+    profile?.company_id, 
+    profile?.team_id, 
+    routeCompanySlug, 
+    routeTeamSlug, 
+    allowedRoles.join(","), 
+    router
+  ]);
+
+
 
   useEffect(() => {
     if (!authLoading) {

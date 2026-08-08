@@ -72,7 +72,28 @@ def buildRuntimeDataObject(assessment_id: str) -> Dict[str, Any]:
         scoring_metrics = saved.get("scoring_metrics")
         manager_signals = saved.get("manager_signals")
 
+    if scoring_metrics and isinstance(scoring_metrics, dict):
+        raw = scoring_metrics.get("raw_scores", {})
+        if "scp" not in scoring_metrics and "SCP" in raw:
+            scoring_metrics["scp"] = raw.get("SCP", 0)
+        if "ccd" not in scoring_metrics and "CCD" in raw:
+            scoring_metrics["ccd"] = raw.get("CCD", 0)
+        if "fie" not in scoring_metrics and "FIE" in raw:
+            scoring_metrics["fie"] = raw.get("FIE", 0)
+        if "spo" not in scoring_metrics and "SPO" in raw:
+            scoring_metrics["spo"] = raw.get("SPO", 0)
+        if "pattern_combination" not in scoring_metrics and "combination_profile" in scoring_metrics:
+            scoring_metrics["pattern_combination"] = scoring_metrics["combination_profile"]
+        if "section_scores" not in scoring_metrics:
+            scoring_metrics["section_scores"] = {
+                "S1": {"SCP": 0, "FIE": 0, "CCD": 0, "SPO": 0},
+                "S2": {"SCP": 0, "FIE": 0, "CCD": 0, "SPO": 0},
+                "S3": {"SCP": 0, "FIE": 0, "CCD": 0, "SPO": 0},
+                "S4": {"SCP": 0, "FIE": 0, "CCD": 0, "SPO": 0},
+            }
+
     # If not in saved_reports, calculate from user_responses
+
     if not scoring_metrics:
         resp_res = supabase.table("user_responses").select("question_id, selected_option_index").eq("user_id", assessment_id).execute()
         answers = resp_res.data
@@ -202,8 +223,9 @@ def matchWBILBehaviour(
     if isinstance(development_priorities_or_report_id, str):
         report_id = development_priorities_or_report_id.strip()
         try:
-            # Query employee_reports by id or assessment_id
-            res = supabase.table("employee_reports").select("report_json").or_(f"id.eq.{report_id},assessment_id.eq.{report_id}").execute()
+            # Query employee_reports by id, assessment_id, or employee_id
+            res = supabase.table("employee_reports").select("report_json").or_(f"id.eq.{report_id},assessment_id.eq.{report_id},employee_id.eq.{report_id}").execute()
+
             if res.data and len(res.data) > 0:
                 report_json = res.data[0].get("report_json", {})
                 dev_priorities = report_json.get("development_priorities", [])

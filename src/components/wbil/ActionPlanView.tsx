@@ -44,240 +44,502 @@ export const ActionPlanView: React.FC<ActionPlanViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 md:p-8 font-sans space-y-8 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen">
+    <div 
+      style={{
+        width: '100%',
+        maxWidth: '1200px',
+        margin: '0 auto',
+        backgroundColor: '#FFFFFF',
+        color: '#243B53',
+        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* ACTION BAR */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center space-x-3">
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          padding: '1rem 1.5rem',
+          backgroundColor: '#F8FAFC',
+          borderRadius: '16px',
+          border: '1px solid #E2E8F0'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {onBackToReport && (
             <button
               onClick={onBackToReport}
-              className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700 rounded-xl transition-all"
+              style={{
+                padding: '8px 12px',
+                color: '#627D98',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.8125rem',
+                fontWeight: 600
+              }}
               title="Back to Employee Report"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft size={16} />
+              <span>Back</span>
             </button>
           )}
-          <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full uppercase tracking-wider">
-            30-Day Behavioral Action Plan
+          <span 
+            style={{
+              padding: '4px 12px',
+              backgroundColor: 'rgba(91, 164, 164, 0.12)',
+              color: '#5BA4A4',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              borderRadius: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}
+          >
+            30-Day Executive Action Plan
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            For {employeeName}
+          <span style={{ fontSize: '0.8125rem', color: '#627D98', fontWeight: 600 }}>
+            Employee: <strong style={{ color: '#243B53' }}>{employeeName}</strong>
           </span>
         </div>
 
         <button
           onClick={handlePdfDownload}
           disabled={isExporting}
-          className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-indigo-500/25 disabled:opacity-50"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '0.625rem 1.25rem',
+            backgroundColor: '#5BA4A4',
+            color: '#FFFFFF',
+            fontSize: '0.875rem',
+            fontWeight: 700,
+            borderRadius: '12px',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 10px -2px rgba(91, 164, 164, 0.3)',
+            opacity: isExporting ? 0.6 : 1,
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#4A9393'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#5BA4A4'}
         >
-          <Download className="w-4 h-4" />
+          <Download size={16} />
           <span>{isExporting ? 'Generating PDF...' : 'Download Plan PDF'}</span>
         </button>
       </div>
 
       {/* CONTAINER FOR PDF EXPORT */}
-      <div id="action-plan-container" className="space-y-8 bg-slate-50 dark:bg-slate-900 p-2 md:p-6 rounded-3xl">
-        {/* ACTION PLAN BANNER */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-indigo-500/20">
-          <div className="relative z-10 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="px-3 py-1 bg-indigo-500/30 text-indigo-300 text-xs font-mono font-bold rounded-md border border-indigo-400/30">
-                {selected_behaviour?.id}: {selected_behaviour?.name}
-              </span>
-              <span className="text-xs text-slate-400">
-                Status: ACTIVE (30-Day Execution Cycle)
-              </span>
-            </div>
+      <div 
+        id="action-plan-container" 
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          backgroundColor: '#FFFFFF'
+        }}
+      >
+        {/* HERO BANNER */}
+        <div 
+          style={{
+            background: 'linear-gradient(135deg, #102A43 0%, #243B53 100%)',
+            color: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 10px 25px -5px rgba(36, 59, 83, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <span 
+              style={{
+                padding: '6px 14px',
+                backgroundColor: 'rgba(91, 164, 164, 0.25)',
+                color: '#81E6D9',
+                fontSize: '0.75rem',
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                borderRadius: '8px',
+                border: '1px solid rgba(129, 230, 217, 0.3)'
+              }}
+            >
+              {selected_behaviour?.id}: {selected_behaviour?.name}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#9FB3C8', fontWeight: 600 }}>
+              Status: <strong style={{ color: '#3EBD93' }}>ACTIVE (30-Day Execution Cycle)</strong>
+            </span>
+          </div>
 
-            <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                30-Day Target Outcome Goal
-              </h1>
-              <p className="text-base text-indigo-200 leading-relaxed max-w-3xl">
-                {outcome_30_day}
-              </p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+              30-Day Target Outcome Goal
+            </h1>
+            <p style={{ margin: 0, fontSize: '1rem', color: '#F0F4F8', lineHeight: 1.6, maxWidth: '900px' }}>
+              {outcome_30_day}
+            </p>
           </div>
         </div>
 
         {/* REASON FOR SELECTION CALLOUT */}
-        <div className="p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider">
-            <Target className="w-4 h-4" />
+        <div 
+          style={{
+            padding: '1.5rem',
+            backgroundColor: '#F8FAFC',
+            borderRadius: '16px',
+            border: '1px solid #E2E8F0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5BA4A4', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <Target size={16} />
             <span>Reason for Selection & Alignment Rationale</span>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+          <p style={{ margin: 0, fontSize: '0.875rem', color: '#243B53', lineHeight: 1.6, fontWeight: 500 }}>
             {reason_for_selection}
           </p>
         </div>
 
         {/* COMMITMENTS SIDE-BY-SIDE GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.5rem'
+          }}
+        >
           {/* EMPLOYEE COMMITMENTS */}
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-            <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-slate-700">
-              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
-                <UserCheck className="w-6 h-6" />
+          <div 
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              textAlign: 'left'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid #F1F5F9' }}>
+              <div 
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(91, 164, 164, 0.12)',
+                  color: '#5BA4A4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <UserCheck size={20} />
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Employee Action Commitments</h2>
+              <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#243B53' }}>
+                Employee Action Commitments
+              </h2>
             </div>
-            <ul className="space-y-3">
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {employee_commitments?.map((item, idx) => (
-                <li key={idx} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300 flex items-start space-x-3">
-                  <span className="w-5 h-5 flex items-center justify-center bg-indigo-600 text-white font-bold text-xs rounded-full flex-shrink-0 mt-0.5">
+                <div 
+                  key={idx} 
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: '#F8FAFC',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '0.875rem',
+                    color: '#243B53',
+                    display: 'flex',
+                    alignItems: 'start',
+                    gap: '12px',
+                    lineHeight: 1.5
+                  }}
+                >
+                  <span 
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      backgroundColor: '#5BA4A4',
+                      color: '#FFFFFF',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: '2px'
+                    }}
+                  >
                     {idx + 1}
                   </span>
                   <span>{item}</span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* MANAGER COMMITMENTS */}
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-            <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-slate-700">
-              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                <ShieldCheck className="w-6 h-6" />
+          <div 
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              textAlign: 'left'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid #F1F5F9' }}>
+              <div 
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(5, 150, 105, 0.12)',
+                  color: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <ShieldCheck size={20} />
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Manager Coaching Support</h2>
+              <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#243B53' }}>
+                Manager Coaching Support
+              </h2>
             </div>
-            <ul className="space-y-3">
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {manager_commitments?.map((item, idx) => (
-                <li key={idx} className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl text-sm text-slate-700 dark:text-slate-300 flex items-start space-x-3">
-                  <span className="w-5 h-5 flex items-center justify-center bg-emerald-600 text-white font-bold text-xs rounded-full flex-shrink-0 mt-0.5">
+                <div 
+                  key={idx} 
+                  style={{
+                    padding: '1rem',
+                    backgroundColor: '#F0FDF4',
+                    borderRadius: '12px',
+                    border: '1px solid #BBF7D0',
+                    fontSize: '0.875rem',
+                    color: '#14532D',
+                    display: 'flex',
+                    alignItems: 'start',
+                    gap: '12px',
+                    lineHeight: 1.5
+                  }}
+                >
+                  <span 
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      backgroundColor: '#059669',
+                      color: '#FFFFFF',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: '2px'
+                    }}
+                  >
                     {idx + 1}
                   </span>
                   <span>{item}</span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
 
         {/* 4-WEEK JOURNEY TIMELINE */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-          <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-slate-700">
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Calendar className="w-6 h-6" />
+        <div 
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            textAlign: 'left'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid #F1F5F9' }}>
+            <div 
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(91, 164, 164, 0.12)',
+                color: '#5BA4A4',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Calendar size={20} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">4-Week Execution Breakdown</h2>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#243B53' }}>
+              4-Week Execution Breakdown
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem'
+            }}
+          >
             {/* WEEK 1 */}
-            <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-indigo-600 uppercase">Week 1</span>
-                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 px-2 py-0.5 rounded font-semibold">Awareness</span>
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #CBD5E1', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase' }}>Week 1</span>
+                <span style={{ fontSize: '0.6875rem', backgroundColor: 'rgba(91, 164, 164, 0.15)', color: '#2C6E6E', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Awareness</span>
               </div>
-              <ul className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {weekly_breakdown?.week_1?.map((step, idx) => (
-                  <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start space-x-1.5">
-                    <span className="text-indigo-500 font-bold">•</span>
+                  <div key={idx} style={{ fontSize: '0.8125rem', color: '#243B53', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '6px' }}>
+                    <span style={{ color: '#5BA4A4', fontWeight: 800 }}>•</span>
                     <span>{step}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* WEEK 2 */}
-            <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-indigo-600 uppercase">Week 2</span>
-                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 px-2 py-0.5 rounded font-semibold">Guided Practice</span>
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #CBD5E1', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase' }}>Week 2</span>
+                <span style={{ fontSize: '0.6875rem', backgroundColor: 'rgba(91, 164, 164, 0.15)', color: '#2C6E6E', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Guided Practice</span>
               </div>
-              <ul className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {weekly_breakdown?.week_2?.map((step, idx) => (
-                  <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start space-x-1.5">
-                    <span className="text-indigo-500 font-bold">•</span>
+                  <div key={idx} style={{ fontSize: '0.8125rem', color: '#243B53', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '6px' }}>
+                    <span style={{ color: '#5BA4A4', fontWeight: 800 }}>•</span>
                     <span>{step}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* WEEK 3 */}
-            <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-indigo-600 uppercase">Week 3</span>
-                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 px-2 py-0.5 rounded font-semibold">Integration</span>
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #CBD5E1', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase' }}>Week 3</span>
+                <span style={{ fontSize: '0.6875rem', backgroundColor: 'rgba(91, 164, 164, 0.15)', color: '#2C6E6E', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Integration</span>
               </div>
-              <ul className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {weekly_breakdown?.week_3?.map((step, idx) => (
-                  <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start space-x-1.5">
-                    <span className="text-indigo-500 font-bold">•</span>
+                  <div key={idx} style={{ fontSize: '0.8125rem', color: '#243B53', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '6px' }}>
+                    <span style={{ color: '#5BA4A4', fontWeight: 800 }}>•</span>
                     <span>{step}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* WEEK 4 */}
-            <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="text-xs font-bold text-indigo-600 uppercase">Week 4</span>
-                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 px-2 py-0.5 rounded font-semibold">Reinforcement</span>
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #CBD5E1', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase' }}>Week 4</span>
+                <span style={{ fontSize: '0.6875rem', backgroundColor: 'rgba(91, 164, 164, 0.15)', color: '#2C6E6E', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Reinforcement</span>
               </div>
-              <ul className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {weekly_breakdown?.week_4?.map((step, idx) => (
-                  <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start space-x-1.5">
-                    <span className="text-indigo-500 font-bold">•</span>
+                  <div key={idx} style={{ fontSize: '0.8125rem', color: '#243B53', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '6px' }}>
+                    <span style={{ color: '#5BA4A4', fontWeight: 800 }}>•</span>
                     <span>{step}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>
 
         {/* SUCCESS MEASURES & REVIEW CHECKPOINTS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.5rem'
+          }}
+        >
           {/* SUCCESS MEASURES */}
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-emerald-600" />
+          <div style={{ backgroundColor: '#F0FDF4', borderRadius: '16px', border: '1px solid #BBF7D0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#14532D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckSquare size={18} style={{ color: '#059669' }} />
               Success Indicators
             </h3>
-            <ul className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {success_measures?.map((item, idx) => (
-                <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 flex items-start space-x-2">
-                  <span className="text-emerald-500 font-bold">✓</span>
+                <div key={idx} style={{ fontSize: '0.8125rem', color: '#166534', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '8px' }}>
+                  <span style={{ color: '#059669', fontWeight: 800 }}>✓</span>
                   <span>{item}</span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* DAY 15 REVIEW */}
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-indigo-600" />
+          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #CBD5E1', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#243B53', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <HelpCircle size={18} style={{ color: '#5BA4A4' }} />
               Day 15 Mid-Point Review
             </h3>
-            <ul className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {day_15_review?.map((item, idx) => (
-                <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 flex items-start space-x-2">
-                  <span className="text-indigo-500 font-bold">?</span>
+                <div key={idx} style={{ fontSize: '0.8125rem', color: '#334155', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '8px' }}>
+                  <span style={{ color: '#5BA4A4', fontWeight: 800 }}>?</span>
                   <span>{item}</span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* DAY 30 REVIEW */}
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Target className="w-4 h-4 text-amber-600" />
+          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '16px', border: '1px solid #FDE68A', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+            <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#78350F', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Target size={18} style={{ color: '#D97706' }} />
               Day 30 Final Evaluation
             </h3>
-            <ul className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {day_30_review?.map((item, idx) => (
-                <li key={idx} className="text-xs text-slate-600 dark:text-slate-300 flex items-start space-x-2">
-                  <span className="text-amber-500 font-bold">★</span>
+                <div key={idx} style={{ fontSize: '0.8125rem', color: '#92400E', lineHeight: 1.5, display: 'flex', alignItems: 'start', gap: '8px' }}>
+                  <span style={{ color: '#D97706', fontWeight: 800 }}>★</span>
                   <span>{item}</span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
       </div>

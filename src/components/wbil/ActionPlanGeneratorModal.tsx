@@ -37,25 +37,42 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
     setErrorMsg(null);
     setLoadingStep(1);
 
-    // Simulated progress steps for user feedback
+    // Combine selected dropdown priority + custom manager priority text
+    let combinedPriority = "";
+    if (selectedPriorityId === 'CUSTOM') {
+      combinedPriority = managerPriority ? managerPriority.trim() : "Custom Growth Focus";
+    } else {
+      const selectedPrioObj = developmentPriorities.find(p => p.behaviour_id === selectedPriorityId);
+      combinedPriority = selectedPrioObj 
+        ? `[${selectedPrioObj.behaviour_id}] ${selectedPrioObj.title}` 
+        : selectedPriorityId;
+      if (managerPriority && managerPriority.trim()) {
+        combinedPriority += ` - ${managerPriority.trim()}`;
+      }
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    const cleanApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+
     const stepInterval = setInterval(() => {
       setLoadingStep((prev) => (prev < 3 ? prev + 1 : prev));
     }, 1200);
 
     try {
-      const response = await fetch('/api/v1/action-plans/generate', {
+      const response = await fetch(`${cleanApiUrl}/api/v1/action-plans/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           report_id: reportId,
-          manager_priority: managerPriority || undefined,
+          manager_priority: combinedPriority || undefined,
           workplace_context: workplaceContext || undefined,
         }),
       });
 
       clearInterval(stepInterval);
+
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -78,132 +95,293 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem',
+        zIndex: 99999
+      }}
+    >
+      <div 
+        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col"
+        style={{
+          backgroundColor: '#ffffff',
+          width: '100%',
+          maxWidth: '560px',
+          borderRadius: '24px',
+          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15)',
+          border: '1px solid #E2E8F0',
+          overflow: 'hidden'
+        }}
+      >
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Sparkles className="w-5 h-5" />
+        <div 
+          className="flex items-center justify-between p-6 bg-slate-50 border-b border-slate-100"
+          style={{
+            backgroundColor: '#F8FAFC',
+            padding: '1.25rem 1.75rem',
+            borderBottom: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(91, 164, 164, 0.12)',
+                color: '#5BA4A4',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Sparkles size={20} />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <div style={{ textAlign: 'left' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: '#243B53' }}>
                 Generate 30-Day Action Plan
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tailor development focus with manager context
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#627D98', fontWeight: 500 }}>
+                Tailor a 4-week executive coaching plan for this employee
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl transition-all"
+            style={{
+              padding: '8px',
+              color: '#94A3B8',
+              borderRadius: '12px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#243B53'}
+            onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
           >
-            <X className="w-5 h-5" />
+            <X size={20} />
           </button>
         </div>
 
         {/* LOADING OVERLAY */}
         {isLoading ? (
-          <div className="p-8 space-y-6 text-center">
-            <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-              <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+          <div style={{ padding: '3rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 className="animate-spin" size={48} style={{ color: '#5BA4A4' }} />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-center space-x-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                <span>Building Personalized 30-Day Action Plan</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '320px' }}>
+              <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#243B53' }}>
+                Building Tailored 30-Day Action Plan...
               </div>
 
-              <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                <div className={`flex items-center space-x-2 ${loadingStep >= 1 ? 'text-indigo-600 font-bold' : 'opacity-40'}`}>
-                  <CheckCircle2 className="w-4 h-4" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 1 ? 700 : 500, color: loadingStep >= 1 ? '#5BA4A4' : '#94A3B8' }}>
+                  <CheckCircle2 size={16} />
                   <span>1. Analyzing Report Priorities...</span>
                 </div>
-                <div className={`flex items-center space-x-2 ${loadingStep >= 2 ? 'text-indigo-600 font-bold' : 'opacity-40'}`}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>2. Matching Target WBIL Module...</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 2 ? 700 : 500, color: loadingStep >= 2 ? '#5BA4A4' : '#94A3B8' }}>
+                  <CheckCircle2 size={16} />
+                  <span>2. Matching Target WBIL Behavior Module...</span>
                 </div>
-                <div className={`flex items-center space-x-2 ${loadingStep >= 3 ? 'text-indigo-600 font-bold' : 'opacity-40'}`}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>3. Building 4-Week Transition Commitments...</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 3 ? 700 : 500, color: loadingStep >= 3 ? '#5BA4A4' : '#94A3B8' }}>
+                  <CheckCircle2 size={16} />
+                  <span>3. Structuring 4-Week Commitments...</span>
                 </div>
               </div>
             </div>
           </div>
         ) : (
           /* FORM CONTENT */
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
             {errorMsg && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 rounded-2xl flex items-start space-x-3 text-red-700 dark:text-red-300 text-xs">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div 
+                style={{
+                  padding: '1rem',
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'start',
+                  gap: '10px',
+                  color: '#991B1B',
+                  fontSize: '0.8125rem'
+                }}
+              >
+                <AlertCircle size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             {/* FORM FIELD 1: PRIORITY SELECTOR */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                1. Select Target Development Priority
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53' }}>
+                1. Select Target Growth Priority
               </label>
               <select
                 value={selectedPriorityId}
                 onChange={(e) => setSelectedPriorityId(e.target.value)}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                style={{
+                  width: '100%',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#243B53',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = '#5BA4A4'}
+                onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
               >
                 {developmentPriorities.map((prio) => (
                   <option key={prio.behaviour_id} value={prio.behaviour_id}>
                     #{prio.priority_number} [{prio.behaviour_id}] - {prio.title}
                   </option>
                 ))}
+                <option value="CUSTOM">
+                  #4 [CUSTOM] - Custom Focus (Defined in Field 2 Below)
+                </option>
               </select>
             </div>
 
             {/* FORM FIELD 2: MANAGER PRIORITY */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53' }}>
                 2. Manager Operational Focus (Optional)
               </label>
               <input
                 type="text"
                 value={managerPriority}
                 onChange={(e) => setManagerPriority(e.target.value)}
-                placeholder="e.g., Improve proactive milestone communication"
-                className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="e.g., Lead Q3 migration sprint smoothly with proactive milestone updates"
+                style={{
+                  width: '100%',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#243B53',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = '#5BA4A4'}
+                onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
               />
             </div>
 
             {/* FORM FIELD 3: WORKPLACE CONTEXT */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                3. Current Workplace Context (Optional)
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53' }}>
+                3. Current Project / Team Context (Optional)
               </label>
               <textarea
                 value={workplaceContext}
                 onChange={(e) => setWorkplaceContext(e.target.value)}
                 rows={3}
-                placeholder="e.g., Leading Q3 cloud infrastructure migration with tight deliverables..."
-                className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                placeholder="e.g., Leading microservices delivery with tight cross-team dependencies..."
+                style={{
+                  width: '100%',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#243B53',
+                  outline: 'none',
+                  resize: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = '#5BA4A4'}
+                onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
               />
             </div>
 
             {/* MODAL ACTIONS */}
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                paddingTop: '1.25rem',
+                borderTop: '1px solid #E2E8F0',
+                marginTop: '0.5rem'
+              }}
+            >
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl transition-all"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F1F5F9',
+                  color: '#627D98',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#E2E8F0'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
               >
                 Cancel
               </button>
+              
               <button
                 type="submit"
-                className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-indigo-500/25 transition-all"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#5BA4A4',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px -2px rgba(91, 164, 164, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#4A9393'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#5BA4A4'}
               >
-                <Target className="w-4 h-4" />
-                <span>Generate Plan</span>
+                <Target size={16} />
+                <span>Generate 30-Day Plan</span>
               </button>
             </div>
           </form>

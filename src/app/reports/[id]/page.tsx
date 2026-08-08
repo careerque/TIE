@@ -33,12 +33,16 @@ export default function EmployeeReportPage({ params }: { params: Promise<{ id: s
     async function fetchReport() {
       setIsLoading(true);
       setErrorMsg(null);
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const cleanApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+
       try {
-        const response = await fetch('/api/v1/reports/generate', {
+        const response = await fetch(`${cleanApiUrl}/api/v1/reports/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ assessment_id: assessmentId }),
         });
+
 
         if (!response.ok) {
           const errRes = await response.json().catch(() => ({}));

@@ -18,13 +18,17 @@ export default function ActionPlanPage({ params }: { params: Promise<{ id: strin
     async function fetchActionPlan() {
       setIsLoading(true);
       setErrorMsg(null);
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const cleanApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+
       try {
         // Generate or fetch plan
-        const response = await fetch('/api/v1/action-plans/generate', {
+        const response = await fetch(`${cleanApiUrl}/api/v1/action-plans/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ report_id: actionPlanId }),
         });
+
 
         if (!response.ok) {
           const errRes = await response.json().catch(() => ({}));
