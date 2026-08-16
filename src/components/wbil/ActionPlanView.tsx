@@ -491,11 +491,13 @@ export const ActionPlanView: React.FC<ActionPlanViewProps> = ({
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem'
+            gap: '1.5rem',
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid'
           }}
         >
           {/* SUCCESS MEASURES */}
-          <div style={{ backgroundColor: '#F0FDF4', borderRadius: '16px', border: '1px solid #BBF7D0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+          <div style={{ backgroundColor: '#F0FDF4', borderRadius: '16px', border: '1px solid #BBF7D0', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#14532D', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckSquare size={18} style={{ color: '#059669' }} />
               Success Indicators
@@ -511,7 +513,7 @@ export const ActionPlanView: React.FC<ActionPlanViewProps> = ({
           </div>
 
           {/* DAY 15 REVIEW */}
-          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #CBD5E1', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #CBD5E1', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#243B53', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <HelpCircle size={18} style={{ color: '#5BA4A4' }} />
               Day 15 Mid-Point Review
@@ -527,7 +529,7 @@ export const ActionPlanView: React.FC<ActionPlanViewProps> = ({
           </div>
 
           {/* DAY 30 REVIEW */}
-          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '16px', border: '1px solid #FDE68A', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '16px', border: '1px solid #FDE68A', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#78350F', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Target size={18} style={{ color: '#D97706' }} />
               Day 30 Final Evaluation

@@ -1060,7 +1060,7 @@ export default function ReportViewer({
       ============================================ */}
 
       <div
-        className="w-full flex items-center justify-between z-30 transition-all box-border bg-white sticky top-[72px] md:top-[80px]"
+        className="w-full flex items-center justify-between box-border bg-white relative mb-6"
         style={{
           height: "76px",
           padding: "12px 24px",

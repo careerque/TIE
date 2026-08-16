@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabasedb } from "@/lib/supabaseClient";
 import { CookieUtils } from "@/lib/cookieUtils";
 import { Sparkles, KeyRound, User, CheckCircle2, ShieldAlert, Loader2, Briefcase, Award } from "lucide-react";
+import { validatePasswordStrength } from "@/lib/validationUtils";
 
 function AcceptInviteContent() {
   const router = useRouter();
@@ -100,8 +101,9 @@ function AcceptInviteContent() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    const valRes = validatePasswordStrength(password);
+    if (!valRes.isValid) {
+      setError(valRes.error || "Password does not meet policy requirements.");
       return;
     }
 

@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 
 /**
  * Captures a DOM container element by ID, clones it into a standardized 800px print layout,
- * and exports it as a multi-page A4 PDF document with margins.
+ * and exports it as a multi-page A4 PDF document with clean top/bottom page margins and gaps.
  * 
  * @param elementId ID of the HTML container element to render as PDF.
  * @param fileName Name of the generated PDF file.
@@ -46,32 +46,62 @@ export async function exportElementToPdf(elementId: string, fileName: string): P
       document.body.removeChild(clone);
     }
 
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
 
     const pageWidth = 210; // A4 width in mm
     const pageHeight = 297; // A4 height in mm
-    const margin = 10; // 10mm top/bottom/left/right page margin
 
-    const printableWidth = pageWidth - (margin * 2); // 190mm
-    const printableHeight = pageHeight - (margin * 2); // 277mm
+    // 15mm Top and Bottom Margins (creates 30mm total white page break gap between pages)
+    const marginTop = 15; // 15mm top margin
+    const marginBottom = 15; // 15mm bottom margin
+    const marginSide = 12; // 12mm left/right margin
 
-    const imgWidth = printableWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const printableWidth = pageWidth - (marginSide * 2); // 186mm
+    const printableHeight = pageHeight - marginTop - marginBottom; // 267mm
 
-    let heightLeft = imgHeight;
-    let position = margin;
+    // Calculate height of canvas slice corresponding to one A4 printable page
+    const slicePixelHeight = Math.floor((printableHeight * canvas.width) / printableWidth);
 
-    // Render Page 1
-    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-    heightLeft -= printableHeight;
+    let srcY = 0;
+    let pageIndex = 0;
 
-    // Render multi-page document if content exceeds 1 page
-    while (heightLeft > 0) {
-      position = margin - (imgHeight - heightLeft);
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-      heightLeft -= printableHeight;
+    while (srcY < canvas.height) {
+      if (pageIndex > 0) {
+        pdf.addPage();
+      }
+
+      // Height of current slice in canvas pixels
+      const currentSliceHeight = Math.min(slicePixelHeight, canvas.height - srcY);
+
+      // Create temporary canvas for this page slice
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = currentSliceHeight;
+
+      const ctx = pageCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(
+          canvas,
+          0, srcY, canvas.width, currentSliceHeight, // source rectangle
+          0, 0, canvas.width, currentSliceHeight      // destination rectangle
+        );
+      }
+
+      const pageImgData = pageCanvas.toDataURL('image/png');
+      const renderedHeightMM = (currentSliceHeight * printableWidth) / canvas.width;
+
+      // Fill top & bottom margin areas with solid white background to guarantee clean separation
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, marginTop, 'F');
+      pdf.rect(0, pageHeight - marginBottom, pageWidth, marginBottom, 'F');
+
+      // Add sliced page image inside printable margins
+      pdf.addImage(pageImgData, 'PNG', marginSide, marginTop, printableWidth, renderedHeightMM);
+
+      srcY += currentSliceHeight;
+      pageIndex++;
     }
 
     const finalFileName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;

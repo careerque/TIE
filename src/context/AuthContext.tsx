@@ -138,12 +138,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (typeof window !== "undefined") {
         CookieUtils.remove("tie-user-profile");
+        CookieUtils.clearAll();
       }
-      await supabasedb.auth.signOut();
       setUser(null);
       setProfile(null);
-      // Dispatch custom auth-change event to alert other listening components
-      window.dispatchEvent(new Event("auth-change"));
+      setLoading(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth-change"));
+      }
+
+      // Trigger Supabase sign out in background without blocking UI navigation
+      supabasedb.auth.signOut().catch((err) => {
+        console.error("Background Supabase signOut error:", err);
+      });
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -182,7 +189,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (session?.user) {
         setUser(session.user);
-        await fetchProfile(session.user.id, session.user.email || "");
+        // Safety timeout: Ensure fetchProfile never blocks auth loading for more than 3.5s
+        await Promise.race([
+          fetchProfile(session.user.id, session.user.email || ""),
+          new Promise((resolve) => setTimeout(resolve, 3500))
+        ]);
       } else {
         setUser(null);
         setProfile(null);

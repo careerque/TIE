@@ -28,6 +28,7 @@ import {
 import Link from "next/link";
 import ReportViewer from "@/components/ReportViewer";
 import { useTenantGuard } from "@/hooks/useTenantGuard";
+import { fetchWithTimeout } from "@/lib/fetchUtils";
 
 interface Member {
   id: string;
@@ -156,17 +157,66 @@ export default function CorporateHrAdminPage() {
     if (!profile?.company_id) return;
     try {
       setLoading(true);
-      
-      const membersRes = await fetch(`${cleanApiUrl}/api/company/members?company_id=${profile.company_id}`);
-      const membersData = await membersRes.json();
+
+      let membersData: Member[] = [];
+      let invs: Invitation[] = [];
+
+      // 1. Fetch Company Members with timeout & Supabase fallback
+      try {
+        const membersRes = await fetchWithTimeout(`${cleanApiUrl}/api/company/members?company_id=${profile.company_id}`, { timeoutMs: 3500 });
+        if (membersRes.ok) {
+          membersData = await membersRes.json();
+        }
+      } catch (err) {
+        console.warn("FastAPI company members fetch timed out/failed. Falling back to direct Supabase query.");
+      }
+
+      if (!membersData || membersData.length === 0) {
+        const { data: supaProfiles } = await supabasedb
+          .from("profiles")
+          .select("id, first_name, last_name, email, role, designation, experience_years, team_id, manager_id")
+          .eq("company_id", profile.company_id);
+
+        if (supaProfiles) {
+          membersData = supaProfiles.map((p: any) => ({
+            id: p.id,
+            first_name: p.first_name || "",
+            last_name: p.last_name || "",
+            email: p.email || "",
+            role: p.role || "user",
+            designation: p.designation || "Member",
+            experience_years: Number(p.experience_years || 0),
+            team_id: p.team_id || "",
+            team_name: "General",
+            manager_id: p.manager_id || "",
+            has_completed_assessment: true,
+          }));
+        }
+      }
       setMembers(membersData);
 
-      const invRes = await fetch(`${cleanApiUrl}/api/invitations?company_id=${profile.company_id}`);
-      const invs = await invRes.json();
+      // 2. Fetch Invitations with timeout & Supabase fallback
+      try {
+        const invRes = await fetchWithTimeout(`${cleanApiUrl}/api/invitations?company_id=${profile.company_id}`, { timeoutMs: 3500 });
+        if (invRes.ok) {
+          invs = await invRes.json();
+        }
+      } catch (err) {
+        console.warn("FastAPI invitations fetch timed out/failed. Falling back to direct Supabase query.");
+      }
+
+      if (!invs || invs.length === 0) {
+        const { data: supaInvs } = await supabasedb
+          .from("invitations")
+          .select("id, email, role, company_id, team_id, token, status, created_at, accepted_at")
+          .eq("company_id", profile.company_id);
+        if (supaInvs) invs = supaInvs;
+      }
+
       // Filter invitations for managers/users only
       setInvitations(invs.filter((i: Invitation) => i.role === "manager" || i.role === "user"));
 
-      // Fetch existing teams
+      // 3. Fetch existing teams
       const { data: teamsData, error: teamsError } = await supabasedb
         .from("teams")
         .select("*")
@@ -287,6 +337,21 @@ export default function CorporateHrAdminPage() {
     processCsvFile(file);
   };
 
+  const downloadSampleCsv = () => {
+    const csvContent = "email,first_name,last_name,role,team_name\n" +
+      "john.doe@company.com,John,Doe,user,Engineering\n" +
+      "jane.smith@company.com,Jane,Smith,manager,Design\n" +
+      "alex.taylor@company.com,Alex,Taylor,user,Product";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "roster_sample_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const processCsvFile = (file: File) => {
     setCsvError(null);
     setCsvFile(file);
@@ -295,29 +360,39 @@ export default function CorporateHrAdminPage() {
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const lines = text.split("\n");
+        const lines = text.split(/\r?\n/);
         const results = [];
         
-        // Parse CSV headers
-        // Format expected: Email, First Name, Last Name, Role, Team Name
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        if (lines.length < 2) {
+          throw new Error("CSV file is empty or missing data rows.");
+        }
+        
+        // Parse CSV headers with strip quotes
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
-          const cols = lines[i].split(",").map(c => c.trim());
+          const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
           const obj: any = {};
           
           headers.forEach((header, index) => {
             obj[header] = cols[index] || "";
           });
           
-          if (obj.email) {
+          const email = obj.email || obj["e-mail"] || obj["email address"];
+          if (email) {
+            const firstName = obj.first_name || obj["first name"] || obj.firstname || obj.first || "";
+            const lastName = obj.last_name || obj["last name"] || obj.lastname || obj.last || "";
+            const roleVal = (obj.role || obj.user_role || obj.position || "").toLowerCase();
+            const role = roleVal === "manager" ? "manager" : "user";
+            const teamName = obj.team_name || obj["team name"] || obj.teamname || obj.team || obj.department || "General";
+
             results.push({
-              email: obj.email,
-              first_name: obj.first_name || obj.firstname || "",
-              last_name: obj.last_name || obj.lastname || "",
-              role: obj.role?.toLowerCase() === "manager" ? "manager" : "user",
-              team_name: obj.team_name || obj.teamname || "General"
+              email: email.toLowerCase(),
+              first_name: firstName,
+              last_name: lastName,
+              role: role,
+              team_name: teamName
             });
           }
         }
@@ -855,6 +930,27 @@ export default function CorporateHrAdminPage() {
                   {csvFile ? csvFile.name : "Select or Drop CSV File"}
                 </span>
                 <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, marginTop: '4px' }}>Expected headers: email, first_name, last_name, role, team_name</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadSampleCsv();
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#5BA4A4',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    marginTop: '8px',
+                    position: 'relative',
+                    zIndex: 10
+                  }}
+                >
+                  Download Sample CSV Template
+                </button>
               </div>
 
               <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.06)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '120px', textAlign: 'left' }}>

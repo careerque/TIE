@@ -1,4 +1,5 @@
 import os
+import re
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -658,9 +659,24 @@ async def verify_invitation(token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def validate_password_policy(password: str):
+    if not password:
+        raise HTTPException(status_code=400, detail="Password is required.")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters in length.")
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter (A-Z).")
+    if not re.search(r'[a-z]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter (a-z).")
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one numeric digit (0-9).")
+
 @app.post("/api/invitations/accept")
 async def accept_invitation(payload: InvitationAccept):
     try:
+        # Validate password strength against enterprise policy
+        validate_password_policy(payload.password)
+
         # 1. Verify invitation
         db_query = supabase.table("invitations").select("*").eq("token", payload.token).eq("status", "pending").execute()
         if not db_query.data or len(db_query.data) == 0:
@@ -982,74 +998,6 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
         print(f"[ERROR] Failed to send activation email to {to_email}: {error_msg}")
         return False, error_msg
 
-def send_auto_reply_email(to_email: str, original_subject: str = "Inquiry"):
-    clean_to = to_email.strip().lower()
-    own_email = (os.getenv("RESEND_FROM_EMAIL") or "onboarding@careerque.in").lower()
-
-    if clean_to == own_email or "careerque.in" in clean_to or "no-reply" in clean_to or "noreply" in clean_to or "mailer-daemon" in clean_to:
-        print(f"[Resend Webhook] Ignored auto-reply to self/system address: {to_email}")
-        return True, "Ignored to prevent email loop"
-
-    subject = original_subject if original_subject.lower().startswith("re:") else f"Re: {original_subject}"
-
-    html_content = """
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
-      <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9;">
-        <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700;">CareerQue</h2>
-      </div>
-      <div style="padding: 24px 0;">
-        <p style="font-size: 16px; line-height: 1.6; color: #334155; margin-bottom: 16px;">
-          Hello,
-        </p>
-        <p style="font-size: 16px; line-height: 1.6; color: #334155; margin-bottom: 16px;">
-          Thank you for reaching out to us. We have received your email successfully and our team will reply to you soon.
-        </p>
-      </div>
-      <div style="margin-top: 24px; padding: 16px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid #64748b;">
-        <p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.5;">
-          <strong>Note:</strong> Please do not reply to this email as it is an automated auto-generated message.
-        </p>
-      </div>
-      <div style="text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8;">
-        &copy; CareerQue. All rights reserved.
-      </div>
-    </div>
-    """
-
-    resend_api_key = os.getenv("RESEND_API_KEY")
-    resend_from = os.getenv("RESEND_FROM_EMAIL") or "onboarding@careerque.in"
-    from_header = f"CareerQue Onboarding <{resend_from}>"
-
-    if resend_api_key:
-        import requests
-        url = "https://api.resend.com/emails"
-        headers = {
-            "Authorization": f"Bearer {resend_api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "from": from_header,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
-        }
-        try:
-            res = requests.post(url, json=payload, headers=headers, timeout=10)
-            if res.status_code in [200, 201]:
-                res_json = res.json()
-                resend_id = res_json.get("id")
-                print(f"[SUCCESS] Auto-reply email sent via Resend API to {to_email} (ID: {resend_id})")
-                return True, resend_id
-            else:
-                print(f"[ERROR] Resend API error ({res.status_code}): {res.text}")
-                return False, res.text
-        except Exception as e:
-            print(f"[ERROR] Failed sending auto-reply email via Resend: {str(e)}")
-            return False, str(e)
-
-    return False, "RESEND_API_KEY missing"
-
-
 
 @enterprise_router.post("/invite-hr-admin")
 async def invite_hr_admin(payload: HRAdminInvitePayload):
@@ -1230,6 +1178,9 @@ async def verify_invite(token: str):
 
 @enterprise_router.post("/accept-and-activate")
 async def accept_and_activate(payload: CompleteActivationPayload):
+    # Validate password policy rules
+    validate_password_policy(payload.password)
+
     # Verify token presence
     inv_res = supabase_admin.table("invitations").select("*").eq("token", payload.token).eq("status", "pending").execute()
     if not inv_res.data:
@@ -1433,107 +1384,6 @@ async def get_report_action_plan_endpoint(report_id: str):
             detail=str(exc)
         )
 
-
-def verify_resend_signature(payload_bytes: bytes, headers: dict, secret: str) -> bool:
-    try:
-        import hmac
-        import hashlib
-        import base64
-
-        svix_id = headers.get("svix-id")
-        svix_timestamp = headers.get("svix-timestamp")
-        svix_signature = headers.get("svix-signature")
-
-        if not svix_id or not svix_timestamp or not svix_signature:
-            return False
-
-        secret_key = secret.replace("whsec_", "")
-        secret_bytes = base64.b64decode(secret_key)
-        to_sign = f"{svix_id}.{svix_timestamp}.".encode("utf-8") + payload_bytes
-
-        computed_sig = base64.b64encode(
-            hmac.new(secret_bytes, to_sign, hashlib.sha256).digest()
-        ).decode("utf-8")
-
-        expected_sigs = [s.split(",")[1] if "," in s else s for s in svix_signature.split(" ")]
-        return computed_sig in expected_sigs
-    except Exception as e:
-        print(f"[Resend Webhook] Signature verification error: {str(e)}")
-        return False
-
-
-@app.api_route("/api/webhooks/resend", methods=["GET", "POST"])
-async def resend_inbound_webhook(request: Request):
-    """
-    Resend Inbound Email Webhook Endpoint.
-    Listens for inbound email events from Resend and dispatches an automated reply.
-    """
-    webhook_secret = os.getenv("RESEND_WEBHOOK_SECRET")
-
-    if request.method == "GET":
-        return {
-            "status": "ok",
-            "service": "CareerQue Resend Inbound Email Webhook Endpoint",
-            "endpoint": "/api/webhooks/resend",
-            "accepted_method": "POST",
-            "signature_verification": "enabled" if webhook_secret else "disabled"
-        }
-
-    try:
-        raw_bytes = await request.body()
-
-        # Signature verification if secret is provided in env
-        if webhook_secret:
-            headers_dict = dict(request.headers)
-            if not verify_resend_signature(raw_bytes, headers_dict, webhook_secret):
-                print("[Resend Webhook] Invalid webhook signature.")
-                return JSONResponse(status_code=401, content={"status": "unauthorized", "message": "Invalid webhook signature"})
-        else:
-            print("[Resend Webhook] RESEND_WEBHOOK_SECRET not configured. Signature check skipped.")
-
-        import json
-        payload = json.loads(raw_bytes.decode("utf-8"))
-        print(f"[Resend Webhook Received]: {payload}")
-
-        email_data = payload.get("data", payload)
-        raw_from = email_data.get("from") or email_data.get("from_email") or email_data.get("sender")
-
-        if isinstance(raw_from, dict):
-            raw_from = raw_from.get("email", "")
-
-        sender_email = None
-        if raw_from:
-            import re
-            match = re.search(r'[\w\.-]+@[\w\.-]+', str(raw_from))
-            if match:
-                sender_email = match.group(0).lower()
-
-        if not sender_email:
-            print("[Resend Webhook] No valid sender email found in payload.")
-            return {"status": "ignored", "reason": "No valid sender email found"}
-
-        original_subject = email_data.get("subject", "Inquiry")
-
-        # Loop protection for auto-replies
-        import re
-        if re.search(r'auto[- ]?reply|automatic reply|out of office|delivery status', original_subject, re.IGNORECASE):
-            print(f"[Resend Webhook] Ignored subject indicating auto-reply: {original_subject}")
-            return {"status": "ignored", "reason": "Subject indicates auto-reply"}
-
-        success, detail = send_auto_reply_email(sender_email, original_subject)
-        return {
-            "status": "success" if success else "failed",
-            "message": "Auto-reply processed",
-            "detail": detail,
-            "to": sender_email
-        }
-
-    except Exception as e:
-        print(f"[Resend Webhook Error]: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(e)}
-        )
 
 
 

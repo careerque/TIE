@@ -15,6 +15,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     await logout();
     router.push("/logout");
+    router.refresh();
   };
 
   const toggleMenu = (e: React.MouseEvent | React.TouchEvent) => {

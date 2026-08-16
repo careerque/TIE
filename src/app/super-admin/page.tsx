@@ -22,6 +22,8 @@ import {
   FileText
 } from "lucide-react";
 import Link from "next/link";
+import { supabasedb } from "@/lib/supabaseClient";
+import { fetchWithTimeout } from "@/lib/fetchUtils";
 
 interface Company {
   id: string;
@@ -87,15 +89,48 @@ export default function SuperAdminPage() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      
-      const compRes = await fetch(`${cleanApiUrl}/api/companies`);
-      const comps = await compRes.json();
+
+      let comps: Company[] = [];
+      let invs: Invitation[] = [];
+
+      // 1. Fetch Companies with timeout & Supabase fallback
+      try {
+        const compRes = await fetchWithTimeout(`${cleanApiUrl}/api/companies`, { timeoutMs: 3500 });
+        if (compRes.ok) {
+          comps = await compRes.json();
+        }
+      } catch (err) {
+        console.warn("FastAPI companies fetch timed out/failed. Falling back to direct Supabase query.");
+      }
+
+      if (!comps || comps.length === 0) {
+        const { data: supaComps } = await supabasedb
+          .from("companies")
+          .select("id, name, description, created_at")
+          .order("created_at", { ascending: false });
+        if (supaComps) comps = supaComps;
+      }
       setCompanies(comps);
 
-      const invRes = await fetch(`${cleanApiUrl}/api/invitations`);
-      const invs = await invRes.json();
+      // 2. Fetch Invitations with timeout & Supabase fallback
+      try {
+        const invRes = await fetchWithTimeout(`${cleanApiUrl}/api/invitations`, { timeoutMs: 3500 });
+        if (invRes.ok) {
+          invs = await invRes.json();
+        }
+      } catch (err) {
+        console.warn("FastAPI invitations fetch timed out/failed. Falling back to direct Supabase query.");
+      }
+
+      if (!invs || invs.length === 0) {
+        const { data: supaInvs } = await supabasedb
+          .from("invitations")
+          .select("id, email, role, company_id, token, status, created_at, accepted_at")
+          .order("created_at", { ascending: false });
+        if (supaInvs) invs = supaInvs;
+      }
       setInvitations(invs);
-      
+
       if (comps.length > 0) {
         setSelectedCompanyId(comps[0].id);
       }

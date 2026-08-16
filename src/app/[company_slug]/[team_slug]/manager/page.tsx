@@ -293,6 +293,21 @@ export default function TeamLeadManagerPage() {
     processCsvFile(file);
   };
 
+  const downloadSampleCsv = () => {
+    const csvContent = "email,first_name,last_name\n" +
+      "alex.johnson@company.com,Alex,Johnson\n" +
+      "maria.garcia@company.com,Maria,Garcia\n" +
+      "david.kim@company.com,David,Kim";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "manager_team_roster_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const processCsvFile = (file: File) => {
     setCsvError(null);
     setCsvFile(file);
@@ -301,27 +316,34 @@ export default function TeamLeadManagerPage() {
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const lines = text.split("\n");
+        const lines = text.split(/\r?\n/);
         const results = [];
+
+        if (lines.length < 2) {
+          throw new Error("CSV file is empty or missing data rows.");
+        }
         
-        // Parse CSV headers
-        // Format expected: Email, First Name, Last Name
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        // Parse CSV headers stripping quotes
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
-          const cols = lines[i].split(",").map(c => c.trim());
+          const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
           const obj: any = {};
           
           headers.forEach((header, index) => {
             obj[header] = cols[index] || "";
           });
           
-          if (obj.email) {
+          const email = obj.email || obj["e-mail"] || obj["email address"];
+          if (email) {
+            const firstName = obj.first_name || obj["first name"] || obj.firstname || obj.first || "";
+            const lastName = obj.last_name || obj["last name"] || obj.lastname || obj.last || "";
+
             results.push({
-              email: obj.email,
-              first_name: obj.first_name || obj["first name"] || "",
-              last_name: obj.last_name || obj["last name"] || ""
+              email: email.toLowerCase(),
+              first_name: firstName,
+              last_name: lastName
             });
           }
         }
@@ -830,6 +852,27 @@ export default function TeamLeadManagerPage() {
                   {csvFile ? csvFile.name : "Select or Drop CSV File"}
                 </span>
                 <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, marginTop: '4px' }}>Expected headers: email, first_name, last_name</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadSampleCsv();
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#5BA4A4',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    marginTop: '8px',
+                    position: 'relative',
+                    zIndex: 10
+                  }}
+                >
+                  Download Sample CSV Template
+                </button>
               </div>
 
               <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.06)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '120px', textAlign: 'left' }}>
