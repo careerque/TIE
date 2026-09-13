@@ -134,10 +134,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleSessionExpired = async () => {
+    try {
+      if (typeof window !== "undefined") {
+        CookieUtils.remove("tie-user-profile");
+        CookieUtils.remove("tie-session-start");
+        CookieUtils.clearAll();
+        window.dispatchEvent(new Event("auth-change"));
+      }
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      supabasedb.auth.signOut().catch(() => {});
+      router.push("/login?expired=true");
+    } catch (err) {
+      console.error("Error handling session expiration:", err);
+    }
+  };
+
   const logout = async () => {
     try {
       if (typeof window !== "undefined") {
         CookieUtils.remove("tie-user-profile");
+        CookieUtils.remove("tie-session-start");
         CookieUtils.clearAll();
       }
       setUser(null);
@@ -156,12 +175,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Helper to test if 1 hour has elapsed since session creation
+  const checkIsSessionExpired = (): boolean => {
+    if (typeof window === "undefined") return false;
+    const sessionStart = CookieUtils.get("tie-session-start");
+    if (!sessionStart) return false;
+    const startTime = Number(sessionStart);
+    if (isNaN(startTime)) return false;
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    return Date.now() - startTime >= ONE_HOUR_MS;
+  };
+
   useEffect(() => {
+    // Check if session has expired beyond 1 hour on initial mount
+    if (checkIsSessionExpired()) {
+      handleSessionExpired();
+      return;
+    }
+
     // Check if there is any Supabase session in cookies
     if (typeof window !== "undefined") {
       const hasSession = document.cookie ? document.cookie.includes("-auth-token") : false;
       
-      // Load cached profile if it exists
+      // Load cached profile if it exists and session is valid
       const cached = CookieUtils.get("tie-user-profile");
       if (cached) {
         try {
@@ -177,17 +213,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Periodic watchdog timer: check every 15 seconds if 1-hour session limit has been reached
+    const sessionTimer = setInterval(() => {
+      if (checkIsSessionExpired()) {
+        handleSessionExpired();
+      }
+    }, 15000);
+
     // Listen for auth state changes (including the initial session retrieval on mount)
     const { data: { subscription } } = supabasedb.auth.onAuthStateChange(async (event, session) => {
+      // Check session validity
+      if (checkIsSessionExpired()) {
+        await handleSessionExpired();
+        return;
+      }
+
       // Only set loading back to true for initial loads or explicit sign-ins to avoid background token refresh flashes
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
-        // Only trigger loading block if we don't have a cached profile to avoid layout redraw flashes
         if (!CookieUtils.get("tie-user-profile")) {
           setLoading(true);
         }
       }
 
       if (session?.user) {
+        // Record session start if not already established
+        if (!CookieUtils.get("tie-session-start")) {
+          CookieUtils.set("tie-session-start", String(Date.now()), 1);
+        }
+
         setUser(session.user);
         // Safety timeout: Ensure fetchProfile never blocks auth loading for more than 3.5s
         await Promise.race([
@@ -199,6 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         if (typeof window !== "undefined") {
           CookieUtils.remove("tie-user-profile");
+          CookieUtils.remove("tie-session-start");
         }
       }
 
@@ -207,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
+      clearInterval(sessionTimer);
       subscription.unsubscribe();
     };
   }, []);

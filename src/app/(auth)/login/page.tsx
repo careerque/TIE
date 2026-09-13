@@ -42,9 +42,18 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [focused, setFocused]   = useState<'email' | 'password' | null>(null);
+  const [sessionExpiredMsg, setSessionExpiredMsg] = useState(false);
 
   const emailRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { emailRef.current?.focus(); }, []);
+  useEffect(() => { 
+    emailRef.current?.focus(); 
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === 'true') {
+        setSessionExpiredMsg(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +145,33 @@ export default function LoginPage() {
               Sign in to continue to your account
             </p>
           </div>
+
+          {/* ── Session Expired Alert ── */}
+          {sessionExpiredMsg && (
+            <div role="alert" style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.65rem',
+              marginBottom: '1.25rem',
+              padding: '0.85rem 1rem',
+              background: 'rgba(217,119,6,0.08)',
+              border: '1.5px solid rgba(217,119,6,0.25)',
+              borderRadius: '12px',
+              color: '#B45309',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              lineHeight: 1.45,
+              animation: 'fadeIn .22s both'
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <div>
+                <strong style={{ color: '#92400E', display: 'block', marginBottom: '2px' }}>Session Expired (1-Hour Limit)</strong>
+                Your session has expired. Please log in again to continue.
+              </div>
+            </div>
+          )}
 
           {/* ── Error banner ── */}
           {error && (

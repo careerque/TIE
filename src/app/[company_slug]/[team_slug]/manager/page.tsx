@@ -28,10 +28,12 @@ import {
   FileSpreadsheet,
   UserPlus,
   AlertCircle,
-  Target
+  Target,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
 import ReportViewer from "@/components/ReportViewer";
+import InteractiveDashboardLoader from "@/components/InteractiveDashboardLoader";
 import { useTenantGuard } from "@/hooks/useTenantGuard";
 import { ActionPlanGeneratorModal } from "@/components/wbil/ActionPlanGeneratorModal";
 import { ActionPlanView } from "@/components/wbil/ActionPlanView";
@@ -104,13 +106,27 @@ export default function TeamLeadManagerPage() {
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // CSV State
+  const handleCopyInviteLink = () => {
+    if (!generatedInviteUrl) return;
+    navigator.clipboard.writeText(generatedInviteUrl);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2000);
+  };
+
+  // CSV State & Validation Pipeline
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [parsedRoster, setParsedRoster] = useState<any[]>([]);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
+  const [analysisStep, setAnalysisStep] = useState<number>(0);
+  const [analysisSuccess, setAnalysisSuccess] = useState<string | null>(null);
+  const [uploadProgressText, setUploadProgressText] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -194,32 +210,33 @@ export default function TeamLeadManagerPage() {
     }
   };
 
-  const handleOpenActionPlanGenerator = async (member: MemberProfile) => {
+  const handleOpenActionPlanGenerator = (member: MemberProfile) => {
+    // 1. Instantly open modal synchronously on the very first click
     setGeneratorMember(member);
     setGeneratorReportId(member.id);
     setGeneratorPriorities([]);
+    setIsGeneratorModalOpen(true);
     
-    // Fetch priorities from backend report service
-    try {
-      const res = await fetch(`${cleanApiUrl}/api/v1/reports/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assessment_id: member.id })
-      });
-      if (res.ok) {
-        const result = await res.json();
-        if (result.status === 'SUCCESS' && result.data) {
-          setGeneratorReportId(result.report_id || member.id);
+    // 2. Fetch specific development priorities in background non-blocking
+    fetch(`${cleanApiUrl}/api/v1/reports/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assessment_id: member.id })
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(result => {
+        if (result && result.status === 'SUCCESS' && result.data) {
+          if (result.report_id) {
+            setGeneratorReportId(result.report_id);
+          }
           if (result.data.development_priorities && result.data.development_priorities.length > 0) {
             setGeneratorPriorities(result.data.development_priorities);
           }
         }
-      }
-    } catch (e) {
-      console.log("Notice fetching report priorities:", e);
-    }
-    
-    setIsGeneratorModalOpen(true);
+      })
+      .catch(e => {
+        console.log("Notice fetching report priorities in background:", e);
+      });
   };
 
   const handleOpenActionPlanView = (member: MemberProfile) => {
@@ -237,48 +254,100 @@ export default function TeamLeadManagerPage() {
     e.preventDefault();
     setFormError(null);
     setFormSuccess(null);
+    setGeneratedInviteUrl(null);
 
-    if (!memberEmail.trim() || !memberFirstName.trim() || !memberLastName.trim() || !teamName) {
+    const email = memberEmail.trim();
+    const firstName = memberFirstName.trim();
+    const lastName = memberLastName.trim();
+
+    if (!email || !firstName || !lastName || !teamName) {
       setFormError("Please fill out all member details and ensure team context is loaded.");
       return;
     }
 
-    const normalizedEmail = memberEmail.trim().toLowerCase();
-    const emailExists = members.some(m => m.email.toLowerCase() === normalizedEmail);
-    if (emailExists) {
-      setFormError(`An active profile with email ${memberEmail} already exists in the roster.`);
+    // Email format validation (RFC 5322 check)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setFormError("Please enter a valid email address (e.g., name@company.com).");
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    // Check if email already exists in the current team roster
+    const emailExistsLocally = members.some(m => m.email.toLowerCase() === normalizedEmail);
+    if (emailExistsLocally) {
+      setFormError(`An active profile with email "${email}" already exists in this team roster.`);
       return;
     }
 
     setInviteSubmitting(true);
     try {
+      // Pre-flight check against database profiles (case-insensitive)
+      const { data: existingProfiles, error: profileLookupErr } = await supabasedb
+        .from("profiles")
+        .select("id, email")
+        .ilike("email", normalizedEmail);
+
+      if (!profileLookupErr && existingProfiles && existingProfiles.length > 0) {
+        setFormError(`An account with email "${email}" already exists in the organization.`);
+        setInviteSubmitting(false);
+        return;
+      }
+
+      // Pre-flight check against pending invitations (case-insensitive)
+      const { data: existingInvs, error: invLookupErr } = await supabasedb
+        .from("invitations")
+        .select("id, email, status")
+        .ilike("email", normalizedEmail)
+        .eq("status", "pending");
+
+      if (!invLookupErr && existingInvs && existingInvs.length > 0) {
+        setFormError(`A pending invitation for "${email}" already exists.`);
+        setInviteSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`${cleanApiUrl}/api/enterprise/invite-team-member`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: memberEmail.trim(),
-          first_name: memberFirstName.trim(),
-          last_name: memberLastName.trim(),
+          email: normalizedEmail,
+          first_name: firstName,
+          last_name: lastName,
           role: "user",
           team_name: teamName,
           hr_user_id: user?.id
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to invite team member.");
+        let errorMsg = "Failed to invite team member.";
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail) && data.detail[0]?.msg) {
+          errorMsg = data.detail[0].msg;
+        }
+
+        const lowerErr = errorMsg.toLowerCase();
+        if (lowerErr.includes("already exists")) {
+          errorMsg = `An account with email "${email}" already exists.`;
+        } else if (lowerErr.includes("valid email") || lowerErr.includes("@-sign") || lowerErr.includes("email address")) {
+          errorMsg = "The email address is invalid. Please enter a valid email format.";
+        } else if (lowerErr.includes("smtp")) {
+          errorMsg = "Invitation created, but failed to send email via mail server. Please check SMTP configuration.";
+        }
+
+        throw new Error(errorMsg);
       }
 
       setMemberEmail("");
       setMemberFirstName("");
       setMemberLastName("");
       const inviteUrl = data.invite_url ? `${window.location.origin}${data.invite_url}` : null;
-      setFormSuccess(
-        inviteUrl 
-          ? `Invitation successfully generated! Copy Link: ${inviteUrl}` 
-          : `Invitation successfully generated for ${memberEmail}!`
-      );
+      setGeneratedInviteUrl(inviteUrl);
+      setFormSuccess(`Invitation sent successfully to ${normalizedEmail}!`);
       await fetchTeamData();
     } catch (err: any) {
       setFormError(err.message || "Failed to generate invitation.");
@@ -308,73 +377,181 @@ export default function TeamLeadManagerPage() {
     document.body.removeChild(link);
   };
 
-  const processCsvFile = (file: File) => {
+  const processCsvFile = async (file: File) => {
     setCsvError(null);
+    setAnalysisSuccess(null);
+    setParsedRoster([]);
     setCsvFile(file);
+    setIsAnalyzing(true);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/);
-        const results = [];
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-        if (lines.length < 2) {
-          throw new Error("CSV file is empty or missing data rows.");
+    try {
+      // Step 1: Read and parse CSV file
+      setAnalysisStep(1);
+      setAnalysisStatus("Step 1/4: Reading and parsing CSV file structure...");
+      await sleep(350);
+
+      const text = await file.text();
+      const rawLines = text.split(/\r?\n/);
+      const lines = rawLines.filter(l => l.trim().length > 0);
+
+      if (lines.length < 2) {
+        throw new Error("CSV file is empty or missing data rows.");
+      }
+
+      // Parse headers stripping quotes
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+      const emailIdx = headers.findIndex(h => ["email", "e-mail", "email address"].includes(h));
+      const firstIdx = headers.findIndex(h => ["first_name", "first name", "firstname", "first"].includes(h));
+      const lastIdx = headers.findIndex(h => ["last_name", "last name", "lastname", "last"].includes(h));
+
+      if (emailIdx === -1 || firstIdx === -1 || lastIdx === -1) {
+        const missing = [];
+        if (emailIdx === -1) missing.push("email");
+        if (firstIdx === -1) missing.push("first_name");
+        if (lastIdx === -1) missing.push("last_name");
+        throw new Error(`CSV missing required headers: ${missing.join(", ")}. Expected format: email,first_name,last_name`);
+      }
+
+      // Step 2: Validate Data Completeness across all rows
+      setAnalysisStep(2);
+      setAnalysisStatus("Step 2/4: Checking data completeness and field values across rows...");
+      await sleep(350);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const seenEmailsInCsv = new Set<string>();
+      const candidateRows: any[] = [];
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const rowNum = i + 1;
+        const line = lines[i];
+        const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+        const email = (cols[emailIdx] || "").trim();
+        const firstName = (cols[firstIdx] || "").trim();
+        const lastName = (cols[lastIdx] || "").trim();
+
+        const missingFields: string[] = [];
+        if (!email) missingFields.push("email");
+        if (!firstName) missingFields.push("first_name");
+        if (!lastName) missingFields.push("last_name");
+
+        if (missingFields.length > 0) {
+          errors.push(`Row ${rowNum}: Missing required field(s): ${missingFields.join(", ")}`);
+          continue;
         }
-        
-        // Parse CSV headers stripping quotes
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
-        
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
-          const obj: any = {};
-          
-          headers.forEach((header, index) => {
-            obj[header] = cols[index] || "";
-          });
-          
-          const email = obj.email || obj["e-mail"] || obj["email address"];
-          if (email) {
-            const firstName = obj.first_name || obj["first name"] || obj.firstname || obj.first || "";
-            const lastName = obj.last_name || obj["last name"] || obj.lastname || obj.last || "";
 
-            results.push({
-              email: email.toLowerCase(),
-              first_name: firstName,
-              last_name: lastName
+        if (!emailRegex.test(email)) {
+          errors.push(`Row ${rowNum}: Invalid email format "${email}"`);
+          continue;
+        }
+
+        const normalizedEmail = email.toLowerCase();
+        if (seenEmailsInCsv.has(normalizedEmail)) {
+          errors.push(`Row ${rowNum}: Duplicate email "${email}" found within the CSV file.`);
+          continue;
+        }
+        seenEmailsInCsv.add(normalizedEmail);
+
+        candidateRows.push({
+          rowNum,
+          email: normalizedEmail,
+          first_name: firstName,
+          last_name: lastName
+        });
+      }
+
+      if (candidateRows.length === 0 && errors.length === 0) {
+        throw new Error("No valid data rows found in CSV.");
+      }
+
+      // Step 3: Check Email Uniqueness (Pre-flight all-or-nothing check against existing accounts and pending invitations)
+      setAnalysisStep(3);
+      setAnalysisStatus("Step 3/4: Checking email uniqueness against active accounts and invitations...");
+      await sleep(350);
+
+      const allCsvEmails = candidateRows.map(r => r.email);
+      const existingEmailsFound = new Set<string>();
+
+      // Check current in-memory members and invitations
+      members.forEach(m => {
+        if (allCsvEmails.includes(m.email.toLowerCase())) {
+          existingEmailsFound.add(m.email.toLowerCase());
+        }
+      });
+
+      // Direct database query for comprehensive coverage
+      if (allCsvEmails.length > 0) {
+        try {
+          const { data: dbProfiles } = await supabasedb
+            .from("profiles")
+            .select("email")
+            .in("email", allCsvEmails);
+          if (dbProfiles) {
+            dbProfiles.forEach((p: any) => {
+              if (p.email) existingEmailsFound.add(p.email.toLowerCase());
             });
           }
+
+          const { data: dbInvs } = await supabasedb
+            .from("invitations")
+            .select("email")
+            .in("email", allCsvEmails);
+          if (dbInvs) {
+            dbInvs.forEach((inv: any) => {
+              if (inv.email) existingEmailsFound.add(inv.email.toLowerCase());
+            });
+          }
+        } catch (dbErr) {
+          console.warn("Direct db uniqueness check warning:", dbErr);
         }
-        
-        if (results.length === 0) {
-          throw new Error("No valid rows containing an email header were found.");
-        }
-        setParsedRoster(results);
-      } catch (err: any) {
-        setCsvError(err.message || "Failed to parse CSV spreadsheet.");
-        setParsedRoster([]);
       }
-    };
-    reader.readAsText(file);
+
+      if (existingEmailsFound.size > 0) {
+        const existingList = Array.from(existingEmailsFound).join(", ");
+        errors.push(`The following email(s) already exist: ${existingList}. Please upload a new CSV file with updated content.`);
+      }
+
+      // If any errors were detected, stop and do not allow proceeding
+      if (errors.length > 0) {
+        setCsvError(errors.join("\n"));
+        setParsedRoster([]);
+        return;
+      }
+
+      // Step 4: Final verification
+      setAnalysisStep(4);
+      setAnalysisStatus("Step 4/4: Finalizing roster verification...");
+      await sleep(200);
+
+      setParsedRoster(candidateRows);
+      setAnalysisSuccess(
+        `All checks passed! Found ${candidateRows.length} valid new team member(s). All details filled and emails verified as new.`
+      );
+    } catch (err: any) {
+      setCsvError(err.message || "Failed to process and analyze CSV file.");
+      setParsedRoster([]);
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisStatus(null);
+    }
   };
 
   const handleUploadRoster = async () => {
     if (parsedRoster.length === 0 || !teamName) return;
     setCsvUploading(true);
     setCsvError(null);
+    setFormSuccess(null);
 
     let successCount = 0;
     let failCount = 0;
+    const errors: string[] = [];
 
-    for (const candidate of parsedRoster) {
-      const normalizedEmail = candidate.email.toLowerCase().trim();
-      const emailExists = members.some(m => m.email.toLowerCase() === normalizedEmail);
-      if (emailExists) {
-        failCount++;
-        continue;
-      }
+    for (let i = 0; i < parsedRoster.length; i++) {
+      const candidate = parsedRoster[i];
+      setUploadProgressText(`Sending invitation and activation email (${i + 1} of ${parsedRoster.length}) to ${candidate.email}...`);
 
       try {
         const res = await fetch(`${cleanApiUrl}/api/enterprise/invite-team-member`, {
@@ -393,17 +570,29 @@ export default function TeamLeadManagerPage() {
         if (res.ok) {
           successCount++;
         } else {
+          const errData = await res.json().catch(() => ({}));
           failCount++;
+          errors.push(`${candidate.email}: ${errData.detail || "Failed to send invitation"}`);
         }
-      } catch {
+      } catch (err: any) {
         failCount++;
+        errors.push(`${candidate.email}: ${err.message || "Network error"}`);
       }
     }
 
+    setUploadProgressText(null);
     setCsvUploading(false);
+
+    if (successCount > 0) {
+      setFormSuccess(`Bulk Roster Import Complete: Successfully invited ${successCount} member(s) to ${teamName}!${failCount > 0 ? ` (${failCount} errors)` : ""}`);
+    }
+    if (errors.length > 0) {
+      setCsvError(`Failed invitations:\n${errors.join("\n")}`);
+    }
+
     setParsedRoster([]);
     setCsvFile(null);
-    alert(`Bulk Roster Import Complete. Success: ${successCount}, Failed: ${failCount}`);
+    setAnalysisSuccess(null);
     await fetchTeamData();
   };
 
@@ -491,16 +680,10 @@ export default function TeamLeadManagerPage() {
 
   if (authLoading || loading) {
     return (
-      <main className="tie-container bg-mesh">
-        <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "350px" }}>
-          <div className="tie-card-top-bar" />
-          <Loader2 className="animate-spin text-[#5BA4A4]" size={36} style={{ marginBottom: "1rem" }} />
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#627D98" }}>
-            Loading Manager Analytics...
-          </span>
-        </div>
-      </main>
+      <InteractiveDashboardLoader 
+        title="Manager Analytics Hub" 
+        subtitle="Team Lead Workspace" 
+      />
     );
   }
 
@@ -528,10 +711,58 @@ export default function TeamLeadManagerPage() {
             </p>
           </div>
           
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.6rem 1.2rem', borderRadius: '12px', border: '1.5px solid rgba(36,59,83,0.15)', background: '#ffffff', color: '#243B53', fontSize: '0.8125rem', fontWeight: 700, textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F7FA'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link 
+              href="/welcome" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '0.625rem 1.25rem', 
+                borderRadius: '6px', 
+                background: 'linear-gradient(135deg, #3730A3 0%, #4F46E5 100%)', 
+                border: '1px solid #4338CA', 
+                color: '#ffffff', 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                letterSpacing: '0.02em',
+                textDecoration: 'none', 
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                boxShadow: '0 2px 6px rgba(55, 48, 163, 0.25)' 
+              }}
+              onMouseEnter={e => { 
+                e.currentTarget.style.background = 'linear-gradient(135deg, #312E81 0%, #4338CA 100%)'; 
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(55, 48, 163, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.background = 'linear-gradient(135deg, #3730A3 0%, #4F46E5 100%)'; 
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(55, 48, 163, 0.25)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <Sparkles size={14} style={{ color: '#C7D2FE' }} />
+              <span>Take Self-Assessment</span>
+            </Link>
+            <Link 
+              href="/dashboard" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                padding: '0.625rem 1.2rem', 
+                borderRadius: '6px', 
+                border: '1.5px solid rgba(36,59,83,0.15)', 
+                background: '#ffffff', 
+                color: '#243B53', 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                textDecoration: 'none', 
+                transition: 'all 0.2s' 
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F4F7FA'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+            >
               User Dashboard
             </Link>
           </div>
@@ -802,17 +1033,88 @@ export default function TeamLeadManagerPage() {
 
             {/* Error/Success banners */}
             {(formSuccess || formError) && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 {formSuccess && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1rem', background: 'rgba(46,125,50,0.06)', border: '1px solid rgba(46,125,50,0.15)', borderRadius: '12px', color: '#2E7D32', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <CheckCircle size={15} style={{ flexShrink: 0 }} />
-                    <span>{formSuccess}</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '8px', 
+                    padding: '0.85rem 1rem', 
+                    background: 'rgba(46,125,50,0.06)', 
+                    border: '1px solid rgba(46,125,50,0.15)', 
+                    borderRadius: '12px', 
+                    color: '#2E7D32', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 600,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      <CheckCircle size={16} style={{ flexShrink: 0, color: '#2E7D32' }} />
+                      <span>{formSuccess}</span>
+                    </div>
+                    {generatedInviteUrl && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap', maxWidth: '100%' }}>
+                        <button
+                          type="button"
+                          onClick={handleCopyInviteLink}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            background: copiedInvite ? '#166534' : '#ffffff',
+                            color: copiedInvite ? '#ffffff' : '#2E7D32',
+                            border: '1px solid rgba(46,125,50,0.25)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            flexShrink: 0
+                          }}
+                        >
+                          {copiedInvite ? (
+                            <>
+                              <CheckCircle size={12} />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              <span>Copy Invite Link</span>
+                            </>
+                          )}
+                        </button>
+                        <span style={{ fontSize: '10px', color: '#627D98', fontWeight: 500 }}>
+                          Activation mail dispatched
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {formError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1rem', background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.15)', borderRadius: '12px', color: '#c0392b', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
-                    <span>{formError}</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '8px', 
+                    padding: '0.85rem 1rem', 
+                    background: 'rgba(192,57,43,0.06)', 
+                    border: '1px solid rgba(192,57,43,0.15)', 
+                    borderRadius: '12px', 
+                    color: '#c0392b', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 600,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere'
+                  }}>
+                    <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{formError}</span>
                   </div>
                 )}
               </div>
@@ -875,49 +1177,114 @@ export default function TeamLeadManagerPage() {
                 </button>
               </div>
 
-              <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.06)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '120px', textAlign: 'left' }}>
+              <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.06)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '130px', textAlign: 'left' }}>
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#627D98' }}>
-                  {parsedRoster.length > 0 ? (
-                    <span style={{ color: '#243B53', fontWeight: 700 }}>Parsed {parsedRoster.length} member rows. Ready to run import.</span>
+                  {isAnalyzing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5BA4A4', fontWeight: 700 }}>
+                        <Loader2 className="animate-spin" size={16} />
+                        <span>Validating Roster & Checking Accounts...</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#627D98', fontWeight: 600 }}>
+                        {analysisStatus}
+                      </div>
+                      <div style={{ width: '100%', background: '#E2E8F0', height: '5px', borderRadius: '999px', overflow: 'hidden', marginTop: '4px' }}>
+                        <div 
+                          style={{ 
+                            height: '100%', 
+                            width: `${(analysisStep / 4) * 100}%`, 
+                            background: 'linear-gradient(90deg, #5BA4A4, #3B82F6)',
+                            transition: 'width 0.3s ease'
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  ) : csvUploading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3B82F6', fontWeight: 700 }}>
+                        <Loader2 className="animate-spin" size={16} />
+                        <span>Provisioning & Dispatching Invitations...</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#243B53', fontWeight: 600 }}>
+                        {uploadProgressText || "Processing batch..."}
+                      </p>
+                    </div>
+                  ) : csvError ? (
+                    <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991B1B', fontWeight: 700, fontSize: '0.75rem' }}>
+                        <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                        <span>Roster Validation Error</span>
+                      </div>
+                      <p style={{ margin: 0, color: '#DC2626', fontSize: '11px', fontWeight: 600, whiteSpace: 'pre-line', lineHeight: '1.4' }}>
+                        {csvError}
+                      </p>
+                    </div>
+                  ) : analysisSuccess && parsedRoster.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontWeight: 700, fontSize: '0.8125rem' }}>
+                        <CheckCircle size={15} style={{ flexShrink: 0 }} />
+                        <span>Roster Verified & Ready</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#15803D', fontWeight: 600 }}>
+                        {analysisSuccess}
+                      </p>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                        <span style={{ padding: '2px 8px', background: '#DCFCE7', color: '#15803D', borderRadius: '6px', fontSize: '10px', fontWeight: 700 }}>
+                          {parsedRoster.length} New Members
+                        </span>
+                        <span style={{ padding: '2px 8px', background: '#F1F5F9', color: '#475569', borderRadius: '6px', fontSize: '10px', fontWeight: 700 }}>
+                          Team: {teamName}
+                        </span>
+                        <span style={{ padding: '2px 8px', background: '#F1F5F9', color: '#475569', borderRadius: '6px', fontSize: '10px', fontWeight: 700 }}>
+                          Role: user
+                        </span>
+                      </div>
+                    </div>
                   ) : (
-                    <span style={{ color: '#9aa8b6', fontStyle: 'italic' }}>No roster CSV file parsed yet. Upload a roster spreadsheet to start bulk onboarding.</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ color: '#243B53', fontWeight: 700 }}>Awaiting Roster CSV Upload</span>
+                      <span style={{ color: '#9aa8b6', fontSize: '11px', lineHeight: '1.4' }}>
+                        Upload a roster spreadsheet (.csv). The system verifies all fields and checks email uniqueness before any accounts or invitations are generated.
+                      </span>
+                    </div>
                   )}
-                  {csvError && <p style={{ color: '#c0392b', fontSize: '10px', marginTop: '6px', fontWeight: 700 }}>{csvError}</p>}
                 </div>
                 
-                {parsedRoster.length > 0 && (
+                {parsedRoster.length > 0 && !isAnalyzing && (
                   <button
                     onClick={handleUploadRoster}
                     disabled={csvUploading}
                     style={{
                       width: '100%',
-                      padding: '0.65rem',
-                      background: '#243B53',
+                      padding: '0.65rem 1rem',
+                      background: 'linear-gradient(135deg, #243B53 0%, #1a2d40 100%)',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '10px',
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      cursor: 'pointer',
+                      cursor: csvUploading ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
-                      marginTop: '10px',
+                      gap: '8px',
+                      marginTop: '12px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
                       transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#1a2d40'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#243B53'}
+                    onMouseEnter={e => { if (!csvUploading) e.currentTarget.style.filter = 'brightness(1.1)'; }}
+                    onMouseLeave={e => { if (!csvUploading) e.currentTarget.style.filter = 'none'; }}
                   >
                     {csvUploading ? (
                       <>
-                        <Loader2 className="animate-spin" size={12} />
-                        <span>Provisioning Batch...</span>
+                        <Loader2 className="animate-spin" size={13} />
+                        <span>Provisioning & Dispatching...</span>
                       </>
                     ) : (
                       <>
-                        <Database size={12} />
-                        <span>Run Roster Import</span>
+                        <Database size={13} />
+                        <span>Provision & Send Invitation Mails</span>
+                        <ArrowRight size={13} />
                       </>
                     )}
                   </button>
@@ -1051,10 +1418,23 @@ export default function TeamLeadManagerPage() {
                                   fontWeight: 700,
                                   borderRadius: '8px',
                                   cursor: 'pointer',
-                                  transition: 'all 0.2s'
+                                  transition: 'all 0.15s ease',
+                                  boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#4F46E5'}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = '#4338ca';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = '#4F46E5';
+                                  e.currentTarget.style.transform = 'translateY(0px)';
+                                }}
+                                onMouseDown={e => {
+                                  e.currentTarget.style.transform = 'scale(0.97)';
+                                }}
+                                onMouseUp={e => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
                               >
                                 <Sparkles size={12} />
                                 <span>Generate 30-Day Plan</span>
@@ -1176,7 +1556,23 @@ export default function TeamLeadManagerPage() {
                       fontSize: '11px',
                       fontWeight: 700,
                       borderRadius: '10px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#4338ca';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = '#4F46E5';
+                      e.currentTarget.style.transform = 'translateY(0px)';
+                    }}
+                    onMouseDown={e => {
+                      e.currentTarget.style.transform = 'scale(0.97)';
+                    }}
+                    onMouseUp={e => {
+                      e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
                     <Sparkles size={14} />

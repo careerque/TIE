@@ -81,7 +81,10 @@ export const loginUser = async (email: string, psw: string): Promise<ServiceResp
               team_id: profileData.team_id || undefined,
               manager_id: profileData.manager_id || undefined,
               assessment_seed: profileData.assessment_seed ? Number(profileData.assessment_seed) : undefined,
-            }));
+            }), 1);
+
+            // Record session start timestamp strictly for 1 hour
+            CookieUtils.set("tie-session-start", String(Date.now()), 1);
         }
 
         return {

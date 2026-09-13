@@ -35,7 +35,7 @@ export const ActionPlanView: React.FC<ActionPlanViewProps> = ({
   const handlePdfDownload = async () => {
     setIsExporting(true);
     try {
-      await exportActionPlanPdf(employeeName, selected_behaviour?.id || 'WBIL', 'action-plan-container');
+      await exportActionPlanPdf(employeeName, actionPlanData);
     } catch (err) {
       console.error("Action Plan PDF generation error:", err);
     } finally {

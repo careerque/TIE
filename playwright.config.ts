@@ -7,9 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  timeout: 45 * 1000,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 2,
   reporter: [
     ['html', { open: 'never' }],
     ['list']
@@ -34,12 +35,32 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
     {
+      name: 'Desktop Edge',
+      use: { ...devices['Desktop Edge'] },
+    },
+    {
       name: 'Mobile Chrome (Pixel 7)',
       use: { ...devices['Pixel 7'] },
     },
     {
+      name: 'Mobile Chrome (Galaxy S9+)',
+      use: { ...devices['Galaxy S9+'] },
+    },
+    {
       name: 'Mobile Safari (iPhone 14)',
       use: { ...devices['iPhone 14'] },
+    },
+    {
+      name: 'Mobile Safari (iPhone 12)',
+      use: { ...devices['iPhone 12'] },
+    },
+    {
+      name: 'Tablet Safari (iPad Pro 11)',
+      use: { ...devices['iPad Pro 11'] },
+    },
+    {
+      name: 'Tablet Chrome (Nexus 10)',
+      use: { ...devices['Nexus 10'] },
     },
   ],
   webServer: {

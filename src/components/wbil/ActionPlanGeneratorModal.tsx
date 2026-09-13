@@ -1,8 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Sparkles, AlertCircle, Loader2, Target, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Sparkles, AlertCircle, Loader2, Target, CheckCircle2, Zap } from 'lucide-react';
 import { DevelopmentPriority, ActionPlanJSON } from '@/types/wbil';
+
+const ACTION_PLAN_STAGES = [
+  { threshold: 24, label: "Analyzing Report Priorities & Diagnostics...", tag: "Diagnostics" },
+  { threshold: 48, label: "Querying WBIL Behavioral Modules & Pedagogies...", tag: "WBIL Modules" },
+  { threshold: 72, label: "Synthesizing 4-Week Milestone Objectives...", tag: "Milestones" },
+  { threshold: 92, label: "Calibrating Habit Commitments & Measurement Criteria...", tag: "Commitments" },
+  { threshold: 98, label: "Assembling Final Executive Coaching Plan...", tag: "Assembly" }
+];
 
 interface ActionPlanGeneratorModalProps {
   isOpen: boolean;
@@ -26,8 +34,18 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
   const [workplaceContext, setWorkplaceContext] = useState<string>('');
   
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(14);
   const [loadingStep, setLoadingStep] = useState<number>(1);
+  const [showLiveInsights, setShowLiveInsights] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (developmentPriorities && developmentPriorities.length > 0) {
+      if (!selectedPriorityId || selectedPriorityId === 'WB-001') {
+        setSelectedPriorityId(developmentPriorities[0].behaviour_id);
+      }
+    }
+  }, [developmentPriorities]);
 
   if (!isOpen) return null;
 
@@ -35,6 +53,7 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg(null);
+    setProgress(14);
     setLoadingStep(1);
 
     // Combine selected dropdown priority + custom manager priority text
@@ -54,9 +73,21 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const cleanApiUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
 
-    const stepInterval = setInterval(() => {
-      setLoadingStep((prev) => (prev < 3 ? prev + 1 : prev));
-    }, 1200);
+    // Progressive percentage counter that smoothly advances during LLM generation
+    const progressTimer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 94) {
+          return Math.min(prev + 0.25, 97);
+        }
+        const jump = Math.floor(Math.random() * 6) + 3;
+        const next = Math.min(prev + jump, 95);
+        if (next >= 90) setLoadingStep(5);
+        else if (next >= 70) setLoadingStep(4);
+        else if (next >= 48) setLoadingStep(3);
+        else if (next >= 24) setLoadingStep(2);
+        return next;
+      });
+    }, 280);
 
     try {
       const response = await fetch(`${cleanApiUrl}/api/v1/action-plans/generate`, {
@@ -71,8 +102,7 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
         }),
       });
 
-      clearInterval(stepInterval);
-
+      clearInterval(progressTimer);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -81,13 +111,14 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
 
       const result = await response.json();
       if (result.status === 'SUCCESS' && result.data) {
+        setProgress(100);
         onActionPlanGenerated(result.data, result.action_plan_id);
         onClose();
       } else {
         throw new Error('Unexpected response format from server.');
       }
     } catch (err: any) {
-      clearInterval(stepInterval);
+      clearInterval(progressTimer);
       setErrorMsg(err.message || 'An unexpected error occurred during Action Plan generation.');
     } finally {
       setIsLoading(false);
@@ -187,31 +218,71 @@ export const ActionPlanGeneratorModal: React.FC<ActionPlanGeneratorModalProps> =
 
         {/* LOADING OVERLAY */}
         {isLoading ? (
-          <div style={{ padding: '3rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: '#5BA4A4' }} />
+          <div style={{ padding: '2.5rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            
+            {/* Top progress and percentage row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  AI Coaching Engine Active
+                </span>
+                <h4 style={{ fontSize: '1.0625rem', fontWeight: 800, color: '#243B53', margin: '2px 0 0 0' }}>
+                  Synthesizing 30-Day Action Plan...
+                </h4>
+              </div>
+              <span style={{ fontSize: '2.25rem', fontWeight: 900, color: '#243B53', letterSpacing: '-0.04em', fontVariantNumeric: 'tabular-nums' }}>
+                {Math.round(progress)}<span style={{ fontSize: '1.25rem', color: '#5BA4A4', fontWeight: 700 }}>%</span>
+              </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '320px' }}>
-              <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#243B53' }}>
-                Building Tailored 30-Day Action Plan...
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 1 ? 700 : 500, color: loadingStep >= 1 ? '#5BA4A4' : '#94A3B8' }}>
-                  <CheckCircle2 size={16} />
-                  <span>1. Analyzing Report Priorities...</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 2 ? 700 : 500, color: loadingStep >= 2 ? '#5BA4A4' : '#94A3B8' }}>
-                  <CheckCircle2 size={16} />
-                  <span>2. Matching Target WBIL Behavior Module...</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', fontWeight: loadingStep >= 3 ? 700 : 500, color: loadingStep >= 3 ? '#5BA4A4' : '#94A3B8' }}>
-                  <CheckCircle2 size={16} />
-                  <span>3. Structuring 4-Week Commitments...</span>
-                </div>
-              </div>
+            {/* Glowing progress bar */}
+            <div style={{ width: '100%', height: '8px', background: '#F1F5F9', borderRadius: '99px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${progress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #5BA4A4 0%, #243B53 100%)',
+                  borderRadius: '99px',
+                  transition: 'width 0.25s ease-out',
+                  boxShadow: '0 0 12px rgba(91,164,164,0.45)'
+                }}
+              />
             </div>
+
+            {/* Stage items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', background: '#F8FAFC', padding: '1.25rem', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+              {ACTION_PLAN_STAGES.map((st, i) => {
+                const isPassed = progress >= st.threshold;
+                const isCurrent = (progress < st.threshold) && (i === 0 || progress >= ACTION_PLAN_STAGES[i - 1].threshold);
+
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <CheckCircle2
+                        size={16}
+                        style={{
+                          color: isPassed ? '#2E7D32' : isCurrent ? '#5BA4A4' : '#CBD5E1',
+                          flexShrink: 0,
+                          transition: 'color 0.2s'
+                        }}
+                      />
+                      <span style={{ fontWeight: isPassed || isCurrent ? 700 : 500, color: isPassed ? '#243B53' : isCurrent ? '#5BA4A4' : '#94A3B8' }}>
+                        {st.label}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: isPassed ? 'rgba(46,125,50,0.1)' : isCurrent ? 'rgba(91,164,164,0.1)' : '#E2E8F0', color: isPassed ? '#2E7D32' : isCurrent ? '#5BA4A4' : '#94A3B8', textTransform: 'uppercase' }}>
+                      {isPassed ? 'Complete' : isCurrent ? 'Active' : 'Queued'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#9aa8b6', fontSize: '11px', fontStyle: 'italic' }}>
+              <Sparkles size={12} style={{ color: '#5BA4A4' }} />
+              <span>Tailoring custom developmental milestones based on psychological assessment scores...</span>
+            </div>
+
           </div>
         ) : (
           /* FORM CONTENT */

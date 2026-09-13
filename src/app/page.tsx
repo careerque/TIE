@@ -308,10 +308,16 @@ export default function WelcomePage() {
           <div className="home-cta-group animate-fade-up delay-300">
             {isLoggedIn ? (
               profile?.role && profile.role !== "user" ? (
-                <Link href={getDashboardLink()} className="home-btn-primary">
-                  View Dashboard
-                  <ArrowRight size={16} />
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <Link href={getDashboardLink()} className="home-btn-primary">
+                    View Dashboard
+                    <ArrowRight size={16} />
+                  </Link>
+                  <Link href="/welcome" className="home-btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={16} style={{ color: '#5BA4A4' }} />
+                    <span>Take Self-Assessment</span>
+                  </Link>
+                </div>
               ) : (
                 <Link href="/welcome" className="home-btn-primary">
                   Take Assessment
@@ -611,10 +617,34 @@ export default function WelcomePage() {
           >
             {isLoggedIn ? (
               profile?.role && profile.role !== "user" ? (
-                <Link href={getDashboardLink()} className="home-btn-primary">
-                  View Dashboard
-                  <ArrowRight size={16} />
-                </Link>
+                <>
+                  <Link href={getDashboardLink()} className="home-btn-primary">
+                    View Dashboard
+                    <ArrowRight size={16} />
+                  </Link>
+                  <Link
+                    href="/welcome"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "0.875rem 1.75rem",
+                      background: "rgba(91, 164, 164, 0.25)",
+                      color: "#ffffff",
+                      border: "1px solid rgba(91, 164, 164, 0.4)",
+                      borderRadius: "12px",
+                      fontSize: "0.9375rem",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                      backdropFilter: "blur(4px)"
+                    }}
+                  >
+                    <Sparkles size={16} style={{ color: "#81E6D9" }} />
+                    <span>Take Self-Assessment</span>
+                  </Link>
+                </>
               ) : (
                 <>
                   <Link href="/welcome" className="home-btn-primary">

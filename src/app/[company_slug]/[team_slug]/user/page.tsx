@@ -34,6 +34,7 @@ import { ActionPlanJSON } from "@/types/wbil";
 
 import { useTenantGuard } from "@/hooks/useTenantGuard";
 import { AssessmentHeader } from "@/components/AssessmentHeader";
+import { ActionPlanGeneratorModal } from "@/components/wbil/ActionPlanGeneratorModal";
 
 
 interface SeededQuestion extends CleanQuestion {
@@ -90,6 +91,7 @@ export default function EmployeeWorkspacePage() {
   const [activeTab, setActiveTab] = useState<'report' | 'action_plan'>('report');
   const [actionPlanData, setActionPlanData] = useState<ActionPlanJSON | null>(null);
   const [actionPlanId, setActionPlanId] = useState<string | undefined>(undefined);
+  const [isPlanGeneratorOpen, setIsPlanGeneratorOpen] = useState<boolean>(false);
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -99,10 +101,6 @@ export default function EmployeeWorkspacePage() {
     if (!authLoading) {
       if (!isLoggedIn) {
         router.push("/login");
-        return;
-      }
-      if (profile?.role && profile.role !== "user" && (!targetUserId || targetUserId === user?.id)) {
-        router.push("/dashboard");
         return;
       }
       resolveWorkspaceState();
@@ -237,6 +235,12 @@ export default function EmployeeWorkspacePage() {
       // Check user responses count
       const progressRes = await fetchUserSavedProgress(user.id);
       const answeredCount = progressRes.success && progressRes.data ? progressRes.data.length : 0;
+
+      const hasStarted = searchParams.get("started") === "true";
+      if (answeredCount === 0 && !hasStarted) {
+        router.push("/welcome");
+        return;
+      }
 
       if (answeredCount < 24) {
         // Load assessment structure
@@ -539,7 +543,7 @@ export default function EmployeeWorkspacePage() {
     );
   }
 
-  // Render 24 Scenario List (Single Page Layout)
+  // Render Single Question Test Taking Experience (One Question Per Page)
   if (workflowState === "taking_test") {
     return (
       <main
@@ -550,14 +554,14 @@ export default function EmployeeWorkspacePage() {
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.5rem',
+          gap: '1.25rem',
           boxSizing: 'border-box'
         }}
       >
         {/* Background decoration */}
         <div className="tie-dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
-        {/* Executive Assessment Header (Displays Company Name, Manager Name, Team Name, Candidate User Name & Progress) */}
+        {/* Executive Assessment Header */}
         <AssessmentHeader
           companyName={tenantMeta.companyName}
           teamName={tenantMeta.teamName}
@@ -566,162 +570,378 @@ export default function EmployeeWorkspacePage() {
           userDesignation={tenantMeta.userDesignation}
           userEmployeeId={tenantMeta.userEmployeeId}
           totalAnsweredCount={totalAnsweredCount}
-          totalQuestions={24}
+          totalQuestions={questions.length || 24}
           isAllCompleted={isAllCompleted}
           onCompleteTest={handleCompleteTest}
         />
 
-        {/* 24 Question List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {questions.map((q, qIdx) => {
-            const answerIndex = answers[q.question_id];
-            return (
-              <div 
-                key={q.question_id}
-                style={{ 
-                  background: '#ffffff', 
-                  border: '1px solid rgba(36,59,83,0.08)', 
-                  borderRadius: '24px', 
-                  padding: CARD_PADDING, 
-                  boxShadow: 'var(--shadow-card)', 
-                  textAlign: 'left', 
-                  position: 'relative', 
-                  overflow: 'hidden',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.2s'
+        {/* Quick Scenario Navigator / Question Palette */}
+        {questions.length > 0 && (
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid rgba(36,59,83,0.08)',
+              borderRadius: '20px',
+              padding: '1rem 1.25rem',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#243B53', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Scenario Jump Palette
+                </span>
+                <span style={{ fontSize: '11px', color: '#627D98', fontWeight: 600 }}>
+                  ({totalAnsweredCount} of {questions.length} Answered)
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '10px', fontWeight: 600, color: '#627D98' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#243B53' }} />
+                  <span>Current</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2E7D32' }} />
+                  <span>Answered</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#CBD5E1' }} />
+                  <span>Unanswered</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(28px, 1fr))',
+              gap: '6px',
+              width: '100%'
+            }}>
+              {questions.map((q, qIdx) => {
+                const isCurrent = qIdx === currentIndex;
+                const isAnswered = answers[q.question_id] !== undefined;
+
+                return (
+                  <button
+                    key={q.question_id}
+                    type="button"
+                    onClick={() => setCurrentIndex(qIdx)}
+                    style={{
+                      padding: '6px 0',
+                      borderRadius: '8px',
+                      border: isCurrent
+                        ? '2px solid #5BA4A4'
+                        : isAnswered
+                        ? '1px solid rgba(46,125,50,0.25)'
+                        : '1px solid rgba(36,59,83,0.1)',
+                      background: isCurrent
+                        ? '#243B53'
+                        : isAnswered
+                        ? 'rgba(46,125,50,0.08)'
+                        : '#F8FAFC',
+                      color: isCurrent
+                        ? '#ffffff'
+                        : isAnswered
+                        ? '#2E7D32'
+                        : '#627D98',
+                      fontSize: '11px',
+                      fontWeight: isCurrent ? 800 : 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => {
+                      if (!isCurrent) e.currentTarget.style.borderColor = '#5BA4A4';
+                    }}
+                    onMouseLeave={e => {
+                      if (!isCurrent) {
+                        e.currentTarget.style.borderColor = isAnswered
+                          ? 'rgba(46,125,50,0.25)'
+                          : 'rgba(36,59,83,0.1)';
+                      }
+                    }}
+                    title={`Jump to Scenario ${qIdx + 1} (${isAnswered ? 'Answered' : 'Unanswered'})`}
+                  >
+                    {qIdx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Single Question Display Card */}
+        {currentQuestion && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentQuestion.question_id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                background: '#ffffff',
+                border: '1px solid rgba(36,59,83,0.08)',
+                borderRadius: '24px',
+                padding: CARD_PADDING,
+                boxShadow: 'var(--shadow-card)',
+                textAlign: 'left',
+                position: 'relative',
+                overflow: 'hidden',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '4px',
+                  background: currentAnswerIndex !== undefined
+                    ? 'linear-gradient(90deg, #5BA4A4, #2E7D32)'
+                    : 'linear-gradient(90deg, #5BA4A4, #3B82F6)'
                 }}
-              >
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: answerIndex !== undefined ? '#5BA4A4' : 'transparent' }} />
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '99px', background: '#F4F7FA', color: '#7B8794', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Scenario {qIdx + 1} of 24
-                  </div>
-                  {savingId === q.question_id && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#5BA4A4', fontWeight: 600 }}>
-                      <Loader2 className="animate-spin" size={11} />
-                      Saving...
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '99px', background: '#F4F7FA', color: '#243B53', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <Sparkles size={13} style={{ color: '#5BA4A4' }} />
+                  <span>Scenario {currentIndex + 1} of {questions.length}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {savingId === currentQuestion.question_id ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#5BA4A4', fontWeight: 600 }}>
+                      <Loader2 className="animate-spin" size={13} />
+                      Saving changes...
+                    </span>
+                  ) : currentAnswerIndex !== undefined ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#2E7D32', fontWeight: 600 }}>
+                      <CheckCircle2 size={13} />
+                      Response Saved
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#9aa8b6', fontWeight: 600 }}>
+                      Select an option below
                     </span>
                   )}
                 </div>
-
-                <h2 style={{ fontSize: '1rem', fontWeight: 800, color: '#243B53', lineHeight: 1.4, margin: '0 0 1.25rem 0' }}>
-                  {q.question_text}
-                </h2>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {q.shuffledOptions.map((opt, oIdx) => {
-                    const isSelected = answerIndex === opt.originalIndex;
-                    return (
-                      <button
-                        key={oIdx}
-                        onClick={() => handleSelectOption(q.question_id, opt.originalIndex)}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '0.85rem 1.25rem',
-                          borderRadius: '12px',
-                          border: `1.5px solid ${isSelected ? '#5BA4A4' : 'rgba(36,59,83,0.1)'}`,
-                          background: isSelected ? 'rgba(91,164,164,0.06)' : '#ffffff',
-                          color: isSelected ? '#5BA4A4' : '#627D98',
-                          fontSize: '0.8125rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          boxSizing: 'border-box',
-                          transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={e => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = 'rgba(91,164,164,0.4)';
-                            e.currentTarget.style.background = '#F8FAFC';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = 'rgba(36,59,83,0.1)';
-                            e.currentTarget.style.background = '#ffffff';
-                          }
-                        }}
-                      >
-                        <div style={{
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '9px',
-                          fontWeight: 800,
-                          background: isSelected ? '#5BA4A4' : '#F4F7FA',
-                          color: isSelected ? '#ffffff' : '#9aa8b6',
-                          flexShrink: 0
-                        }}>
-                          {isSelected ? '✓' : String.fromCharCode(65 + oIdx)}
-                        </div>
-                        <span style={{ lineHeight: 1.3 }}>{opt.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Bottom Submit Section */}
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#243B53', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+                {currentQuestion.question_text}
+              </h2>
+
+              {/* 4 Shuffled Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {currentQuestion.shuffledOptions.map((opt, oIdx) => {
+                  const isSelected = currentAnswerIndex === opt.originalIndex;
+                  return (
+                    <button
+                      key={oIdx}
+                      type="button"
+                      onClick={() => handleSelectOption(currentQuestion.question_id, opt.originalIndex)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '1rem 1.25rem',
+                        borderRadius: '14px',
+                        border: `1.5px solid ${isSelected ? '#5BA4A4' : 'rgba(36,59,83,0.1)'}`,
+                        background: isSelected ? 'rgba(91,164,164,0.06)' : '#ffffff',
+                        color: isSelected ? '#1a2d40' : '#475569',
+                        fontSize: '0.875rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.15s',
+                        boxShadow: isSelected ? '0 2px 8px rgba(91,164,164,0.15)' : 'none'
+                      }}
+                      onMouseEnter={e => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'rgba(91,164,164,0.4)';
+                          e.currentTarget.style.background = '#F8FAFC';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'rgba(36,59,83,0.1)';
+                          e.currentTarget.style.background = '#ffffff';
+                        }
+                      }}
+                    >
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        background: isSelected ? '#5BA4A4' : '#F1F5F9',
+                        color: isSelected ? '#ffffff' : '#64748B',
+                        flexShrink: 0
+                      }}>
+                        {isSelected ? '✓' : String.fromCharCode(65 + oIdx)}
+                      </div>
+                      <span style={{ lineHeight: 1.4, flex: 1 }}>{opt.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* Dedicated Navigation Controls Footer */}
         <div
           style={{
             background: '#ffffff',
             border: '1px solid rgba(36,59,83,0.08)',
-            borderRadius: '24px',
-            padding: CARD_PADDING,
+            borderRadius: '20px',
+            padding: '1rem 1.5rem',
             boxShadow: 'var(--shadow-card)',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '1rem',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            flexWrap: 'wrap'
           }}
         >
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#243B53', margin: 0 }}>Ready to Submit?</h3>
-          <p style={{ fontSize: '0.8125rem', color: '#627D98', margin: 0, textAlign: 'center', maxWidth: '400px' }}>
-            Please make sure you have answered all 24 scenarios. Your answers are auto-saved automatically.
-          </p>
-
+          {/* Previous Question Button */}
           <button
-            onClick={handleCompleteTest}
-            disabled={!isAllCompleted}
+            type="button"
+            onClick={handleBack}
+            disabled={currentIndex === 0}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              padding: '0.85rem 2rem',
-              background: isAllCompleted ? '#243B53' : '#bdc3c7',
-              color: '#ffffff',
-              border: 'none',
+              gap: '6px',
+              padding: '0.75rem 1.25rem',
+              background: '#ffffff',
+              border: '1.5px solid rgba(36,59,83,0.15)',
               borderRadius: '12px',
-              fontSize: '0.875rem',
+              color: currentIndex === 0 ? '#9aa8b6' : '#243B53',
+              fontSize: '0.8125rem',
               fontWeight: 700,
-              cursor: isAllCompleted ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s',
-              boxShadow: isAllCompleted ? '0 4px 6px -1px rgba(36,59,83,0.2)' : 'none'
+              cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+              opacity: currentIndex === 0 ? 0.5 : 1,
+              transition: 'all 0.2s'
             }}
-            onMouseEnter={e => { if (isAllCompleted) e.currentTarget.style.background = '#1a2d40'; }}
-            onMouseLeave={e => { if (isAllCompleted) e.currentTarget.style.background = '#243B53'; }}
+            onMouseEnter={e => {
+              if (currentIndex > 0) {
+                e.currentTarget.style.borderColor = '#5BA4A4';
+                e.currentTarget.style.background = '#F8FAFC';
+              }
+            }}
+            onMouseLeave={e => {
+              if (currentIndex > 0) {
+                e.currentTarget.style.borderColor = 'rgba(36,59,83,0.15)';
+                e.currentTarget.style.background = '#ffffff';
+              }
+            }}
           >
-            <span>Submit Assessment</span>
-            <Send size={14} />
+            <ChevronLeft size={16} />
+            <span>Previous Question</span>
           </button>
 
-          {!isAllCompleted && (
-            <span style={{ fontSize: '11px', color: '#c0392b', fontWeight: 700 }}>
-              ⚠️ You must answer all 24 questions first ({totalAnsweredCount} answered so far).
+          {/* Central Progress Cue */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#243B53' }}>
+              Question {currentIndex + 1} of {questions.length}
             </span>
+            <span style={{ fontSize: '10px', color: '#627D98', fontWeight: 600 }}>
+              {isAllCompleted ? 'All 24 Questions Completed' : `${totalAnsweredCount} of ${questions.length} Answered`}
+            </span>
+          </div>
+
+          {/* Next Question or Submit Assessment Button */}
+          {currentIndex < questions.length - 1 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.75rem 1.5rem',
+                background: 'linear-gradient(135deg, #243B53 0%, #1a2d40 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(36,59,83,0.15)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.15)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+            >
+              <span>Next Question</span>
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleCompleteTest}
+              disabled={!isAllCompleted}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0.75rem 1.5rem',
+                background: isAllCompleted ? 'linear-gradient(135deg, #5BA4A4 0%, #2E7D32 100%)' : '#CBD5E1',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                cursor: isAllCompleted ? 'pointer' : 'not-allowed',
+                boxShadow: isAllCompleted ? '0 4px 10px rgba(46,125,50,0.2)' : 'none',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { if (isAllCompleted) e.currentTarget.style.filter = 'brightness(1.1)'; }}
+              onMouseLeave={e => { if (isAllCompleted) e.currentTarget.style.filter = 'none'; }}
+            >
+              <span>Submit Assessment</span>
+              <Send size={14} />
+            </button>
           )}
         </div>
+
+        {/* Status notice if on final question and incomplete */}
+        {currentIndex === questions.length - 1 && !isAllCompleted && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '0.75rem 1rem',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '12px',
+            color: '#DC2626',
+            fontSize: '0.8125rem',
+            fontWeight: 700
+          }}>
+            <AlertCircle size={15} style={{ flexShrink: 0 }} />
+            <span>
+              You must answer all 24 questions before submitting ({totalAnsweredCount} answered so far). Use the scenario palette above to complete unanswered questions.
+            </span>
+          </div>
+        )}
       </main>
     );
   }
@@ -1071,12 +1291,55 @@ export default function EmployeeWorkspacePage() {
                   <Target size={24} />
                 </div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#243B53', margin: '0 0 0.5rem 0' }}>No 30-Day Action Plan Created Yet</h3>
-                <p style={{ fontSize: '0.8125rem', color: '#627D98', lineHeight: 1.6, margin: 0 }}>
-                  Your manager will collaborate with you during your 1-on-1 coaching sync to generate a personalized 30-Day Action Plan based on your TIE Report insights.
+                <p style={{ fontSize: '0.8125rem', color: '#627D98', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+                  Generate a personalized 30-Day Action Plan with targeted behavioral commitments and weekly milestones based on your assessment results.
                 </p>
+                <button
+                  onClick={() => setIsPlanGeneratorOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '0.75rem 1.5rem',
+                    background: '#5BA4A4',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(91,164,164,0.3)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#4A9393'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#5BA4A4'}
+                >
+                  <Sparkles size={16} />
+                  <span>Generate 30-Day Action Plan</span>
+                </button>
               </div>
             )}
           </div>
+        )}
+
+        {/* Self-Service / Manager Action Plan Generator Modal */}
+        {isPlanGeneratorOpen && (
+          <ActionPlanGeneratorModal
+            isOpen={isPlanGeneratorOpen}
+            onClose={() => setIsPlanGeneratorOpen(false)}
+            reportId={reportData?.user_id || user?.id || ""}
+            developmentPriorities={[
+              { priority_number: 1, behaviour_id: 'WB-001', title: 'Accountability & Milestone Ownership', description: 'Enhance proactive milestone delivery and project tracking.', rationale: 'Key deliverable target.' },
+              { priority_number: 2, behaviour_id: 'WB-009', title: 'Adaptive Workplace Collaboration', description: 'Improve cross-functional communication during sprint cycles.', rationale: 'Team alignment requirement.' },
+              { priority_number: 3, behaviour_id: 'WB-015', title: 'Strategic Output Execution', description: 'Ensure predictable high-quality technical outputs.', rationale: 'Performance excellence objective.' }
+            ]}
+            onActionPlanGenerated={(planData, planId) => {
+              setActionPlanData(planData);
+              setActionPlanId(planId);
+              setIsPlanGeneratorOpen(false);
+              setActiveTab('action_plan');
+            }}
+          />
         )}
       </main>
     );

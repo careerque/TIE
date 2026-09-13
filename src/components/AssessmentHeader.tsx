@@ -43,18 +43,18 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "24px",
+        background: "#ffffff",
+        border: "1px solid rgba(36, 59, 83, 0.09)",
+        borderRadius: "20px",
         padding: "1.75rem 2rem",
-        boxShadow: "0 20px 25px -5px rgba(15, 23, 42, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)",
+        boxShadow: "0 4px 20px -2px rgba(36, 59, 83, 0.06), 0 2px 6px -1px rgba(36, 59, 83, 0.03)",
         position: "relative",
         overflow: "hidden",
-        color: "#ffffff",
+        color: "#243B53",
         marginBottom: "1.5rem"
       }}
     >
-      {/* Top Accent Gradient Bar */}
+      {/* Top Accent Gradient Bar matching TIE branding */}
       <div
         style={{
           position: "absolute",
@@ -62,20 +62,7 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
           left: 0,
           width: "100%",
           height: "4px",
-          background: "linear-gradient(90deg, #0EA5E9 0%, #14B8A6 50%, #3B82F6 100%)",
-        }}
-      />
-
-      {/* Background Micro Decorative Glows */}
-      <div
-        style={{
-          position: "absolute",
-          top: "-50px",
-          right: "-50px",
-          width: "200px",
-          height: "200px",
-          background: "radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(0, 0, 0, 0) 70%)",
-          pointerEvents: "none"
+          background: "linear-gradient(90deg, #243B53 0%, #5BA4A4 50%, #A3B18A 100%)",
         }}
       />
 
@@ -86,25 +73,25 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
           
           {/* Entity Badges Group */}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.625rem" }}>
             
             {/* Company Badge */}
             <div
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "7px",
                 padding: "6px 14px",
-                background: "rgba(14, 165, 233, 0.15)",
-                border: "1px solid rgba(14, 165, 233, 0.3)",
+                background: "rgba(91, 164, 164, 0.08)",
+                border: "1px solid rgba(91, 164, 164, 0.25)",
                 borderRadius: "99px",
-                color: "#38BDF8",
+                color: "#243B53",
                 fontSize: "0.75rem",
                 fontWeight: 700,
                 letterSpacing: "0.02em"
               }}
             >
-              <Building2 size={14} />
+              <Building2 size={14} style={{ color: "#5BA4A4" }} />
               <span>{companyName || "Enterprise Workspace"}</span>
             </div>
 
@@ -113,18 +100,18 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "7px",
                 padding: "6px 14px",
-                background: "rgba(20, 184, 166, 0.15)",
-                border: "1px solid rgba(20, 184, 166, 0.3)",
+                background: "#F8FAFC",
+                border: "1px solid #E2E8F0",
                 borderRadius: "99px",
-                color: "#2DD4BF",
+                color: "#334E68",
                 fontSize: "0.75rem",
-                fontWeight: 700,
+                fontWeight: 600,
                 letterSpacing: "0.02em"
               }}
             >
-              <Users size={14} />
+              <Users size={14} style={{ color: "#627D98" }} />
               <span>
                 {teamName || "Team"} {managerName && managerName !== "Reporting Manager" ? `• Mgr: ${managerName}` : ""}
               </span>
@@ -137,16 +124,16 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
               display: "inline-flex",
               alignItems: "center",
               gap: "6px",
-              padding: "4px 12px",
-              background: "rgba(34, 197, 94, 0.1)",
-              border: "1px solid rgba(34, 197, 94, 0.25)",
+              padding: "5px 12px",
+              background: "rgba(46, 125, 50, 0.06)",
+              border: "1px solid rgba(46, 125, 50, 0.2)",
               borderRadius: "99px",
-              color: "#4ADE80",
+              color: "#166534",
               fontSize: "0.6875rem",
               fontWeight: 600
             }}
           >
-            <ShieldCheck size={13} />
+            <ShieldCheck size={13} style={{ color: "#16A34A" }} />
             <span>Verified Tenant Session</span>
           </div>
         </div>
@@ -156,10 +143,10 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
           
           {/* Assessment Title & Subtitle */}
           <div style={{ flex: "1 1 300px" }}>
-            <h1 style={{ fontSize: "1.625rem", fontWeight: 800, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.2, color: "#F8FAFC" }}>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.25, color: "#243B53" }}>
               Work Style Preferences Assessment
             </h1>
-            <p style={{ fontSize: "0.875rem", color: "#94A3B8", marginTop: "0.35rem", marginBottom: 0, fontWeight: 400, lineHeight: 1.4 }}>
+            <p style={{ fontSize: "0.875rem", color: "#627D98", marginTop: "0.35rem", marginBottom: 0, fontWeight: 400, lineHeight: 1.45 }}>
               Scenarios evaluate behavioral defaults, adaptability, and collaboration fit. All choices auto-save instantly.
             </p>
           </div>
@@ -171,11 +158,11 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
               alignItems: "center",
               gap: "12px",
               padding: "0.75rem 1.25rem",
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "16px",
-              backdropFilter: "blur(10px)",
-              flexShrink: 0
+              background: "#F8FAFC",
+              border: "1px solid #E2E8F0",
+              borderRadius: "14px",
+              flexShrink: 0,
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)"
             }}
           >
             <div
@@ -183,45 +170,45 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
                 width: "40px",
                 height: "40px",
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%)",
+                background: "linear-gradient(135deg, #243B53 0%, #334E68 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#ffffff",
                 fontWeight: 800,
-                fontSize: "1rem",
-                boxShadow: "0 4px 10px rgba(14, 165, 233, 0.3)"
+                fontSize: "0.95rem",
+                boxShadow: "0 2px 6px rgba(36, 59, 83, 0.15)"
               }}
             >
               {userName ? userName.charAt(0).toUpperCase() : "U"}
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#F8FAFC" }}>{userName}</span>
+                <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#243B53" }}>{userName}</span>
                 {userEmployeeId && (
-                  <span style={{ fontSize: "0.6875rem", padding: "1px 6px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", color: "#CBD5E1", fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.6875rem", padding: "1px 6px", background: "#EDF2F7", border: "1px solid #CBD5E1", borderRadius: "4px", color: "#486581", fontWeight: 600 }}>
                     #{userEmployeeId}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#94A3B8", marginTop: "2px", fontWeight: 500 }}>
+              <div style={{ fontSize: "0.75rem", color: "#627D98", marginTop: "2px", fontWeight: 500 }}>
                 {userDesignation}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Row 3: Sticky Progress & Submit Control Sub-Bar */}
+        {/* Row 3: Progress & Submit Control Sub-Bar */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: "1.25rem",
-            padding: "1rem 1.25rem",
-            background: "rgba(15, 23, 42, 0.6)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: "16px",
+            padding: "0.875rem 1.25rem",
+            background: "#F8FAFC",
+            border: "1px solid #E2E8F0",
+            borderRadius: "14px",
             marginTop: "0.25rem",
             flexWrap: "wrap"
           }}
@@ -229,17 +216,17 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
           {/* Progress Tracker Numbers */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", minWidth: "160px" }}>
             <div>
-              <span style={{ fontSize: "0.6875rem", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em", color: "#64748B" }}>
+              <span style={{ fontSize: "0.6875rem", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em", color: "#829AB1" }}>
                 Progress
               </span>
-              <div style={{ fontSize: "1.125rem", fontWeight: 800, color: "#F8FAFC" }}>
-                {totalAnsweredCount} <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#64748B" }}>/ {totalQuestions} Completed</span>
+              <div style={{ fontSize: "1.125rem", fontWeight: 800, color: "#243B53" }}>
+                {totalAnsweredCount} <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#627D98" }}>/ {totalQuestions} Completed</span>
               </div>
             </div>
           </div>
 
           {/* Visual Progress Bar */}
-          <div style={{ flex: 1, minWidth: "140px", height: "8px", background: "rgba(255, 255, 255, 0.1)", borderRadius: "99px", overflow: "hidden" }}>
+          <div style={{ flex: 1, minWidth: "140px", height: "8px", background: "#E2E8F0", borderRadius: "99px", overflow: "hidden" }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${completionPercentage}%` }}
@@ -248,13 +235,13 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
                 height: "100%",
                 background: isAllCompleted 
                   ? "linear-gradient(90deg, #10B981 0%, #059669 100%)"
-                  : "linear-gradient(90deg, #0EA5E9 0%, #14B8A6 100%)",
+                  : "linear-gradient(90deg, #5BA4A4 0%, #3B82F6 100%)",
                 borderRadius: "99px"
               }}
             />
           </div>
 
-          {/* Submission Action Button */}
+          {/* Submission Action Button or Helper Status */}
           {isAllCompleted ? (
             <button
               onClick={onCompleteTest}
@@ -266,11 +253,11 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
                 background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "12px",
+                borderRadius: "10px",
                 fontSize: "0.8125rem",
                 fontWeight: 700,
                 cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                boxShadow: "0 3px 10px rgba(16, 185, 129, 0.25)",
                 transition: "all 0.2s ease"
               }}
             >
@@ -278,9 +265,22 @@ export const AssessmentHeader: React.FC<AssessmentHeaderProps> = ({
               <Send size={14} />
             </button>
           ) : (
-            <span style={{ fontSize: "0.75rem", color: "#F87171", fontWeight: 700 }}>
-              ⚠️ Answer {totalQuestions - totalAnsweredCount} more to submit
-            </span>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0.4rem 0.85rem",
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.2)",
+                borderRadius: "99px",
+                fontSize: "0.75rem",
+                color: "#B45309",
+                fontWeight: 600
+              }}
+            >
+              <span>Answer {totalQuestions - totalAnsweredCount} more to submit</span>
+            </div>
           )}
         </div>
 

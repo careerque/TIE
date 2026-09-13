@@ -96,11 +96,6 @@ export default function AssessmentPage() {
         return;
       }
 
-      if (profile?.role && profile.role !== "user") {
-        router.push("/dashboard");
-        return;
-      }
-
       const initializeAssessment = async () => {
         try {
           // Fetch structural questions, user response metrics, and profile seed parallelly
@@ -109,6 +104,12 @@ export default function AssessmentPage() {
             fetchUserSavedProgress(user.id),
             supabasedb.from("profiles").select("assessment_seed").eq("id", user.id).single()
           ]);
+
+          const answeredCount = progressRes.success && progressRes.data ? progressRes.data.length : 0;
+          if (answeredCount === 0 && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get("started") !== "true") {
+            router.push("/welcome");
+            return;
+          }
 
           if (questionsRes.success && questionsRes.data) {
             console.log("Initialize Assessment - profileRes:", profileRes);
@@ -191,38 +192,6 @@ export default function AssessmentPage() {
     }
   }, [isLoggedIn, profile, user, authLoading, router]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    // Subscribe to realtime updates for user responses to sync devices
-    const channel = supabasedb
-      .channel(`user_responses_sync_${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_responses',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Realtime user response update:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newRow = payload.new as { question_id: number; selected_option_index: number };
-            setAnswers((prev) => ({
-              ...prev,
-              [newRow.question_id]: newRow.selected_option_index,
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabasedb.removeChannel(channel);
-    };
-  }, [user]);
-
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : undefined;
   const currentAnswerIndex = currentQuestion ? answers[currentQuestion.question_id] : undefined;
   const totalQuestions = questions.length || 24;
@@ -242,17 +211,21 @@ export default function AssessmentPage() {
   const handleSelectOption = async (questionId: number, originalIndex: number) => {
     if (!user) return;
 
-    // 🔧 CHANGED: Optimistically update state tracking via the locked originalIndex identity contract (0-3)
+    // Optimistically update state tracking via the locked originalIndex identity contract (0-3)
     setAnswers((prev) => ({ ...prev, [questionId]: originalIndex }));
     setSavingId(questionId); 
 
-    // Fire network call instantly behind the scenes using the correct immutable tracker indicator mapping index
+    // Fire network call behind the scenes with graceful fallback
     const res = await autoSaveSingleResponse(user.id, questionId, originalIndex);
 
     setSavingId(null); 
 
     if (!res.success) {
-      alert(`Auto-save failed: ${res.error?.message}`);
+      console.warn(`Auto-save temporary network issue for question ${questionId}:`, res.error?.message);
+      // Non-blocking error handling: Retries auto-save once silently
+      setTimeout(async () => {
+        await autoSaveSingleResponse(user.id, questionId, originalIndex);
+      }, 2000);
     }
   };
 

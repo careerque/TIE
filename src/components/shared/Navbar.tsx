@@ -82,21 +82,31 @@ export default function Navbar() {
                   <span className="navbar-btn-text">Take Assessment</span>
                 </Link>
               ) : profile?.role ? (
-                <Link
-                  href={
-                    profile.role === "super_admin"
-                      ? "/super-admin"
-                      : profile.role === "hr_admin"
-                      ? "/hr-admin"
-                      : profile.role === "manager"
-                      ? "/manager"
-                      : "/dashboard"
-                  }
-                  className="tie-navbar-btn-cta"
-                >
-                  <Sparkles size={14} />
-                  <span className="navbar-btn-text">View Dashboard</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  {(profile.role === "manager" || profile.role === "hr_admin") && (
+                    <Link
+                      href="/welcome"
+                      className="px-3 py-1.5 rounded-md text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all flex items-center gap-1.5 border border-indigo-200 shadow-sm"
+                    >
+                      <Sparkles size={13} className="text-indigo-600" />
+                      <span className="navbar-btn-text">Self-Assessment</span>
+                    </Link>
+                  )}
+                  <Link
+                    href={
+                      profile.role === "super_admin"
+                        ? "/super-admin"
+                        : profile.role === "hr_admin"
+                        ? "/hr-admin"
+                        : profile.role === "manager"
+                        ? "/manager"
+                        : "/dashboard"
+                    }
+                    className="tie-navbar-btn-cta"
+                  >
+                    <span className="navbar-btn-text">View Dashboard</span>
+                  </Link>
+                </div>
               ) : null}
 
               {/* Sign Out Button */}
@@ -185,7 +195,7 @@ export default function Navbar() {
                 <span className="tie-navbar-mobile-email">
                   {profile?.email}
                 </span>
-                {profile?.role === "user" && (
+                {(profile?.role === "user" || profile?.role === "manager" || profile?.role === "hr_admin") && (
                   <Link
                     href="/welcome"
                     onClick={() => setIsMenuOpen(false)}
@@ -193,7 +203,7 @@ export default function Navbar() {
                     style={{ width: "100%", justifyContent: "center" }}
                   >
                     <Sparkles size={14} />
-                    Take Assessment
+                    {profile?.role === "user" ? "Take Assessment" : "Take Self-Assessment"}
                   </Link>
                 )}
                 <button

@@ -9,12 +9,22 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from supabase import create_client, Client # 🆕 Import Supabase Client
+
+# Safeguard against harmless AttributeError in supabase_auth on process exit
+try:
+    from supabase_auth._sync.gotrue_client import SyncGoTrueClient
+    if not hasattr(SyncGoTrueClient, "_refresh_token_timer"):
+        SyncGoTrueClient._refresh_token_timer = None
+except Exception:
+    pass
 from profile_content_library import PROFILE_CONTENT_LIBRARY
 from llm_manager import LLMManager
 
-# Load environment variables from .env.local in the project root
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env.local")
-load_dotenv(env_path)
+# Load environment variables from .env.local in project root or .env
+base_dir = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(base_dir, "..", ".env.local"))
+load_dotenv(os.path.join(base_dir, ".env"))
+load_dotenv()
 
 # Initialize multi-provider LLM Manager
 llm_manager = LLMManager()
@@ -25,15 +35,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-cors_origins = [
-    origin.strip() 
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
-    if origin.strip()
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://tie-gray.vercel.app"
 ]
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] if cors_origins_env else default_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -893,7 +906,7 @@ def send_activation_email(to_email: str, invite_token: str, role: str, company_n
         print(f"\n[MOCK TEST EMAIL] Bypassing SMTP/Resend dispatch for test email: {to_email}")
         return True, None
 
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    frontend_url = (os.getenv("FRONTEND_URL") or "http://localhost:3000").rstrip("/")
     invite_url = f"{frontend_url}/accept-invite?token={invite_token}"
 
     html = f"""

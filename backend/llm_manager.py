@@ -18,11 +18,11 @@ class LLMManager:
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         
-        # Read LLM request timeout limit (default: 20 seconds)
-        self.timeout = float(os.getenv("LLM_TIMEOUT", "20.0"))
+        # Read LLM request timeout limit (default: 60 seconds for rich report generation)
+        self.timeout = float(os.getenv("LLM_TIMEOUT", "60.0"))
         
-        # Read LLM preference order (default: groq first, fallback to openai, then gemini)
-        pref_order = os.getenv("LLM_PREFERENCE_ORDER", "groq,openai,gemini")
+        # Read LLM preference order (default: gemini first, fallback to groq, then openai)
+        pref_order = os.getenv("LLM_PREFERENCE_ORDER", "gemini,groq,openai")
         self.preference_order = [p.strip().lower() for p in pref_order.split(",") if p.strip()]
         
         # Setup clients
@@ -68,69 +68,27 @@ class LLMManager:
         Attempts to generate report narrative by looping through the LLM preference list.
         Returns a tuple: (report_text, model_name_used)
         """
-        last_exception = None
+        provider_errors = []
         
         for provider in self.preference_order:
             logger.info(f"Attempting report generation with provider: {provider}")
             
-            # --- GROQ PROVIDER ---
-            if provider == "groq":
-                if not self.groq_client:
-                    logger.warning("Groq client not initialized (missing API key). Skipping.")
-                    continue
-                # Try preferred Groq models
-                for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
-                    try:
-                        start_time = time.time()
-                        logger.info(f"Calling Groq model: {model}")
-                        response = self.groq_client.chat.completions.create(
-                            model=model,
-                            messages=[
-                                {"role": "system", "content": system_instruction},
-                                {"role": "user", "content": user_prompt}
-                            ],
-                            temperature=0.3,
-                            timeout=min(12.0, self.timeout)  # Adaptive fast timeout for Groq
-                        )
-                        duration = time.time() - start_time
-                        logger.info(f"Groq generation successful with model {model} in {duration:.2f}s")
-                        return response.choices[0].message.content, f"Groq/{model}"
-                    except Exception as e:
-                        logger.error(f"Groq error with model {model}: {e}")
-                        last_exception = e
-
-            # --- OPENAI PROVIDER ---
-            elif provider == "openai":
-                if not self.openai_client:
-                    logger.warning("OpenAI client not initialized (missing API key). Skipping.")
-                    continue
-                try:
-                    start_time = time.time()
-                    model = "gpt-4o-mini"
-                    logger.info(f"Calling OpenAI model: {model}")
-                    response = self.openai_client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": system_instruction},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        temperature=0.3,
-                        timeout=self.timeout  # Configurable timeout
-                    )
-                    duration = time.time() - start_time
-                    logger.info(f"OpenAI generation successful with model {model} in {duration:.2f}s")
-                    return response.choices[0].message.content, f"OpenAI/{model}"
-                except Exception as e:
-                    logger.error(f"OpenAI error: {e}")
-                    last_exception = e
-
             # --- GEMINI PROVIDER ---
-            elif provider == "gemini":
+            if provider == "gemini":
                 if not self.gemini_client:
                     logger.warning("Gemini client not initialized (missing API key). Skipping.")
+                    provider_errors.append("gemini: client not initialized (missing API key)")
                     continue
-                # Prefer gemini-2.5-flash directly as lite returns 503 errors
-                for model in ["gemini-2.5-flash"]:
+                # Multi-model fallback list with primary and high-availability backup models
+                gemini_models = [
+                    "gemini-2.5-flash",
+                    "gemini-flash-latest",
+                    "gemini-3.5-flash",
+                    "gemini-3.6-flash",
+                    "gemini-2.5-flash-lite"
+                ]
+                gemini_success = False
+                for model in gemini_models:
                     try:
                         start_time = time.time()
                         logger.info(f"Calling Gemini model: {model}")
@@ -147,7 +105,69 @@ class LLMManager:
                         return response.text, f"Gemini/{model}"
                     except Exception as e:
                         logger.error(f"Gemini error with model {model}: {e}")
-                        last_exception = e
+                        provider_errors.append(f"gemini/{model}: {str(e)[:120]}")
+                        time.sleep(0.5)
+
+            # --- GROQ PROVIDER ---
+            elif provider == "groq":
+                if not self.groq_client:
+                    logger.warning("Groq client not initialized (missing API key). Skipping.")
+                    provider_errors.append("groq: client not initialized (missing API key)")
+                    continue
+                # Models supported on active Groq accounts with fallback
+                groq_models = [
+                    "qwen/qwen3.8-27b",
+                    "openai/gpt-oss-120b",
+                    "openai/gpt-oss-20b",
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-8b-instant"
+                ]
+                for model in groq_models:
+                    try:
+                        start_time = time.time()
+                        logger.info(f"Calling Groq model: {model}")
+                        response = self.groq_client.chat.completions.create(
+                            model=model,
+                            messages=[
+                                {"role": "system", "content": system_instruction},
+                                {"role": "user", "content": user_prompt}
+                            ],
+                            temperature=0.3,
+                            timeout=min(45.0, self.timeout)
+                        )
+                        duration = time.time() - start_time
+                        logger.info(f"Groq generation successful with model {model} in {duration:.2f}s")
+                        return response.choices[0].message.content, f"Groq/{model}"
+                    except Exception as e:
+                        logger.error(f"Groq error with model {model}: {e}")
+                        provider_errors.append(f"groq/{model}: {str(e)[:120]}")
+                        time.sleep(0.5)
+
+            # --- OPENAI PROVIDER ---
+            elif provider == "openai":
+                if not self.openai_client:
+                    logger.warning("OpenAI client not initialized (missing API key). Skipping.")
+                    provider_errors.append("openai: client not initialized (missing API key)")
+                    continue
+                try:
+                    start_time = time.time()
+                    model = "gpt-4o-mini"
+                    logger.info(f"Calling OpenAI model: {model}")
+                    response = self.openai_client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": system_instruction},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.3,
+                        timeout=self.timeout
+                    )
+                    duration = time.time() - start_time
+                    logger.info(f"OpenAI generation successful with model {model} in {duration:.2f}s")
+                    return response.choices[0].message.content, f"OpenAI/{model}"
+                except Exception as e:
+                    logger.error(f"OpenAI error: {e}")
+                    provider_errors.append(f"openai/{model}: {str(e)[:120]}")
 
             # --- OLLAMA PROVIDER ---
             elif provider == "ollama":
@@ -162,17 +182,17 @@ class LLMManager:
                             {"role": "user", "content": user_prompt}
                         ],
                         temperature=0.3,
-                        timeout=self.timeout  # Configurable timeout
+                        timeout=self.timeout
                     )
                     duration = time.time() - start_time
                     logger.info(f"Ollama generation successful with model {model} in {duration:.2f}s")
                     return response.choices[0].message.content, f"Ollama/{model}"
                 except Exception as e:
                     logger.error(f"Ollama error: {e}")
-                    last_exception = e
+                    provider_errors.append(f"ollama: {str(e)[:120]}")
             
             else:
                 logger.warning(f"Unknown LLM provider: {provider}")
 
         # If we went through all providers and failed
-        raise Exception(f"All configured LLM providers failed. Last exception: {last_exception}")
+        raise Exception(f"All configured LLM providers failed. Summary: {'; '.join(provider_errors)}")

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, User, ClipboardList } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import InteractiveDashboardLoader from "@/components/InteractiveDashboardLoader";
 import { supabasedb } from "@/lib/supabaseClient";
 import { CookieUtils } from "@/lib/cookieUtils";
 
@@ -77,15 +78,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="tie-container">
-        <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
-          <div className="tie-card-top-bar" />
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#627D98" }}>
-            Loading Dashboard...
-          </span>
-        </div>
-      </div>
+      <InteractiveDashboardLoader 
+        title="Workspace Dashboard" 
+        subtitle="User Navigation Hub" 
+      />
     );
   }
 
@@ -164,8 +160,8 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {/* Button 1: Work preference assessment dashboard */}
-          {profile?.role === "user" && (
+          {/* Button: Assessment / Self-Assessment */}
+          {profile?.role === "user" ? (
             <Link
               href={`/${activeCompanySlug}/${activeTeamSlug}/user`}
               onMouseEnter={() => setTakeTestHovered(true)}
@@ -179,7 +175,23 @@ export default function DashboardPage() {
                 className="dashboard-btn-icon-right"
               />
             </Link>
-          )}
+          ) : (profile?.role === "manager" || profile?.role === "hr_admin") ? (
+            <Link
+              href="/welcome"
+              onMouseEnter={() => setTakeTestHovered(true)}
+              onMouseLeave={() => setTakeTestHovered(false)}
+              className="tie-btn-secondary"
+              style={{ borderColor: "#6366F1", color: "#4F46E5", borderRadius: "6px", background: "#F5F3FF" }}
+            >
+              <ClipboardList size={18} style={{ color: "#4F46E5" }} />
+              <span>Take Self-Assessment (Optional)</span>
+              <ArrowRight 
+                size={16} 
+                className="dashboard-btn-icon-right"
+                style={{ color: "#4F46E5" }}
+              />
+            </Link>
+          ) : null}
 
           {/* Button 2: View Profile Info */}
           <Link

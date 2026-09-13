@@ -135,13 +135,12 @@ def generate_action_plan(
     if not ai_client:
         raise RuntimeError("GEMINI_API_KEY is not configured in backend environment.")
 
-    model_name = "gemini-2.5-flash"
-    max_retries = 2
+    candidate_models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-2.5-flash-lite"]
     parsed_json = None
     last_error = None
 
-    for attempt in range(1, max_retries + 2):
-        print(f"Action Plan Gemini Call Attempt #{attempt} for report '{actual_report_id}'...")
+    for attempt, model_name in enumerate(candidate_models, start=1):
+        print(f"Action Plan Gemini Call Attempt #{attempt} (model: {model_name}) for report '{actual_report_id}'...")
         try:
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -163,14 +162,13 @@ def generate_action_plan(
             plan_model = ActionPlanJSON(**raw_dict)
             parsed_json = plan_model.model_dump()
 
-            print(f"SUCCESS: Validated Action Plan JSON output on attempt #{attempt}.")
+            print(f"SUCCESS: Validated Action Plan JSON output with model {model_name} on attempt #{attempt}.")
             break
 
         except Exception as e:
             last_error = str(e)
-            print(f"WARNING: Action Plan Attempt #{attempt} failed: {e}")
-            if attempt <= max_retries:
-                time.sleep(1.5 * attempt)
+            print(f"WARNING: Action Plan Attempt #{attempt} with {model_name} failed: {e}")
+            time.sleep(1.0)
 
     if not parsed_json:
         raise RuntimeError(f"Failed to generate valid Action Plan after {max_retries + 1} attempts. Error: {last_error}")

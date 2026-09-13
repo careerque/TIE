@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ReportViewer from "@/components/ReportViewer";
+import InteractiveDashboardLoader from "@/components/InteractiveDashboardLoader";
 import { useTenantGuard } from "@/hooks/useTenantGuard";
 import { fetchWithTimeout } from "@/lib/fetchUtils";
 
@@ -75,17 +76,31 @@ export default function CorporateHrAdminPage() {
   const [mgrDesignation, setMgrDesignation] = useState("Manager");
   const [mgrSubmitting, setMgrSubmitting] = useState(false);
 
-  // CSV Parsing State
+  // CSV Parsing & Validation Pipeline State
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [parsedRoster, setParsedRoster] = useState<any[]>([]);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
+  const [analysisStep, setAnalysisStep] = useState<number>(0);
+  const [analysisSuccess, setAnalysisSuccess] = useState<string | null>(null);
+  const [uploadProgressText, setUploadProgressText] = useState<string | null>(null);
 
   // UI Feedback
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [generatedMgrInviteUrl, setGeneratedMgrInviteUrl] = useState<string | null>(null);
+  const [copiedMgrInvite, setCopiedMgrInvite] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const handleCopyMgrInviteLink = () => {
+    if (!generatedMgrInviteUrl) return;
+    navigator.clipboard.writeText(generatedMgrInviteUrl);
+    setCopiedMgrInvite(true);
+    setTimeout(() => setCopiedMgrInvite(false), 2000);
+  };
 
   // Team Management State
   const [teams, setTeams] = useState<any[]>([]);
@@ -276,38 +291,99 @@ export default function CorporateHrAdminPage() {
     e.preventDefault();
     setFormError(null);
     setFormSuccess(null);
+    setGeneratedMgrInviteUrl(null);
 
-    if (!mgrEmail.trim() || !mgrFirstName.trim() || !mgrLastName.trim() || !mgrTeamName.trim() || !profile?.company_id) {
+    const email = mgrEmail.trim();
+    const firstName = mgrFirstName.trim();
+    const lastName = mgrLastName.trim();
+    const teamName = mgrTeamName.trim();
+
+    if (!email || !firstName || !lastName || !teamName || !profile?.company_id) {
       setFormError("Please fill out all manager details.");
       return;
     }
 
-    const normalizedEmail = mgrEmail.trim().toLowerCase();
-    const emailExists = members.some(m => m.email.toLowerCase() === normalizedEmail);
-    if (emailExists) {
-      setFormError(`An active profile with email ${mgrEmail} already exists in the roster.`);
+    // Email format validation (RFC 5322 check)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setFormError("Please enter a valid email address (e.g., lead@company.com).");
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    // Check in-memory members and invitations
+    const emailExistsLocally = members.some(m => m.email.toLowerCase() === normalizedEmail);
+    if (emailExistsLocally) {
+      setFormError(`An active profile with email "${email}" already exists in the organization.`);
+      return;
+    }
+
+    const invExistsLocally = invitations.some(inv => inv.email.toLowerCase() === normalizedEmail && inv.status === "pending");
+    if (invExistsLocally) {
+      setFormError(`A pending invitation for "${email}" already exists.`);
       return;
     }
 
     setMgrSubmitting(true);
     try {
-      // Use the updated /api/enterprise/invite-team-member route
+      // Pre-flight check against database profiles (case-insensitive)
+      const { data: existingProfiles, error: profileLookupErr } = await supabasedb
+        .from("profiles")
+        .select("id, email")
+        .ilike("email", normalizedEmail);
+
+      if (!profileLookupErr && existingProfiles && existingProfiles.length > 0) {
+        setFormError(`An account with email "${email}" already exists in the organization.`);
+        setMgrSubmitting(false);
+        return;
+      }
+
+      // Pre-flight check against pending database invitations (case-insensitive)
+      const { data: existingInvs, error: invLookupErr } = await supabasedb
+        .from("invitations")
+        .select("id, email, status")
+        .ilike("email", normalizedEmail)
+        .eq("status", "pending");
+
+      if (!invLookupErr && existingInvs && existingInvs.length > 0) {
+        setFormError(`A pending invitation for "${email}" already exists.`);
+        setMgrSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`${cleanApiUrl}/api/enterprise/invite-team-member`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: mgrEmail.trim(),
-          first_name: mgrFirstName.trim(),
-          last_name: mgrLastName.trim(),
+          email: normalizedEmail,
+          first_name: firstName,
+          last_name: lastName,
           role: "manager",
-          team_name: mgrTeamName.trim(),
+          team_name: teamName,
           hr_user_id: user?.id
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to invite manager");
+        let errorMsg = "Failed to invite manager.";
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail) && data.detail[0]?.msg) {
+          errorMsg = data.detail[0].msg;
+        }
+
+        const lowerErr = errorMsg.toLowerCase();
+        if (lowerErr.includes("already exists")) {
+          errorMsg = `An account with email "${email}" already exists.`;
+        } else if (lowerErr.includes("valid email") || lowerErr.includes("@-sign") || lowerErr.includes("email address")) {
+          errorMsg = "The email address is invalid. Please enter a valid email format.";
+        } else if (lowerErr.includes("smtp")) {
+          errorMsg = "Invitation created, but failed to send email via mail server. Please check SMTP configuration.";
+        }
+
+        throw new Error(errorMsg);
       }
 
       setMgrEmail("");
@@ -315,11 +391,8 @@ export default function CorporateHrAdminPage() {
       setMgrLastName("");
       setMgrTeamName("");
       const inviteUrl = data.invite_url ? `${window.location.origin}${data.invite_url}` : null;
-      setFormSuccess(
-        inviteUrl 
-          ? `Invitation successfully generated! Copy Link: ${inviteUrl}` 
-          : `Invitation successfully generated for Manager ${mgrEmail}!`
-      );
+      setGeneratedMgrInviteUrl(inviteUrl);
+      setFormSuccess(`Invitation sent successfully to Manager ${normalizedEmail}!`);
       
       // Refresh Lists
       await fetchCompanyData();
@@ -352,61 +425,242 @@ export default function CorporateHrAdminPage() {
     document.body.removeChild(link);
   };
 
-  const processCsvFile = (file: File) => {
+  const processCsvFile = async (file: File) => {
     setCsvError(null);
+    setAnalysisSuccess(null);
+    setParsedRoster([]);
     setCsvFile(file);
+    setIsAnalyzing(true);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/);
-        const results = [];
-        
-        if (lines.length < 2) {
-          throw new Error("CSV file is empty or missing data rows.");
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    try {
+      // Step 1: Read and parse CSV file structure
+      setAnalysisStep(1);
+      setAnalysisStatus("Step 1/5: Reading and parsing CSV file structure...");
+      await sleep(350);
+
+      const text = await file.text();
+      const rawLines = text.split(/\r?\n/);
+      const lines = rawLines.filter(l => l.trim().length > 0);
+
+      if (lines.length < 2) {
+        throw new Error("CSV file is empty or missing data rows.");
+      }
+
+      // Parse headers with quote stripping
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+      
+      const emailIdx = headers.findIndex(h => ["email", "e-mail", "email address"].includes(h));
+      const firstIdx = headers.findIndex(h => ["first_name", "first name", "firstname", "first"].includes(h));
+      const lastIdx = headers.findIndex(h => ["last_name", "last name", "lastname", "last"].includes(h));
+      const roleIdx = headers.findIndex(h => ["role", "user_role", "position"].includes(h));
+      const teamIdx = headers.findIndex(h => ["team_name", "team name", "teamname", "team", "department"].includes(h));
+
+      if (emailIdx === -1 || firstIdx === -1 || lastIdx === -1 || roleIdx === -1 || teamIdx === -1) {
+        const missingHeaders = [];
+        if (emailIdx === -1) missingHeaders.push("email");
+        if (firstIdx === -1) missingHeaders.push("first_name");
+        if (lastIdx === -1) missingHeaders.push("last_name");
+        if (roleIdx === -1) missingHeaders.push("role");
+        if (teamIdx === -1) missingHeaders.push("team_name");
+        throw new Error(`CSV is missing required headers: ${missingHeaders.join(", ")}. Expected format: email,first_name,last_name,role,team_name`);
+      }
+
+      // Step 2: Check data completeness and format across all rows
+      setAnalysisStep(2);
+      setAnalysisStatus("Step 2/5: Checking data completeness and field values across all rows...");
+      await sleep(350);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const seenEmailsInCsv = new Set<string>();
+      const candidateRows: any[] = [];
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const rowNum = i + 1;
+        const line = lines[i];
+        const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+        const email = (cols[emailIdx] || "").trim();
+        const firstName = (cols[firstIdx] || "").trim();
+        const lastName = (cols[lastIdx] || "").trim();
+        const rawRole = (cols[roleIdx] || "").trim();
+        const teamName = (cols[teamIdx] || "").trim();
+
+        const missingFields: string[] = [];
+        if (!email) missingFields.push("email");
+        if (!firstName) missingFields.push("first_name");
+        if (!lastName) missingFields.push("last_name");
+        if (!rawRole) missingFields.push("role");
+        if (!teamName) missingFields.push("team_name");
+
+        if (missingFields.length > 0) {
+          errors.push(`Row ${rowNum}: Missing required field(s): ${missingFields.join(", ")}`);
+          continue;
         }
-        
-        // Parse CSV headers with strip quotes
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
-        
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const cols = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ''));
-          const obj: any = {};
-          
-          headers.forEach((header, index) => {
-            obj[header] = cols[index] || "";
-          });
-          
-          const email = obj.email || obj["e-mail"] || obj["email address"];
-          if (email) {
-            const firstName = obj.first_name || obj["first name"] || obj.firstname || obj.first || "";
-            const lastName = obj.last_name || obj["last name"] || obj.lastname || obj.last || "";
-            const roleVal = (obj.role || obj.user_role || obj.position || "").toLowerCase();
-            const role = roleVal === "manager" ? "manager" : "user";
-            const teamName = obj.team_name || obj["team name"] || obj.teamname || obj.team || obj.department || "General";
 
-            results.push({
-              email: email.toLowerCase(),
-              first_name: firstName,
-              last_name: lastName,
-              role: role,
-              team_name: teamName
+        if (!emailRegex.test(email)) {
+          errors.push(`Row ${rowNum}: Invalid email format "${email}"`);
+          continue;
+        }
+
+        const normalizedEmail = email.toLowerCase();
+        if (seenEmailsInCsv.has(normalizedEmail)) {
+          errors.push(`Row ${rowNum}: Duplicate email "${email}" found within the CSV file.`);
+          continue;
+        }
+        seenEmailsInCsv.add(normalizedEmail);
+
+        candidateRows.push({
+          rowNum,
+          email: normalizedEmail,
+          first_name: firstName,
+          last_name: lastName,
+          rawRole,
+          team_name: teamName
+        });
+      }
+
+      if (candidateRows.length === 0 && errors.length === 0) {
+        throw new Error("No valid data rows found in CSV.");
+      }
+
+      // Step 3: Validate Role (Non Case-Sensitive for 'user' and 'manager')
+      setAnalysisStep(3);
+      setAnalysisStatus("Step 3/5: Validating roles (accepts 'user' or 'manager', case-insensitive)...");
+      await sleep(350);
+
+      const validatedRoleRows: any[] = [];
+      for (const row of candidateRows) {
+        const lowerRole = row.rawRole.toLowerCase();
+        if (lowerRole !== "user" && lowerRole !== "manager") {
+          errors.push(`Row ${row.rowNum}: Role "${row.rawRole}" is invalid. Role must be either 'user' or 'manager' (e.g. user, manager, User, Manager).`);
+        } else {
+          validatedRoleRows.push({
+            ...row,
+            role: lowerRole
+          });
+        }
+      }
+
+      // Step 4: Validate Team Name (Non Case-Sensitive against company created teams)
+      setAnalysisStep(4);
+      setAnalysisStatus("Step 4/5: Verifying team names against created company teams (case-insensitive)...");
+      await sleep(350);
+
+      // Refresh teams from Supabase to guarantee up-to-date data
+      let currentTeams = teams;
+      if (profile?.company_id) {
+        const { data: freshTeams } = await supabasedb
+          .from("teams")
+          .select("*")
+          .eq("company_id", profile.company_id);
+        if (freshTeams && freshTeams.length > 0) {
+          currentTeams = freshTeams;
+          setTeams(freshTeams);
+        }
+      }
+
+      const existingTeamNamesLower = new Set(
+        currentTeams.map((t: any) => (t.name || "").trim().toLowerCase())
+      );
+      const existingTeamSlugs = new Set(
+        currentTeams.map((t: any) => (t.slug || "").trim().toLowerCase())
+      );
+
+      const missingTeams = new Set<string>();
+      for (const row of candidateRows) {
+        const cleanTeamName = row.team_name.trim();
+        const lowerTeamName = cleanTeamName.toLowerCase();
+        const slugTeam = lowerTeamName.replace(/\s+/g, "-");
+
+        const exists = existingTeamNamesLower.has(lowerTeamName) || existingTeamSlugs.has(slugTeam);
+        if (!exists) {
+          missingTeams.add(cleanTeamName);
+        }
+      }
+
+      if (missingTeams.size > 0) {
+        const missingList = Array.from(missingTeams).map(t => `"${t}"`).join(", ");
+        errors.push(`Please create all teams before sending mail. Missing team(s): ${missingList}`);
+      }
+
+      // Step 5: Check Email Uniqueness (Pre-flight all-or-nothing check against existing accounts and pending invitations)
+      setAnalysisStep(5);
+      setAnalysisStatus("Step 5/5: Checking email uniqueness against active accounts and pending invitations...");
+      await sleep(350);
+
+      const allCsvEmails = candidateRows.map(r => r.email);
+      const existingEmailsFound = new Set<string>();
+
+      // Check current in-memory members and invitations
+      members.forEach(m => {
+        if (allCsvEmails.includes(m.email.toLowerCase())) {
+          existingEmailsFound.add(m.email.toLowerCase());
+        }
+      });
+      invitations.forEach(inv => {
+        if (allCsvEmails.includes(inv.email.toLowerCase())) {
+          existingEmailsFound.add(inv.email.toLowerCase());
+        }
+      });
+
+      // Direct database query for comprehensive coverage
+      if (allCsvEmails.length > 0) {
+        try {
+          const { data: dbProfiles } = await supabasedb
+            .from("profiles")
+            .select("email")
+            .in("email", allCsvEmails);
+          if (dbProfiles) {
+            dbProfiles.forEach((p: any) => {
+              if (p.email) existingEmailsFound.add(p.email.toLowerCase());
             });
           }
+
+          const { data: dbInvs } = await supabasedb
+            .from("invitations")
+            .select("email")
+            .in("email", allCsvEmails);
+          if (dbInvs) {
+            dbInvs.forEach((inv: any) => {
+              if (inv.email) existingEmailsFound.add(inv.email.toLowerCase());
+            });
+          }
+        } catch (dbErr) {
+          console.warn("Direct db uniqueness check warning:", dbErr);
         }
-        
-        if (results.length === 0) {
-          throw new Error("No valid records found in CSV. Check headers: email, first_name, last_name, role, team_name");
-        }
-        setParsedRoster(results);
-      } catch (err: any) {
-        setCsvError(err.message || "Failed to parse CSV file.");
-        setParsedRoster([]);
       }
-    };
-    reader.readAsText(file);
+
+      if (existingEmailsFound.size > 0) {
+        const existingList = Array.from(existingEmailsFound).join(", ");
+        errors.push(`The following email(s) already exist: ${existingList}. Please upload a new CSV file with updated content.`);
+      }
+
+      // If any validation errors occurred, halt and block proceeding
+      if (errors.length > 0) {
+        setCsvError(errors.join("\n"));
+        setParsedRoster([]);
+        return;
+      }
+
+      // All validations passed!
+      const userCount = validatedRoleRows.filter(r => r.role === "user").length;
+      const mgrCount = validatedRoleRows.filter(r => r.role === "manager").length;
+      const teamSet = new Set(validatedRoleRows.map(r => r.team_name));
+
+      setParsedRoster(validatedRoleRows);
+      setAnalysisSuccess(
+        `All checks passed! Found ${validatedRoleRows.length} valid new candidate(s) (${userCount} user${userCount === 1 ? '' : 's'}, ${mgrCount} manager${mgrCount === 1 ? '' : 's'}) across ${teamSet.size} verified team(s). All details filled, roles validated, teams confirmed, and emails verified as new.`
+      );
+    } catch (err: any) {
+      setCsvError(err.message || "Failed to process and analyze CSV file.");
+      setParsedRoster([]);
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisStatus(null);
+    }
   };
 
   const handleUploadRoster = async () => {
@@ -417,14 +671,11 @@ export default function CorporateHrAdminPage() {
 
     let successCount = 0;
     let failCount = 0;
+    const errors: string[] = [];
 
-    for (const item of parsedRoster) {
-      const normalizedEmail = item.email.toLowerCase().trim();
-      const emailExists = members.some(m => m.email.toLowerCase() === normalizedEmail);
-      if (emailExists) {
-        failCount++;
-        continue;
-      }
+    for (let i = 0; i < parsedRoster.length; i++) {
+      const item = parsedRoster[i];
+      setUploadProgressText(`Sending invitation and activation email (${i + 1} of ${parsedRoster.length}) to ${item.email}...`);
 
       try {
         const res = await fetch(`${cleanApiUrl}/api/enterprise/invite-team-member`, {
@@ -442,17 +693,29 @@ export default function CorporateHrAdminPage() {
         if (res.ok) {
           successCount++;
         } else {
+          const errData = await res.json().catch(() => ({}));
           failCount++;
+          errors.push(`${item.email}: ${errData.detail || "Failed to send invitation"}`);
         }
-      } catch (err) {
+      } catch (err: any) {
         failCount++;
+        errors.push(`${item.email}: ${err.message || "Network error"}`);
       }
     }
 
-    setFormSuccess(`Ingested Roster: Generated ${successCount} invitations successfully!${failCount > 0 ? ` (${failCount} errors)` : ""}`);
+    setUploadProgressText(null);
+    setCsvUploading(false);
+
+    if (successCount > 0) {
+      setFormSuccess(`Ingested Roster: Successfully invited ${successCount} member(s) and dispatched activation email(s)!${failCount > 0 ? ` (${failCount} errors)` : ""}`);
+    }
+    if (errors.length > 0) {
+      setCsvError(`Failed invitations:\n${errors.join("\n")}`);
+    }
+
     setCsvFile(null);
     setParsedRoster([]);
-    setCsvUploading(false);
+    setAnalysisSuccess(null);
     await fetchCompanyData();
   };
 
@@ -477,16 +740,10 @@ export default function CorporateHrAdminPage() {
 
   if (authLoading || loading) {
     return (
-      <main className="tie-container bg-mesh">
-        <div className="tie-dot-grid" aria-hidden />
-        <div className="tie-card" style={{ alignItems: "center", justifyContent: "center", minHeight: "350px" }}>
-          <div className="tie-card-top-bar" />
-          <Loader2 className="animate-spin text-[#5BA4A4]" size={36} style={{ marginBottom: "1rem" }} />
-          <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#627D98" }}>
-            Loading Corporate HR Dashboard...
-          </span>
-        </div>
-      </main>
+      <InteractiveDashboardLoader 
+        title="Corporate HR Dashboard" 
+        subtitle="Enterprise Organization Hub" 
+      />
     );
   }
 
@@ -514,10 +771,58 @@ export default function CorporateHrAdminPage() {
             </p>
           </div>
           
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.6rem 1.2rem', borderRadius: '12px', border: '1.5px solid rgba(36,59,83,0.15)', background: '#ffffff', color: '#243B53', fontSize: '0.8125rem', fontWeight: 700, textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F4F7FA'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link 
+              href="/welcome" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '0.625rem 1.25rem', 
+                borderRadius: '6px', 
+                background: 'linear-gradient(135deg, #3730A3 0%, #4F46E5 100%)', 
+                border: '1px solid #4338CA', 
+                color: '#ffffff', 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                letterSpacing: '0.02em',
+                textDecoration: 'none', 
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                boxShadow: '0 2px 6px rgba(55, 48, 163, 0.25)' 
+              }}
+              onMouseEnter={e => { 
+                e.currentTarget.style.background = 'linear-gradient(135deg, #312E81 0%, #4338CA 100%)'; 
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(55, 48, 163, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.background = 'linear-gradient(135deg, #3730A3 0%, #4F46E5 100%)'; 
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(55, 48, 163, 0.25)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <Sparkles size={14} style={{ color: '#C7D2FE' }} />
+              <span>Take Self-Assessment</span>
+            </Link>
+            <Link 
+              href="/dashboard" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                padding: '0.625rem 1.2rem', 
+                borderRadius: '6px', 
+                border: '1.5px solid rgba(36,59,83,0.15)', 
+                background: '#ffffff', 
+                color: '#243B53', 
+                fontSize: '0.8125rem', 
+                fontWeight: 700, 
+                textDecoration: 'none', 
+                transition: 'all 0.2s' 
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F4F7FA'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+            >
               User Dashboard
             </Link>
           </div>
@@ -685,6 +990,46 @@ export default function CorporateHrAdminPage() {
                 )}
               </div>
             )}
+
+            {/* Available Created Teams Pills */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(36,59,83,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#9aa8b6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Available Teams in Company ({teams.length})
+                </span>
+                <span style={{ fontSize: '10px', color: '#5BA4A4', fontWeight: 700 }}>
+                  Case-Insensitive
+                </span>
+              </div>
+              {teams.length === 0 ? (
+                <div style={{ padding: '0.75rem', background: '#FFF8E1', border: '1px solid #FFE082', borderRadius: '10px', color: '#B78103', fontSize: '0.75rem', fontWeight: 600, textAlign: 'center' }}>
+                  ⚠️ No teams created yet. HR Admin must create all teams (e.g. teachteam, pr team) before importing a roster.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {teams.map((t) => (
+                    <span 
+                      key={t.id}
+                      style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '5px', 
+                        padding: '4px 10px', 
+                        borderRadius: '8px', 
+                        background: '#F4F7FA', 
+                        border: '1px solid rgba(36,59,83,0.08)', 
+                        color: '#243B53', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700 
+                      }}
+                    >
+                      <Building2 size={11} style={{ color: '#5BA4A4' }} />
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Card 1.2: Invite Team Lead */}
@@ -881,17 +1226,88 @@ export default function CorporateHrAdminPage() {
 
             {/* Form Errors and Success Alerts */}
             {(formSuccess || formError) && (
-              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 {formSuccess && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1rem', background: 'rgba(46,125,50,0.06)', border: '1px solid rgba(46,125,50,0.15)', borderRadius: '12px', color: '#2E7D32', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <CheckCircle size={15} style={{ flexShrink: 0 }} />
-                    <span>{formSuccess}</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '8px', 
+                    padding: '0.85rem 1rem', 
+                    background: 'rgba(46,125,50,0.06)', 
+                    border: '1px solid rgba(46,125,50,0.15)', 
+                    borderRadius: '12px', 
+                    color: '#2E7D32', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 600,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      <CheckCircle size={16} style={{ flexShrink: 0, color: '#2E7D32' }} />
+                      <span>{formSuccess}</span>
+                    </div>
+                    {generatedMgrInviteUrl && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap', maxWidth: '100%' }}>
+                        <button
+                          type="button"
+                          onClick={handleCopyMgrInviteLink}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            background: copiedMgrInvite ? '#166534' : '#ffffff',
+                            color: copiedMgrInvite ? '#ffffff' : '#2E7D32',
+                            border: '1px solid rgba(46,125,50,0.25)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            flexShrink: 0
+                          }}
+                        >
+                          {copiedMgrInvite ? (
+                            <>
+                              <CheckCircle size={12} />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              <span>Copy Invite Link</span>
+                            </>
+                          )}
+                        </button>
+                        <span style={{ fontSize: '10px', color: '#627D98', fontWeight: 500 }}>
+                          Activation mail dispatched
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {formError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.8rem 1rem', background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.15)', borderRadius: '12px', color: '#c0392b', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
-                    <span>{formError}</span>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    gap: '8px', 
+                    padding: '0.85rem 1rem', 
+                    background: 'rgba(192,57,43,0.06)', 
+                    border: '1px solid rgba(192,57,43,0.15)', 
+                    borderRadius: '12px', 
+                    color: '#c0392b', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: 600,
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere'
+                  }}>
+                    <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{formError}</span>
                   </div>
                 )}
               </div>
@@ -902,104 +1318,227 @@ export default function CorporateHrAdminPage() {
         {/* Col 2 & 3: CSV File Dropzone & Pending Invites */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', gridColumn: 'span 2' }}>
           
-          {/* CSV File Dropzone Pipeline */}
+          {/* CSV File Dropzone & Validation Pipeline */}
           <div style={{ background: '#ffffff', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '10px', background: '#F4F7FA', color: '#5BA4A4', borderRadius: '14px', border: '1px solid rgba(36,59,83,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileSpreadsheet size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ padding: '10px', background: '#F4F7FA', color: '#5BA4A4', borderRadius: '14px', border: '1px solid rgba(36,59,83,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileSpreadsheet size={20} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 800, color: '#243B53', margin: 0 }}>CSV Roster Ingestion & Validation</h2>
+                  <p style={{ fontSize: '9px', fontWeight: 700, color: '#9aa8b6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '2px 0 0 0' }}>Strict prerequisite validation & automated email dispatch</p>
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-                <h2 style={{ fontSize: '1rem', fontWeight: 800, color: '#243B53', margin: 0 }}>CSV Roster Ingestion</h2>
-                <p style={{ fontSize: '9px', fontWeight: 700, color: '#9aa8b6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '2px 0 0 0' }}>Batch invite employees via csv roster import</p>
+
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', background: teams.length > 0 ? 'rgba(91,164,164,0.1)' : 'rgba(217,119,6,0.1)', color: teams.length > 0 ? '#5BA4A4' : '#D97706', fontSize: '10px', fontWeight: 700 }}>
+                <ShieldCheck size={13} />
+                <span>{teams.length} Team{teams.length === 1 ? '' : 's'} Registered</span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', width: '100%' }}>
+            {/* Prerequisite Guidance Note */}
+            <div style={{ padding: '0.75rem 1rem', background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={15} style={{ color: '#5BA4A4', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.75rem', color: '#627D98', fontWeight: 600 }}>
+                  <strong style={{ color: '#243B53' }}>Prerequisite:</strong> First create all teams (e.g. teachteam, pr team) before importing. Role must be <code style={{ background: '#E2E8F0', padding: '1px 5px', borderRadius: '4px', color: '#1E293B', fontWeight: 700 }}>user</code> or <code style={{ background: '#E2E8F0', padding: '1px 5px', borderRadius: '4px', color: '#1E293B', fontWeight: 700 }}>manager</code>.
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', width: '100%' }}>
               
-              <div style={{ border: '2px dashed rgba(36,59,83,0.15)', borderRadius: '16px', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
+              {/* Dropzone */}
+              <div style={{ border: '2px dashed rgba(36,59,83,0.15)', borderRadius: '16px', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s', minHeight: '160px' }}
                    onMouseEnter={e => e.currentTarget.style.borderColor = '#5BA4A4'}
                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(36,59,83,0.15)'}>
                 <input 
                   type="file" 
                   accept=".csv" 
                   onChange={handleCsvChange}
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 5 }}
                 />
-                <Upload size={28} style={{ color: '#9aa8b6', marginBottom: '8px' }} />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53' }}>
+                <Upload size={28} style={{ color: '#5BA4A4', marginBottom: '8px' }} />
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {csvFile ? csvFile.name : "Select or Drop CSV File"}
                 </span>
-                <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, marginTop: '4px' }}>Expected headers: email, first_name, last_name, role, team_name</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    downloadSampleCsv();
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#5BA4A4',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    marginTop: '8px',
-                    position: 'relative',
-                    zIndex: 10
-                  }}
-                >
-                  Download Sample CSV Template
-                </button>
-              </div>
-
-              <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.06)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '120px', textAlign: 'left' }}>
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#627D98' }}>
-                  {parsedRoster.length > 0 ? (
-                    <span style={{ color: '#243B53', fontWeight: 700 }}>Parsed {parsedRoster.length} candidate rows. Ready to run import.</span>
-                  ) : (
-                    <span style={{ color: '#9aa8b6', fontStyle: 'italic' }}>No roster CSV file parsed yet. Upload a roster spreadsheet to start bulk onboarding.</span>
-                  )}
-                  {csvError && <p style={{ color: '#c0392b', fontSize: '10px', marginTop: '6px', fontWeight: 700 }}>{csvError}</p>}
-                </div>
-                
-                {parsedRoster.length > 0 && (
+                <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, marginTop: '4px' }}>
+                  Headers: email, first_name, last_name, role, team_name
+                </span>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '8px', position: 'relative', zIndex: 10 }}>
                   <button
-                    onClick={handleUploadRoster}
-                    disabled={csvUploading}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadSampleCsv();
+                    }}
                     style={{
-                      width: '100%',
-                      padding: '0.65rem',
-                      background: '#243B53',
-                      color: '#ffffff',
+                      background: 'none',
                       border: 'none',
-                      borderRadius: '10px',
-                      fontSize: '0.75rem',
+                      color: '#5BA4A4',
+                      fontSize: '11px',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      marginTop: '10px',
-                      transition: 'all 0.2s'
+                      textDecoration: 'underline'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#1a2d40'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#243B53'}
                   >
-                    {csvUploading ? (
-                      <>
-                        <Loader2 className="animate-spin" size={12} />
-                        <span>Provisioning Batch...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Database size={12} />
-                        <span>Run Roster Import</span>
-                      </>
-                    )}
+                    Sample Template
                   </button>
+                  {csvFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCsvFile(null);
+                        setParsedRoster([]);
+                        setCsvError(null);
+                        setAnalysisSuccess(null);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#c0392b',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Clear File
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status / Analysis Pipeline / Progression Panel */}
+              <div style={{ background: '#F8FAFC', border: '1px solid rgba(36,59,83,0.08)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '160px', textAlign: 'left' }}>
+                
+                {/* 1. Loading Text: Analysis in Progress */}
+                {isAnalyzing && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center', height: '100%', padding: '0.5rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Loader2 className="animate-spin text-[#5BA4A4]" size={22} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#5BA4A4', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Analyzing CSV Pipeline (Step {analysisStep}/5)
+                        </span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53', marginTop: '2px' }}>
+                          {analysisStatus || "Analyzing CSV file..."}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Progress Bar Indicator */}
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(91,164,164,0.15)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ width: `${(analysisStep / 5) * 100}%`, height: '100%', background: '#5BA4A4', transition: 'width 0.3s ease' }} />
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, fontStyle: 'italic' }}>
+                      Checking completeness, role validity ('user'/'manager'), team existence, and email uniqueness...
+                    </span>
+                  </div>
                 )}
+
+                {/* 2. Loading Text: Batch Upload / Dispatching in Progress */}
+                {csvUploading && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center', height: '100%', padding: '0.5rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Loader2 className="animate-spin text-[#243B53]" size={22} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 800, color: '#243B53', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Provisioning & Email Dispatch
+                        </span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53', marginTop: '2px' }}>
+                          {uploadProgressText || "Dispatching activation emails..."}
+                        </span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, fontStyle: 'italic' }}>
+                      Creating invitations and dispatching secure activation links...
+                    </span>
+                  </div>
+                )}
+
+                {/* 3. Error Banner: Validation Failed */}
+                {!isAnalyzing && !csvUploading && csvError && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c0392b', fontSize: '0.75rem', fontWeight: 800 }}>
+                      <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                      <span>Validation Failed — Cannot Proceed</span>
+                    </div>
+                    <div style={{ background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.2)', borderRadius: '8px', padding: '0.75rem', color: '#c0392b', fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
+                      {csvError}
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#9aa8b6', fontWeight: 500, fontStyle: 'italic' }}>
+                      Please resolve the issues above or update the CSV file before sending mail.
+                    </span>
+                  </div>
+                )}
+
+                {/* 4. Success State: Verified & Ready to Proceed */}
+                {!isAnalyzing && !csvUploading && !csvError && analysisSuccess && parsedRoster.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#2E7D32', fontSize: '0.75rem', fontWeight: 800 }}>
+                      <CheckCircle size={15} style={{ flexShrink: 0 }} />
+                      <span>CSV Analysis Verified</span>
+                    </div>
+                    <div style={{ background: 'rgba(46,125,50,0.06)', border: '1px solid rgba(46,125,50,0.2)', borderRadius: '10px', padding: '0.65rem 0.85rem', color: '#2E7D32', fontSize: '0.75rem', fontWeight: 600 }}>
+                      {analysisSuccess}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#ffffff', border: '1px solid rgba(36,59,83,0.1)', fontSize: '10px', fontWeight: 700, color: '#243B53' }}>
+                        {parsedRoster.length} Total Rows
+                      </span>
+                      <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#ffffff', border: '1px solid rgba(36,59,83,0.1)', fontSize: '10px', fontWeight: 700, color: '#5BA4A4' }}>
+                        {parsedRoster.filter(r => r.role === 'user').length} Users
+                      </span>
+                      <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#ffffff', border: '1px solid rgba(36,59,83,0.1)', fontSize: '10px', fontWeight: 700, color: '#2E7D32' }}>
+                        {parsedRoster.filter(r => r.role === 'manager').length} Managers
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={handleUploadRoster}
+                      disabled={csvUploading}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        background: '#243B53',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '0.8125rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                        boxShadow: '0 4px 6px -1px rgba(36,59,83,0.2)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#1a2d40'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#243B53'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <Mail size={14} />
+                      <span>Proceed to Send Invitations & Mails</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* 5. Idle Initial State */}
+                {!isAnalyzing && !csvUploading && !csvError && !analysisSuccess && (
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', gap: '0.35rem' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#243B53' }}>
+                      Ready for Roster Ingestion
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#627D98', fontWeight: 500, lineHeight: 1.4 }}>
+                      Select or drop a CSV file on the left. The system will automatically analyze data completeness, role values, created teams, and email uniqueness before unlocking invitations.
+                    </span>
+                  </div>
+                )}
+
               </div>
             </div>
           </div>

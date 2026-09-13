@@ -17,21 +17,24 @@ export const CookieUtils = {
     return null;
   },
 
-  set: (key: string, value: string, days: number = 7): void => {
+  // Store cookies strictly for 1 hour by default (hours = 1)
+  set: (key: string, value: string, hours: number = 1): void => {
     if (typeof window === "undefined") return;
     let expires = "";
-    if (days) {
+    let maxAge = "";
+    if (hours) {
       const date = new Date();
-      date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+      date.setTime(date.getTime() + hours * 60 * 60 * 1000);
       expires = "; expires=" + date.toUTCString();
+      maxAge = `; max-age=${Math.round(hours * 3600)}`;
     }
     const isSecure = window.location.protocol === "https:";
-    document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}${expires}; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+    document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}${expires}${maxAge}; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
   },
 
   remove: (key: string): void => {
     if (typeof window === "undefined") return;
-    document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
+    document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; max-age=0; path=/; SameSite=Lax`;
   },
 
   clearAll: (): void => {
@@ -55,7 +58,8 @@ export const supabaseCookieStorage = {
     return CookieUtils.get(key);
   },
   setItem: (key: string, value: string): void => {
-    CookieUtils.set(key, value, 30);
+    // Strictly store Supabase JWT auth token for 1 hour only (not 30 days)
+    CookieUtils.set(key, value, 1);
   },
   removeItem: (key: string): void => {
     CookieUtils.remove(key);

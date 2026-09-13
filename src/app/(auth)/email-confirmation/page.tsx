@@ -63,7 +63,7 @@ export default function EmailConfirmationPage() {
       }
 
       // 2. If it exists, resend the verification link
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
       const { error } = await supabasedb.auth.resend({
         type: 'signup',
         email: resendEmail.trim(),

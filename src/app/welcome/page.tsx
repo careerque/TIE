@@ -14,6 +14,7 @@ export default function AssessmentWelcomePage() {
   const { isLoggedIn, profile, loading } = useAuthContext();
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [ctaHovered, setCtaHovered] = useState(false);
+  const [startUrl, setStartUrl] = useState<string>("/assessment?started=true");
 
   useEffect(() => {
     if (!loading) {
@@ -24,7 +25,7 @@ export default function AssessmentWelcomePage() {
       }
 
       if (profile?.company_id) {
-        const fetchSlugsAndRedirect = async () => {
+        const fetchSlugs = async () => {
           const cachedComp = CookieUtils.get(`company-slug-${profile.company_id}`);
           const cachedTm = profile.team_id ? CookieUtils.get(`team-slug-${profile.team_id}`) : null;
 
@@ -55,15 +56,11 @@ export default function AssessmentWelcomePage() {
             }
           }
 
-          router.push(`/${resolvedComp}/${resolvedTm}/user`);
+          setStartUrl(`/${resolvedComp}/${resolvedTm}/user?started=true`);
         };
-        fetchSlugsAndRedirect();
-        return;
-      }
-
-      if (profile?.role && profile.role !== "user") {
-        router.push("/dashboard");
-        return;
+        fetchSlugs();
+      } else {
+        setStartUrl("/assessment?started=true");
       }
 
       // Fetch dynamic question count
@@ -175,7 +172,7 @@ export default function AssessmentWelcomePage() {
         {/* 4. Action Area with Direct Navigation */}
         <div className="dashboard-action-block">
           <Link
-            href="/assessment"
+            href={startUrl}
             onMouseEnter={() => setCtaHovered(true)}
             onMouseLeave={() => setCtaHovered(false)}
             className="tie-btn-primary"
