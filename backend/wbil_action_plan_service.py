@@ -47,34 +47,23 @@ def generate_action_plan(
     report_res = supabase.table("employee_reports").select("*").or_(f"id.eq.{report_id},assessment_id.eq.{report_id},employee_id.eq.{report_id}").execute()
     
     if not report_res.data or len(report_res.data) == 0:
-        # Self-healing Step A: Try generating from wbil_report_service
+        # Self-healing Step A: Check saved_reports table (for existing assessment completions)
         try:
-            from wbil_report_service import generate_employee_report
-            gen_res = generate_employee_report(assessment_id=report_id)
-            if gen_res.get("status") == "SUCCESS":
-                report_res = supabase.table("employee_reports").select("*").or_(f"id.eq.{report_id},assessment_id.eq.{report_id},employee_id.eq.{report_id}").execute()
-        except Exception as e:
-            print(f"Self-healing report generation notice: {e}")
-
-    if not report_res.data or len(report_res.data) == 0:
-        # Self-healing Step B: Check saved_reports table (for existing assessment completions)
-        try:
-            saved_res = supabase.table("saved_reports").select("*").or_(f"user_id.eq.{report_id},id.eq.{report_id}").execute()
+            saved_res = supabase.table("saved_reports").select("*").eq("user_id", report_id).execute()
             if saved_res.data and len(saved_res.data) > 0:
                 saved_item = saved_res.data[0]
                 emp_user_id = saved_item.get("user_id", report_id)
                 emp_insert = {
-                    "assessment_id": report_id,
+                    "assessment_id": emp_user_id,
                     "employee_id": emp_user_id,
+                    "report_version": "v1.0",
                     "status": "COMPLETED",
-                    "scoring_metrics": saved_item.get("scoring_metrics", {}),
-                    "report_markdown": saved_item.get("report_markdown", ""),
                     "report_json": {
                         "employee_info": {
                             "employee_id": emp_user_id,
                             "combination_profile": saved_item.get("scoring_metrics", {}).get("combination_profile", "Professional")
                         },
-                        "priority_development_areas": [
+                        "development_priorities": [
                             {
                                 "priority_number": 1,
                                 "behaviour_id": "WB-001",
@@ -96,10 +85,20 @@ def generate_action_plan(
                         ]
                     }
                 }
-                supabase.table("employee_reports").insert(emp_insert).execute()
+                supabase.table("employee_reports").upsert(emp_insert, on_conflict="assessment_id").execute()
                 report_res = supabase.table("employee_reports").select("*").or_(f"id.eq.{report_id},assessment_id.eq.{report_id},employee_id.eq.{report_id}").execute()
         except Exception as e:
             print(f"saved_reports fallback notice: {e}")
+
+    if not report_res.data or len(report_res.data) == 0:
+        # Self-healing Step B: Try generating from wbil_report_service
+        try:
+            from wbil_report_service import generate_employee_report
+            gen_res = generate_employee_report(assessment_id=report_id)
+            if gen_res.get("status") == "SUCCESS":
+                report_res = supabase.table("employee_reports").select("*").or_(f"id.eq.{report_id},assessment_id.eq.{report_id},employee_id.eq.{report_id}").execute()
+        except Exception as e:
+            print(f"Self-healing report generation notice: {e}")
 
     if not report_res.data or len(report_res.data) == 0:
         raise KeyError(f"Employee Report record not found for ID '{report_id}'. Please ensure the employee has completed their assessment.")

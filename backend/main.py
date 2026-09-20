@@ -39,14 +39,19 @@ cors_origins_env = os.getenv("CORS_ORIGINS", "")
 default_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://tie.careerque.in",
+    "https://tie-pi.vercel.app",
     "https://tie-gray.vercel.app"
 ]
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] if cors_origins_env else default_origins
+# Always ensure tie.careerque.in is present
+if "https://tie.careerque.in" not in cors_origins:
+    cors_origins.append("https://tie.careerque.in")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*(\.vercel\.app|\.careerque\.in)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

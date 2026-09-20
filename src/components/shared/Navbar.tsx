@@ -86,9 +86,8 @@ export default function Navbar() {
                   {(profile.role === "manager" || profile.role === "hr_admin") && (
                     <Link
                       href="/welcome"
-                      className="px-3 py-1.5 rounded-md text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all flex items-center gap-1.5 border border-indigo-200 shadow-sm"
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] active:scale-95 transition-all duration-150 shadow-sm hover:shadow tracking-wide"
                     >
-                      <Sparkles size={13} className="text-indigo-600" />
                       <span className="navbar-btn-text">Self-Assessment</span>
                     </Link>
                   )}
@@ -202,7 +201,6 @@ export default function Navbar() {
                     className="tie-navbar-btn-cta"
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    <Sparkles size={14} />
                     {profile?.role === "user" ? "Take Assessment" : "Take Self-Assessment"}
                   </Link>
                 )}
